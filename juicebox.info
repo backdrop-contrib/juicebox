@@ -1,0 +1,16 @@
+name = Juicebox
+description = Integrate Juicebox 
+package = User interface
+core = 7.x
+dependencies[] = libraries
+
+; General Files
+files[] = juicebox.module
+files[] = juicebox.views.inc
+
+; Plugin Files
+files[] = plugins/juicebox_style_plugin.inc
+
+; Theme Files
+files[] = themes/juicebox.theme.inc
+files[] = themes/juicebox-view.tpl.php
