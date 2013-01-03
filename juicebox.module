@@ -60,18 +60,32 @@ function juicebox_render_xml_from_view($view) {
   $xml .= '  ' . $view->style_options['advanced']['config'] . "\n";
   $xml .= '>' . "\n";
   foreach ($view->result as $row_index => $row) {
+    // Get the main image source
+    $field_image_name = "field_{$options['image_field']}";
+    $field_image_uri = $row->{$field_image_name}[0]['raw']['uri'];
+    if (!empty($options['image_field_style'])) {
+      $image_src = image_style_url($options['image_field_style'], $field_image_uri);
+    }
+    else {
+      $image_src = file_create_url($field_image_uri);
+    }
+    // Get the thumbnail source
+    $field_thumb_name = "field_{$options['thumb_field']}";
+    $field_thumb_uri = $row->{$field_thumb_name}[0]['raw']['uri'];
+    if (!empty($options['thumb_field_style'])) {
+      $thumb_src = image_style_url($options['thumb_field_style'], $field_thumb_uri);
+    }
+    else {
+      $thumb_src = file_create_url($field_image_uri);
+    }
     // We use $view->render_field in the code below to provide an easy way
-    // to get the raw rendered output for each individual field. However, this 
-    // does seem redundant as surely views has already rendered/stored these
-    // values somewhere (I'm just not sure how otherwsie to access them on a 
-    // row-by-row and field-by-field basis). For now, while using
-    // $view->render_field, we have to be sure that the CURRENT row index is
-    // set on the main view object, otherwise rendering errors may result in
-    // certain situations.
+    // to get the raw rendered output for each individual non-image field. This
+    // gives us a consistent result no matter what the field type is. However, 
+    // there may more efficient ways to do this (sans a "render" call). For now
+    // while using $view->render_field, note that we have to be sure that the 
+    // CURRENT row index is set on the main view object, otherwise rendering 
+    // errors may result in certain situations.
     $view->row_index = $row_index;
-    // Get image specific values from the view data
-    $image_src = juicebox_get_img_src($view->render_field($options['image_field'], $row_index));
-    $thumb_src = juicebox_get_img_src($view->render_field($options['thumb_field'], $row_index));
     $title = $view->render_field($options['title_field'], $row_index);
     $caption = $view->render_field($options['caption_field'], $row_index);
     // Add each image to the xml
@@ -104,14 +118,16 @@ function juicebox_get_img_src($markup) {
 }
 
 
-
-
 function juicebox_libraries_info() {
   $libraries['juicebox'] = array(
     'name' => 'Juicebox',
     'vendor url' => 'http://www.juicebox.net/',
     'download url' => 'http://www.juicebox.net/download/',
-    'version' => 1,
+    'version arguments' => array(
+      'file' => 'juicebox.js',
+      'pattern' => '/Juicebox-([0-9a-zA-Z\.\ -]+)/',
+      'lines' => 5,
+    ),
     'files' => array(
       'js' => array('juicebox.js'),
     ),

@@ -15,9 +15,11 @@ class juicebox_style_plugin extends views_plugin_style {
     $options = parent::option_definition();
     $options['width'] = '100%';
     $options['height'] = '100%';
-    $options['title_field'] = array('default' => NULL);
     $options['image_field'] = array('default' => NULL);
+    $options['image_field_style'] = array('default' => NULL);
     $options['thumb_field'] = array('default' => NULL);
+    $options['thumb_field_style'] = array('default' => NULL);
+    $options['title_field'] = array('default' => NULL);
     $options['caption_field'] = array('default' => NULL);
     $options['advanced'] = NULL;
     $options['advanced']['config'] = '';   
@@ -27,9 +29,26 @@ class juicebox_style_plugin extends views_plugin_style {
   function options_form(&$form, &$form_state) {
     parent::options_form($form, $form_state);
     // Get the active field options
-    $field_options = array('' => t('- None -'));
-    $field_labels = $this->display->handler->get_field_labels();
-    $field_options += $field_labels;
+    $fields_options = array();
+    $field_options_images = array();
+    $field_handlers = $this->display->handler->get_handlers('field');
+    foreach ($field_handlers as $field => $handler) {
+      if ($label = $handler->label()) {
+        $name = $label;
+      }
+      else {
+        $name = $handler->ui_name();
+      }
+      // Separate image fields from non-image fields
+      if ($handler->field_info['type'] == 'image') {
+        $field_options_images[$field] = $name;
+      }
+      else {
+        $field_options[$field] = $name;
+      }
+    }
+    // Get available image style presets
+    $presets = image_style_options(FALSE);
 
     $form['description'] = array(
       '#type' => 'markup',
@@ -39,42 +58,60 @@ class juicebox_style_plugin extends views_plugin_style {
       '#type' => 'textfield',
       '#title' => t('Gallery Width'),
       '#default_value' => $this->options['width'],
-      '#description' => t('Set the gallery width'),
+      '#description' => t('Set the gallery width as a pixel value or a percentage.'),
     );
     $form['height'] = array(
       '#type' => 'textfield',
       '#title' => t('Gallery Heigth'),
       '#default_value' => $this->options['height'],
-      '#description' => t('Set the gallery height'),
+      '#description' => t('Set the gallery height as a pixel value or a percentage.'),
     );
 
     $form['image_field'] = array(
       '#type' => 'select',
-      '#title' => t('Image Field'),
+      '#title' => t('Main Image Field'),
       '#default_value' => $this->options['image_field'],
-      '#description' => t('Select the field from the view that should be used for each full-sized image in the Juicebox gallery. This will typically be an "image" field but any field that generates an "img" tag should work.'),
-      '#options' => $field_options,
+      '#description' => t('Select the field from the view that should be used for each main image in the Juicebox gallery. This must be an "image" field.'),
+      '#options' => $field_options_images,
+    );
+    $form['image_field_style'] = array(
+      '#type' => 'select',
+      '#title' => t('Main Image Field Style'),
+      '#default_value' => $this->options['image_field_style'],
+      '#description' => t('Select the style formatter for the main image. Note that any style or formatting settings configured on the field itself will be ignored and this style setting will always be used.'),
+      '#options' => $presets,
+      '#empty_option' => t('None (original image)'),
     );
     $form['thumb_field'] = array(
       '#type' => 'select',
-      '#title' => t('Thumb Field'),
+      '#title' => t('Thumbnail Field'),
       '#default_value' => $this->options['thumb_field'],
-      '#description' => t('Select the field from the view that should be used for each thumbnail in the Juicebox gallery. This will typically be an "image" field but any field that generates an "img" tag should work. You may want to add the field that you used for the "Image Field" <em>twice</em> to your view, and simple use a different (smaller) style formatter for the second one, and then select that field here.'),
-      '#options' => $field_options,
+      '#description' => t('Select the field from the view that should be used for each thumbnail in the Juicebox gallery. This must be an "image" field. Typically you will simply choose the same value that you set in the "Main Image Field" option above.'),
+      '#options' => $field_options_images,
+    );
+    $form['thumb_field_style'] = array(
+      '#type' => 'select',
+      '#title' => t('Thumbnail Field Style'),
+      '#default_value' => $this->options['thumb_field_style'],
+      '#description' => t('Select the style formatter for the thumbnail. Note that any style or formatting settings configured on the field itself will be ignored and this style setting will always be used.'),
+      '#options' => $presets,
+      '#empty_option' => t('None (original image)'),
     );
     $form['title_field'] = array(
       '#type' => 'select',
       '#title' => t('Title Field'),
       '#default_value' => $this->options['title_field'],
-      '#description' => t('Select the field from the view that should be used for the title of each image in the Juicebox gallery.'),
+      '#description' => t('Select the field from the view that should be used for the title of each image in the Juicebox gallery. The raw markup generated by views for this field will be used and any style or formatting settings configured on the field itself will be respected.'),
       '#options' => $field_options,
+      '#empty_option' => t('None'),
     );
     $form['caption_field'] = array(
       '#type' => 'select',
       '#title' => t('Caption Field'),
       '#default_value' => $this->options['caption_field'],
-      '#description' => t('Select the field from the view that should be used for the title of each image in the Juicebox gallery.'),
+      '#description' => t('Select the field from the view that should be used for the caption of each image in the Juicebox gallery. The raw markup generated by views for this field will be used and any style or formatting settings configured on the field itself will be respected.'),
       '#options' => $field_options,
+      '#empty_option' => t('None'),
     );
     $form['advanced'] = array(
       '#type' => 'fieldset',
