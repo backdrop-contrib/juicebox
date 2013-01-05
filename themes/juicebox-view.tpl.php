@@ -5,7 +5,6 @@
  */
 ?>
 <!--START JUICEBOX EMBED-->
-<script src="<?php print $juicebox_path ?>/juicebox.js"></script>
 <script>
   new juicebox({
     configUrl : '<?php print $config_url_path ?>',

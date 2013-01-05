@@ -1,0 +1,35 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the juicebox module.
+ */
+
+
+/**
+ * Implements hook_requirements().
+ */
+function juicebox_requirements($phase) {
+  $requirements = array();
+  $t = get_t();
+  // Check on the installation status of the Juicebox library. Note that
+  // we do not do this check during the 'install' phase as the libraries API
+  // functions will not always be available then (if installing Drupal via an 
+  // install profile, etc.).
+  if ($phase == 'runtime') {
+    $library = libraries_detect('juicebox');
+    $requirements['juicebox'] = array(
+      'title' => $t('Juicebox Javascript Library'),
+    );
+    if ($library['installed']) {
+      $requirements['juicebox']['value'] = $library['version'];
+      $requirements['juicebox']['severity'] = REQUIREMENT_OK;
+    }
+    else {
+      $requirements['juicebox']['value'] = $library['error'];
+      $requirements['juicebox']['description'] = $library['error message'];
+      $requirements['juicebox']['severity'] = REQUIREMENT_ERROR;
+    }
+  }  
+  return $requirements;
+}
