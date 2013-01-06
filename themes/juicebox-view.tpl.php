@@ -12,7 +12,6 @@
     galleryWidth : '<?php print $style_options['width'] ?>',
     galleryHeight : '<?php print $style_options['height'] ?>'
   });
-
 </script>
 <div id="juicebox-container"></div>
 <!--END JUICEBOX EMBED-->

@@ -40,8 +40,13 @@ class juicebox_style_plugin extends views_plugin_style {
         $name = $handler->ui_name();
       }
       // Separate image fields from non-image fields
-      if ($handler->field_info['type'] == 'image') {
-        $field_options_images[$field] = $name;
+      if (isset($handler->field_info['type'])) {
+        if ($handler->field_info['type'] == 'image') {
+          $field_options_images[$field] = $name;
+        }
+        else {
+          $field_options[$field] = $name;
+        }
       }
       else {
         $field_options[$field] = $name;

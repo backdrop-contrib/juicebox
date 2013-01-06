@@ -33,6 +33,7 @@ function juicebox_page_xml() {
   // fetch them programmatically with func_get_args()
   $args = func_get_args();
   // Reconstruct the cid that holds the xml related to this request.
+  $cid = '';
   foreach ($args as $arg) {
     $cid .= '/' . $arg; 
   }
@@ -59,38 +60,52 @@ function juicebox_page_xml() {
  * Implements hook_views_api().
  */
 function juicebox_views_api() {
-  $path = drupal_get_path('module', 'juicebox');
   return array(
     'api' => 2.0,
   );
 }
 
 
-// Render the Juicebox XML from a view object that makes use of our view plugins 
-function juicebox_render_xml_from_view($view) {
-  $options = $view->style_options; 
-  $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-  $xml .= '<juiceboxgallery' . "\n";
-  $xml .= '  galleryTitle="' . $view->human_name .'"' . "\n";
-  $xml .= '  galleryWidth="' . $view->style_options['width'] .'"' . "\n";
-  $xml .= '  galleryHeight="' . $view->style_options['height'] .'"' . "\n";
-  $xml .= '  ' . $view->style_options['advanced']['config'] . "\n";
-  $xml .= '>' . "\n";
+/**
+ * Implements hook_theme().
+ */
+function juicebox_theme() {
+  return array(
+    // Theme hook to generate final Juicebox XML
+    'juicebox_config_xml' => array(
+      'variables' => array('options' => array(), 'images' => array()),
+      'path' => drupal_get_path('module', 'juicebox') . '/themes',
+      'file' => 'juicebox.theme.inc',
+    ),
+  );
+}
+
+
+// Generate the config.xml data for a Juicebox gallery from a view object
+function juicebox_get_xml_from_view($view) {
+  $view_options = $view->style_options; 
+  $options = array();
+  $options[] = 'galleryTitle="' . $view->human_name .'"';
+  $options[] = 'galleryWidth="' . $view->style_options['width'] .'"';
+  $options[] = 'galleryHeight="' . $view->style_options['height'] .'"';
+  $custom_options = explode("\n", trim($view->style_options['advanced']['config']));
+  $options = array_merge($options, $custom_options);
+  $images = array();
   foreach ($view->result as $row_index => $row) {
     // Get the main image source
-    $field_image_name = "field_{$options['image_field']}";
+    $field_image_name = "field_{$view_options['image_field']}";
     $field_image_uri = $row->{$field_image_name}[0]['raw']['uri'];
-    if (!empty($options['image_field_style'])) {
-      $image_src = image_style_url($options['image_field_style'], $field_image_uri);
+    if (!empty($view_options['image_field_style'])) {
+      $image_src = image_style_url($view_options['image_field_style'], $field_image_uri);
     }
     else {
       $image_src = file_create_url($field_image_uri);
     }
     // Get the thumbnail source
-    $field_thumb_name = "field_{$options['thumb_field']}";
+    $field_thumb_name = "field_{$view_options['thumb_field']}";
     $field_thumb_uri = $row->{$field_thumb_name}[0]['raw']['uri'];
-    if (!empty($options['thumb_field_style'])) {
-      $thumb_src = image_style_url($options['thumb_field_style'], $field_thumb_uri);
+    if (!empty($view_options['thumb_field_style'])) {
+      $thumb_src = image_style_url($view_options['thumb_field_style'], $field_thumb_uri);
     }
     else {
       $thumb_src = file_create_url($field_image_uri);
@@ -103,35 +118,18 @@ function juicebox_render_xml_from_view($view) {
     // CURRENT row index is set on the main view object, otherwise rendering 
     // errors may result in certain situations.
     $view->row_index = $row_index;
-    $title = $view->render_field($options['title_field'], $row_index);
-    $caption = $view->render_field($options['caption_field'], $row_index);
+    $title = $view->render_field($view_options['title_field'], $row_index);
+    $caption = $view->render_field($view_options['caption_field'], $row_index);
     // Add each image to the xml
-    $xml .= '  <image imageURL="' . $image_src . '"' . "\n";
-    $xml .= '    thumbURL="' . $thumb_src . '"' . "\n";
-    $xml .= '    linkURL="' . $image_src . '"'. "\n";
-    $xml .= '    linkTarget="_blank">'. "\n";
-    $xml .= '    <title>' . $title . '</title>'. "\n";
-    $xml .= '    <caption><![CDATA[' . $caption . ']]></caption>' . "\n";
-    $xml .= '  </image>'. "\n";    
+    $images[$row_index]['image_src'] = $image_src;
+    $images[$row_index]['thumb_src'] = $thumb_src;
+    $images[$row_index]['title'] = $title;
+    $images[$row_index]['caption'] = $caption; 
   }
-  $xml .= '</juiceboxgallery>';
+  $data = array('options' => $options, 'images' => $images);
+  // Theme the data as juicebox XML
+  $xml = theme('juicebox_config_xml', $data);
   return $xml;
-}
-
-
-// Helper function to get the src value from the first img tag in the given 
-// markup
-function juicebox_get_img_src($markup) {
-  $img_src = '';
-  $parser = xml_parser_create();
-  xml_parse_into_struct($parser, $markup, $values);
-  foreach ($values as $key => $val) {
-    if ($val['tag'] == 'IMG') {
-      $img_src = $val['attributes']['SRC'];
-      break;
-    }
-  }
-  return $img_src;
 }
 
 
