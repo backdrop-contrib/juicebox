@@ -1,6 +1,6 @@
 name = Juicebox
 description = Integrate Juicebox 
-package = User interface
+package = Media
 core = 7.x
 dependencies[] = libraries
 

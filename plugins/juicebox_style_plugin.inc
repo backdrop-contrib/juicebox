@@ -130,7 +130,6 @@ class juicebox_style_plugin extends views_plugin_style {
       '#default_value' => $this->options['advanced']['config'],
       '#description' => t('Define any general configuration options that should be used in this gallery (see: http://www.juicebox.net/support/config_options/). Add one per line in the format <strong>optionName = "optionValue"</strong>. These will be inserted <em>as is</em> within the configuration XML used in this gallery so take care to ensure your formatting is correct.'),
     );
-
   }
 
   function validate() {

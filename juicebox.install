@@ -35,9 +35,10 @@ function juicebox_requirements($phase) {
 }
 
 
+/*********** To be implimented if an XML caching solution is setup*********/
 /**
  * Implements hook_schema().
- */
+
 function juicebox_schema() {
   // Setup a special cache table to hold the XML for any gallery rendered with
   // this module. This gives us a place to "stash" the XML while rendering the
@@ -48,3 +49,4 @@ function juicebox_schema() {
   $schema['cache_juicebox']['description'] = 'Cache table to store Juicebox conifg XML info across multiple path requests.';
   return $schema;
 }
+*/

@@ -26,32 +26,43 @@ function juicebox_menu() {
 
 
 // Callback for the menu item that generates Juicebox XML linked to a specific
-// page. This simply fetches the cached XML that was already created when the
-// gallery embed code was rendered.
+// page containing embed code.
 function juicebox_page_xml() {
+  $got_result = FALSE;
   // We don't always know exactly how many args are being passed, so we have to
   // fetch them programmatically with func_get_args()
   $args = func_get_args();
-  // Reconstruct the cid that holds the xml related to this request.
-  $cid = '';
-  foreach ($args as $arg) {
-    $cid .= '/' . $arg;
+  // Depending on the type of embed case we are dealing with we need to
+  // construct the XML in different ways.
+  if ($args[0] == 'view') {
+    // The view arguments are what remains after the 1st and 2nd entries are
+    // removed from $args
+    $view_args = $args;
+    array_shift($view_args);
+    array_shift($view_args);
+    // load the view 
+    $view = views_get_view($args[1]);
+    if ($view) {
+      // set active display on the view
+      $view->set_display($args[2]);
+      // set any needed arguments
+      $view->set_arguments($view_args);
+      // execute the view
+      $view->execute();
+      if ($view->executed) {
+        $xml = juicebox_get_xml_from_view($view);
+        $got_result = TRUE;
+      }
+    }
   }
-  $xml = cache_get($cid, 'cache_juicebox');
-  // If we did not find a value from the cache take any special actions needed.
-  if (!$xml) {
+  // If we did not get any XML result take any special actions needed.
+  if (!$got_result) {
     // Make it clear to Juicebox that we don't have any XML to give it.
     drupal_add_http_header('Status', '404 Not Found');
-    // @TODO: Add logic to build the XML if it for some reason it was not in the
-    // cache and can actually be built based on the args passed. Under certain
-    // caching conditions I suppose it MIGHT be possible for the embed code to
-    // be cached in cache_page (meaning the XML is not rebuilt as part of the
-    // main gallery page reuest) while the xml is NOT in cache_page OR in
-    // cache_juicebox.
   }
   else {
     drupal_add_http_header('Content-Type', 'text/xml');
-    print($xml->data);
+    print($xml);
   }
 }
 
@@ -161,11 +172,14 @@ function juicebox_help($path, $arg) {
 
 }
 
+
+/*********** To be implimented if an XML caching solution is setup*********/
 /**
  * Implements hook_flush_caches().
- */
+
 function juicebox_flush_caches() {
   if (db_table_exists('cache_juicebox')) {
     return array('cache_juicebox');
   }
 }
+*/
