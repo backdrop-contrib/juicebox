@@ -12,12 +12,14 @@
 function juicebox_menu() {
   $items = array();
   // Add menu item that produces the "config.xml" data that is linked to a
-  // specific view.
+  // specific view or entity field.
   $items['juicebox/xml/%'] = array(
     'title' => 'Juicebox XML from view',
     'description' => '',
     'page callback' => 'juicebox_page_xml',
     'page arguments' => array(2),
+    // For efficiency will check access in parallel to other logic in the 
+    // callback function, so we don't limit any access here.
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
@@ -25,33 +27,83 @@ function juicebox_menu() {
 }
 
 
-// Callback for the menu item that generates Juicebox XML linked to a specific
-// page containing embed code.
+// Callback for the menu item that generates Juicebox XML.
 function juicebox_page_xml() {
   $got_result = FALSE;
   // We don't always know exactly how many args are being passed, so we have to
   // fetch them programmatically with func_get_args()
   $args = func_get_args();
-  // Depending on the type of embed case we are dealing with we need to
-  // construct the XML in different ways.
+  // If this XML request is related to a view, we first have to re-construct the
+  // view before we can extract the needed XML data.
   if ($args[0] == 'view') {
+    // Set key variables from the path.
+    $view_name = $args[1];
+    $view_display = $args[2];
     // The view arguments are what remains after the 1st and 2nd entries are
     // removed from $args
     $view_args = $args;
     array_shift($view_args);
     array_shift($view_args);
     // load the view 
-    $view = views_get_view($args[1]);
+    $view = views_get_view($view_name);
     if ($view) {
       // set active display on the view
-      $view->set_display($args[2]);
+      $view->set_display($view_display);
       // set any needed arguments
       $view->set_arguments($view_args);
       // execute the view
       $view->execute();
       if ($view->executed) {
-        $xml = juicebox_get_xml_from_view($view);
+        // Check that this user actually has access to the view we are building
+        // the XML for. Kill callback with "access denied" if not.
+        if (!$view->access($view_display)) {
+          return MENU_ACCESS_DENIED;
+        }
+        // We now have the variables we need to build the XML.
         $got_result = TRUE;
+        $xml = juicebox_get_xml_from_view($view);
+      }
+    }
+  }
+  // If this XML request is related to an entity field, we first have to 
+  // re-construct the entity and the field details before we can extract the 
+  // needed XML data.
+  // @TODO: See if some of this build logic could be more efficiently done with
+  // an EFQ.
+  if ($args[0] == 'entity') {
+    // Set key variables from the path.
+    $entity_type = $args[1];
+    $entity_id = $args[2];
+    $field_name = $args[3];
+    $display_name = $args[4];
+    // Build the entity.
+    $entities = entity_load($entity_type, array($entity_id));
+    if (isset($entities[$entity_id])) {
+      $entity = $entities[$entity_id];
+      // Check that this user actually has access to the field we are building
+      // the XML for. Kill callback with "access denied" if not.
+      if (!field_access('view', $field_name, $entity_type, $entity)) {
+        return MENU_ACCESS_DENIED;
+      }
+      $items = field_get_items($entity_type, $entity, $field_name);
+      if ($items) {
+        // See if we have a bundle set. Initially assume we don't.
+        $bundle = $entity_type;
+        if (isset($entity->type)) {
+          $bundle = $entity->type;
+        }
+        $instance_info = field_info_instance($entity_type, $field_name, $bundle);
+        if (!empty($instance_info['display'])) {
+          // Try to get the specific display settings. Initially assume the
+          // default display settings.
+          $settings = $instance_info['display']['default']['settings'];
+          if (isset($instance_info['display'][$display_name]['settings'])) {
+            $settings = $instance_info['display'][$display_name]['settings'];
+          }
+          // We now have the variables we need to build the XML.
+          $got_result = TRUE;
+          $xml = juicebox_get_xml_from_entity($items, $settings);
+        }
       }
     }
   }
@@ -82,12 +134,21 @@ function juicebox_views_api() {
  */
 function juicebox_theme() {
   return array(
-    // Theme hook to generate final Juicebox XML
+    // Theme hook to generate final Juicebox XML.
     'juicebox_config_xml' => array(
       'variables' => array('options' => array(), 'images' => array()),
       'path' => drupal_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
     ),
+    // Theme hook to generate embed markup for a Juicebox gallery.
+    'juicebox_embed_markup' => array(
+      'variables' => array('config_url_path' => '', 'style_options' => array()),
+      'path' => drupal_get_path('module', 'juicebox') . '/themes',
+      'file' => 'juicebox.theme.inc',
+      //'template' => 'juicebox-formatter',
+    ),
+    // Note that this module also uses themes for view plugins, but those hooks
+    // are registered through the views API and not here in hook_theme().
   );
 }
 
@@ -144,6 +205,55 @@ function juicebox_get_xml_from_view($view) {
 }
 
 
+// Generate the config.xml data for a Juicebox gallery from an entity object.
+function juicebox_get_xml_from_entity($items, $settings) {
+  // Set the gallery options.
+  $options = array();
+  $options[] = 'galleryWidth="' . check_plain($settings['width']) . '"';
+  $options[] = 'galleryHeight="' . check_plain($settings['height']) . '"';
+  $custom_options = explode("\n", filter_xss(trim($settings['advanced']['config'])));
+  $options = array_merge($options, $custom_options); 
+
+  // Prepare images
+  $images = array();
+  foreach ($items as $id => $item) {
+    // Get image source
+    if (!empty($settings['image_style'])) {
+      $image_src = image_style_url($settings['image_style'], $item['uri']);
+    }
+    else {
+      $image_src = file_create_url($item['uri']);
+    }
+    // Get thumb source
+    if (!empty($settings['thumb_style'])) {
+      $thumb_src = image_style_url($settings['thumb_style'], $item['uri']);
+    }
+    else {
+      $thumb_src = file_create_url($item['uri']);
+    }
+    // Get the image caption.
+    $caption = '';
+    if (!empty($item[$settings['caption_source']])) {
+      $caption = check_plain($item[$settings['caption_source']]);
+    }
+    // Get the image title.
+    $title = '';
+    if (!empty($item[$settings['title_source']])) {
+      $title = check_plain($item[$settings['title_source']]);
+    }
+    // Add each image to the xml
+    $images[$id]['image_src'] = $image_src;
+    $images[$id]['thumb_src'] = $thumb_src;
+    $images[$id]['title'] = $title;
+    $images[$id]['caption'] = $caption;
+  }
+  $data = array('options' => $options, 'images' => $images); 
+  // Theme the data as juicebox XML
+  $xml = theme('juicebox_config_xml', $data);
+  return $xml;
+}
+
+
 /**
  * Implements hook_libraries_info().
  */
@@ -165,6 +275,210 @@ function juicebox_libraries_info() {
 }
 
 
+/**
+ * Implements hook_field_formatter_info().
+ * 
+ * Add juicebox_formatter formatter.
+ */
+function juicebox_field_formatter_info() {
+  $formatters = array(
+    'juicebox_formatter' => array(
+      'label' => t('Juicebox'),
+      'field types' => array('image'),
+      'settings' => array(
+        'width' => '100%',
+        'height' => '100%',
+        'image_style' => '',
+        'thumb_style' => 'thumbnail',
+        'caption_source' => 'alt',
+        'title_source' => 'title',
+        'advanced' => array(
+          'config' => '',
+        ),
+      ),
+    ),
+  );
+  return $formatters;
+}
+
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  $form = array();
+    // Get available image style presets
+  $presets = image_style_options(FALSE);
+  $settings = $instance['display'][$view_mode]['settings'];
+
+  $form['description'] = array(
+    '#type' => 'markup',
+    '#value' => '<div class="messages">' . t('Options for the Juicebox view.') . '</div>',
+  );
+  $form['width'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Gallery Width'),
+    '#default_value' => $settings['width'],
+    '#description' => t('Set the gallery width as a pixel value or a percentage.'),
+  );
+  $form['height'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Gallery Heigth'),
+    '#default_value' => $settings['height'],
+    '#description' => t('Set the gallery height as a pixel value or a percentage.'),
+  );
+  $form['image_style'] = array(
+    '#type' => 'select',
+    '#title' => t('Main Image Style'),
+    '#default_value' => $settings['image_style'],
+    '#description' => t('Choose the style formatter for the main image.'),
+    '#options' => $presets,
+    '#empty_option' => t('None (original image)'),
+  );
+  $form['thumb_style'] = array(
+    '#type' => 'select',
+    '#title' => t('Thumbnail Style'),
+    '#default_value' => $settings['thumb_style'],
+    '#description' => t('Choose the style formatter for the thumbnail.'),
+    '#options' => $presets,
+    '#empty_option' => t('None (original image)'),
+  );
+  $form['caption_source'] = array(
+    '#type' => 'select',
+    '#title' => t('Caption Source'),
+    '#default_value' => $settings['caption_source'],
+    '#description' => t('What part of the image field data should be used for the caption information.'),
+    '#options' => array(
+      'alt' => t('Alternate text'),
+      'title' => t('Title'),
+    ),
+    '#empty_option' => t('No caption'),
+  );
+  $form['title_source'] = array(
+    '#type' => 'select',
+    '#title' => t('Title Source'),
+    '#default_value' => $settings['title_source'],
+    '#description' => t('What part of the image field data should be used for the title information.'),
+    '#options' => array(
+      'alt' => t('Alternate text'),
+      'title' => t('Title'),
+    ),
+    '#empty_option' => t('No title'),
+  );
+  $form['advanced'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Advanced Options'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  $form['advanced']['config'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Manual configuraton options'),
+    '#default_value' => $settings['advanced']['config'],
+    '#description' => t('Define any general configuration options that should be used in this gallery (see: http://www.juicebox.net/support/config_options/). Add one per line in the format <strong>optionName = "optionValue"</strong>. These will be inserted <em>as is</em> within the configuration XML used in this gallery so take care to ensure your formatting is correct.'),
+  );
+  return $form;
+}
+
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function juicebox_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  // If there are no images, dont do anything else
+  if (empty($items)) {
+    return;
+  }
+  $field_name = $instance['field_name'];
+  $entity_type_info = entity_get_info($entity_type);
+  $entity_id = $entity->{$entity_type_info['entity keys']['id']};
+  // Get field instance setting
+  $settings = $display['settings'];
+  // Load the juicebox javascript.
+  libraries_load('juicebox');
+  // We need to get the display name to pass as part of our XML path. Though
+  // we have access to the actaul $display array, it does not look like we
+  // have access to the actaul display NAME in this scope. We do have access to 
+  // a list of ALL displays in $instanace though, so iterate though them to 
+  // find a match to the settings in $display. This seems SUPER CLUNKY, but 
+  // might be the only way.
+  $display_name = 'default';
+  foreach ($instance['display'] as $display_key => $display_data) {
+    if ($settings == $display_data['settings']) {
+      $display_name = $display_key;
+    }
+  }
+  // Generate a unique ID that can be used to identify this entity when
+  // fetching the XML.
+  $xml_id = '/entity/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . $display_name;
+  $element[0] = array(
+    '#theme' => 'juicebox_embed_markup', 
+    '#config_url_path' => url('juicebox/xml' . $xml_id),
+    '#style_options' => array('width' => $settings['width'], 'height' => $settings['height']),
+  );
+  return $element;
+}
+
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function juicebox_field_formatter_settings_summary($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $settings_display = array();
+  // Width setting.
+  if (!empty($settings['width'])) {
+    $settings_display[] = t("Width: @width", array('@width' => $settings['width']));
+  }
+  // Height setting.
+  if (!empty($settings['height'])) {
+    $settings_display[] = t("Height: @height", array('@height' => $settings['height']));
+  }
+  // Image style setting.
+  if (!empty($settings['image_style'])) {
+    $style = $settings['image_style'];
+  }
+  else {
+    $style = t('Original Image');
+  }
+  $settings_display[] = t("Image style: @style", array('@style' => $style)); 
+  // Thumb style setting.
+  if (!empty($settings['thumb_style'])) {
+    $style = $settings['thumb_style'];
+  }
+  else {
+    $style = t('Original Image');
+  }
+  $settings_display[] = t("Thumbnail style: @style", array('@style' => $style));
+  // Define display options for caption and title source.
+  $options = array(
+    'alt' => t('Alternate text'),
+    'title' => t('Title'),
+  );
+  // Caption source setting.
+  if (!empty($settings['caption_source'])) {
+    $source = $options[$settings['caption_source']];
+  }
+  else {
+    $source = t('None');
+  }
+  $settings_display[] = t("Caption source: @source", array('@source' => $source));
+  // Title source setting.
+  if (!empty($settings['title_source'])) {
+    $source = $options[$settings['title_source']];
+  }
+  else {
+    $source = t('None');
+  }
+  $settings_display[] = t("Title source: @source", array('@source' => $source));
+  // Advance conf setting.
+  if (!empty($settings['advanced']['config'])) {
+    $settings_display[] = t("Advanced options are also set");
+  }
+  $summary = implode('<br />', $settings_display);
+  return $summary;
+}
 /**
  * Implements hook_help().
  */

@@ -6,10 +6,10 @@
  */
 
 
-// Views template preprocess function for our juicebox style view. Sets the 
-// variables needed to generate the Juicebox embed markup (which is what this 
-// view displays).
-function template_preprocess_juicebox_view(&$variables) {
+// Theme function for our juicebox view style. The views style plugin requires
+// its own theme function and this one is really just a wrapper for the 
+// juicebox_embed_markup theme call at the end.
+function theme_juicebox_view(&$variables) {
   global $base_url;
   $view = $variables['view'];
   // Generate a unique ID that can be used to identify this view when
@@ -19,7 +19,7 @@ function template_preprocess_juicebox_view(&$variables) {
     $xml_id .= '/' . $arg;
   }
   // If we are previewing the view in the admin interface all the necessary
-  // <script> elements in our display template seem to get stripped. This means
+  // <script> elements in our embed markup seem to get stripped. This means
   // that the preview cannot render and thus there is no point in loading the
   // Juicebox lib (doing so can actually cause display problems).
   $args = arg();
@@ -30,7 +30,7 @@ function template_preprocess_juicebox_view(&$variables) {
   if (strpos($path, '/admin/structure/views/') !== 0) {
     // Load the juicebox library, this will include the appropriate js in the
     // page header, etc.
-    $juicebox_library = libraries_load('juicebox');
+    libraries_load('juicebox');
   }
   else {
     // Post a notice to admins so that they don't think things are broken
@@ -40,13 +40,26 @@ function template_preprocess_juicebox_view(&$variables) {
   // Set template variables for embed markup.
   $variables['config_url_path'] = url('juicebox/xml' . $xml_id);
   $variables['style_options'] = $view->style_options;
+  return theme('juicebox_embed_markup', $variables);
 }
 
 
-// Theme an array of XML variable data into a Juicebox XML format. This is done
-// as a Drupal theme function not because we expect a need for this to be
-// overridden, but because it provides a drupaly way to consolidate all the
-// "rendering" of the final XML within a common function.
+// Theme the common juicebox embed markup
+function theme_juicebox_embed_markup(&$variables) {
+  $output = "<script>" . "\n";
+  $output .= "  new juicebox({" . "\n";
+  $output .= "    configUrl : '" . $variables['config_url_path'] . "'," . "\n";
+  $output .= "    containerId : 'juicebox-container'," . "\n";
+  $output .= "    galleryWidth : '" . check_plain($variables['style_options']['width']) . "'," . "\n";
+  $output .= "    galleryHeight : '" . check_plain($variables['style_options']['height']) . "'" . "\n";
+  $output .= "  });" . "\n";
+  $output .= "</script>" . "\n";
+  $output .= '<div id="juicebox-container"></div>' . "\n";
+  return $output;
+}
+
+
+// Theme an array of XML variable data into a Juicebox XML format.
 function theme_juicebox_config_xml($variables) {
   $output = '';
   $output = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
