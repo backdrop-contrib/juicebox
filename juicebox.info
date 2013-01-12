@@ -13,4 +13,3 @@ files[] = plugins/juicebox_style_plugin.inc
 
 ; Theme Files
 files[] = themes/juicebox.theme.inc
-files[] = themes/juicebox-view.tpl.php

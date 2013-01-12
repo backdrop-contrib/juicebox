@@ -13,14 +13,14 @@
 class juicebox_style_plugin extends views_plugin_style {
   function option_definition() {
     $options = parent::option_definition();
-    $options['width'] = '100%';
-    $options['height'] = '100%';
-    $options['image_field'] = array('default' => NULL);
-    $options['image_field_style'] = array('default' => NULL);
-    $options['thumb_field'] = array('default' => NULL);
-    $options['thumb_field_style'] = array('default' => NULL);
-    $options['title_field'] = array('default' => NULL);
-    $options['caption_field'] = array('default' => NULL);
+    $options['width'] = array('default' => '100%'); 
+    $options['height'] = array('default' => '100%'); 
+    $options['image_field'] = array('default' => '');
+    $options['image_field_style'] = array('default' => '');
+    $options['thumb_field'] = array('default' => '');
+    $options['thumb_field_style'] = array('default' => 'thumbnail');
+    $options['title_field'] = array('default' => '');
+    $options['caption_field'] = array('default' => '');
     $options['advanced'] = NULL;
     $options['advanced']['config'] = '';
     return $options;
