@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Provides Drupal integration with the Juicebox gallery library.
+ * Provides Drupal integration with the Juicebox library.
  */
 
 
@@ -27,7 +27,14 @@ function juicebox_menu() {
 }
 
 
-// Callback for the menu item that generates Juicebox XML.
+/**
+ * Menu callback: generate Juicebox XML.
+ * 
+ * Note that this callback directly sets page headers and prints the XML result
+ * (if one can successfully be rendered).
+ * 
+ * @see: juicebox_menu()
+ */
 function juicebox_page_xml() {
   $got_result = FALSE;
   // We don't always know exactly how many args are being passed, so we have to
@@ -153,7 +160,14 @@ function juicebox_theme() {
 }
 
 
-// Generate the config.xml data for a Juicebox gallery from a view object
+/**
+ * Generate XML data for a Juicebox gallery from a view object.
+ *
+ * @param object $view
+ *   A fully built/executed view object.
+ * @return string
+ *   Fully renderd and themed XML data for a Juicebox gallery.
+ */
 function juicebox_get_xml_from_view($view) {
   $view_options = $view->style_options;
   $options = array();
@@ -205,7 +219,18 @@ function juicebox_get_xml_from_view($view) {
 }
 
 
-// Generate the config.xml data for a Juicebox gallery from an entity object.
+/**
+ * Generate XML data for a Juicebox gallery from an entity image field.
+ *
+ * @param array $items
+ *   A list of image items from an image field that is part of an entity. This
+ *   will typically be constructed with field_get_items().
+ * @param array $settings
+ *   A associative array of field formatter settings specific to this gallery
+ *   display.
+ * @return string
+ *   Fully renderd and themed XML data for a Juicebox gallery.
+ */
 function juicebox_get_xml_from_entity($items, $settings) {
   // Set the gallery options.
   $options = array();
@@ -275,6 +300,12 @@ function juicebox_libraries_info() {
 }
 
 
+/******************************************************************************
+ * The following functions related specifically to the implimentation 
+ * of the Juiceboxfield formatter.
+ ******************************************************************************/
+
+
 /**
  * Implements hook_field_formatter_info().
  * 
@@ -283,7 +314,7 @@ function juicebox_libraries_info() {
 function juicebox_field_formatter_info() {
   $formatters = array(
     'juicebox_formatter' => array(
-      'label' => t('Juicebox'),
+      'label' => t('Juicebox Gallery'),
       'field types' => array('image'),
       'settings' => array(
         'width' => '100%',
@@ -478,12 +509,6 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
   }
   $summary = implode('<br />', $settings_display);
   return $summary;
-}
-/**
- * Implements hook_help().
- */
-function juicebox_help($path, $arg) {
-
 }
 
 

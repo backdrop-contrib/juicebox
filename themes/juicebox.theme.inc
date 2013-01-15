@@ -2,13 +2,76 @@
 
 /**
  * @file
- * Theme related functions for processing our output style plugins.
+ * Theme related functions for processing output related to Juicebox galleries.
  */
 
 
-// Theme function for our juicebox view style. The views style plugin requires
-// its own theme function and this one is really just a wrapper for the 
-// juicebox_embed_markup theme call at the end.
+/**
+ * Returns HTML for embedding a Juicebox gallery.
+ *
+ * @param array $variables
+ *   An associative array containing variables used to render this HTML.
+ *
+ * @ingroup themeable
+*/
+function theme_juicebox_embed_markup(&$variables) {
+  $output = "<script>" . "\n";
+  $output .= "  new juicebox({" . "\n";
+  $output .= "    configUrl : '" . $variables['config_url_path'] . "'," . "\n";
+  $output .= "    containerId : 'juicebox-container'," . "\n";
+  $output .= "    galleryWidth : '" . check_plain($variables['style_options']['width']) . "'," . "\n";
+  $output .= "    galleryHeight : '" . check_plain($variables['style_options']['height']) . "'" . "\n";
+  $output .= "  });" . "\n";
+  $output .= "</script>" . "\n";
+  $output .= '<div id="juicebox-container"></div>' . "\n";
+  return $output;
+}
+
+
+/**
+ * Returns the XML used to describe a Juicebox gallery.
+ *
+ * @param array $variables
+ *   An associative array containing variables used to render this XML.
+ *
+ * @ingroup themeable
+*/
+function theme_juicebox_config_xml($variables) {
+  $output = '';
+  $output = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+  $output .= '<juiceboxgallery' . "\n";
+  foreach ($variables['options'] as $option) {
+    $output .= '  ' . $option . "\n";
+  }
+  $output .= '>' . "\n";
+  // Add each image to the xml
+  foreach ($variables['images'] as $image) {
+    $output .= '  <image imageURL="' . $image['image_src'] . '"' . "\n";
+    $output .= '    thumbURL="' . $image['thumb_src'] . '"' . "\n";
+    $output .= '    linkURL="' . $image['image_src'] . '"' . "\n";
+    $output .= '    linkTarget="_blank">' . "\n";
+    $output .= '    <title>' . $image['title'] . '</title>' . "\n";
+    $output .= '    <caption><![CDATA[' . $image['caption'] . ']]></caption>' . "\n";
+    $output .= '  </image>' . "\n";
+  }
+  $output .= '</juiceboxgallery>';
+  return $output;
+}
+
+
+/**
+ * Returns HTML for embedding a Juicebox gallery.
+ * 
+ * The views style plugin requires its own theme function and this one is really
+ * just a wrapper for the juicebox_embed_markup theme call at the end.
+ * 
+ * @see: theme_juicebox_embed_markup()
+ *
+ * @param array $variables
+ *   An associative array containing variables used to render this HTML.
+ *
+ * @ingroup themeable
+*/
 function theme_juicebox_view(&$variables) {
   global $base_url;
   $view = $variables['view'];
@@ -41,43 +104,4 @@ function theme_juicebox_view(&$variables) {
   $variables['config_url_path'] = url('juicebox/xml' . $xml_id);
   $variables['style_options'] = $view->style_options;
   return theme('juicebox_embed_markup', $variables);
-}
-
-
-// Theme the common juicebox embed markup
-function theme_juicebox_embed_markup(&$variables) {
-  $output = "<script>" . "\n";
-  $output .= "  new juicebox({" . "\n";
-  $output .= "    configUrl : '" . $variables['config_url_path'] . "'," . "\n";
-  $output .= "    containerId : 'juicebox-container'," . "\n";
-  $output .= "    galleryWidth : '" . check_plain($variables['style_options']['width']) . "'," . "\n";
-  $output .= "    galleryHeight : '" . check_plain($variables['style_options']['height']) . "'" . "\n";
-  $output .= "  });" . "\n";
-  $output .= "</script>" . "\n";
-  $output .= '<div id="juicebox-container"></div>' . "\n";
-  return $output;
-}
-
-
-// Theme an array of XML variable data into a Juicebox XML format.
-function theme_juicebox_config_xml($variables) {
-  $output = '';
-  $output = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-  $output .= '<juiceboxgallery' . "\n";
-  foreach ($variables['options'] as $option) {
-    $output .= '  ' . $option . "\n";
-  }
-  $output .= '>' . "\n";
-  // Add each image to the xml
-  foreach ($variables['images'] as $image) {
-    $output .= '  <image imageURL="' . $image['image_src'] . '"' . "\n";
-    $output .= '    thumbURL="' . $image['thumb_src'] . '"' . "\n";
-    $output .= '    linkURL="' . $image['image_src'] . '"' . "\n";
-    $output .= '    linkTarget="_blank">' . "\n";
-    $output .= '    <title>' . $image['title'] . '</title>' . "\n";
-    $output .= '    <caption><![CDATA[' . $image['caption'] . ']]></caption>' . "\n";
-    $output .= '  </image>' . "\n";
-  }
-  $output .= '</juiceboxgallery>';
-  return $output;
 }

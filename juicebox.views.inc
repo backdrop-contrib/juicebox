@@ -5,13 +5,14 @@
  * Views integration for Juicebox module.
  */
 
+
 /**
  * Implements hook_views_plugin().
  */
 function juicebox_views_plugins() {
   $path = drupal_get_path('module', 'juicebox');
   $plugins['style']['juicebox'] = array(
-    'title' => t('Juicebox'),
+    'title' => t('Juicebox Gallery'),
     'help' => t('Display rows as a Juicebox Gallery.'),
     'handler' => 'juicebox_style_plugin',
     'theme' => 'juicebox_view',
