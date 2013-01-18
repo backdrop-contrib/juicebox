@@ -28,6 +28,61 @@ function juicebox_menu() {
 
 
 /**
+ * Implements hook_theme().
+ */
+function juicebox_theme() {
+  return array(
+    // Theme hook to generate final Juicebox XML.
+    'juicebox_config_xml' => array(
+      'variables' => array('options' => array(), 'images' => array()),
+      'path' => drupal_get_path('module', 'juicebox') . '/themes',
+      'file' => 'juicebox.theme.inc',
+    ),
+    // Theme hook to generate embed markup for a Juicebox gallery.
+    'juicebox_embed_markup' => array(
+      'variables' => array('config_url_path' => '', 'style_options' => array()),
+      'path' => drupal_get_path('module', 'juicebox') . '/themes',
+      'file' => 'juicebox.theme.inc',
+      //'template' => 'juicebox-formatter',
+    ),
+    // Note that this module also uses themes for view plugins, but those hooks
+    // are registered through the views API and not here in hook_theme().
+  );
+}
+
+
+/**
+ * Implements hook_libraries_info().
+ */
+function juicebox_libraries_info() {
+  $libraries['juicebox'] = array(
+    'name' => 'Juicebox',
+    'vendor url' => 'http://www.juicebox.net/',
+    'download url' => 'http://www.juicebox.net/download/',
+    'version arguments' => array(
+      'file' => 'juicebox.js',
+      'pattern' => '/Juicebox-([0-9a-zA-Z\.\ -]+)/',
+      'lines' => 5,
+    ),
+    'files' => array(
+      'js' => array('juicebox.js'),
+    ),
+  );
+  return $libraries;
+}
+
+
+/**
+ * Implements hook_views_api().
+ */
+function juicebox_views_api() {
+  return array(
+    'api' => 2.0,
+  );
+}
+
+
+/**
  * Menu callback: generate Juicebox XML.
  * 
  * Note that this callback directly sets page headers and prints the XML result
@@ -127,40 +182,6 @@ function juicebox_page_xml() {
 
 
 /**
- * Implements hook_views_api().
- */
-function juicebox_views_api() {
-  return array(
-    'api' => 2.0,
-  );
-}
-
-
-/**
- * Implements hook_theme().
- */
-function juicebox_theme() {
-  return array(
-    // Theme hook to generate final Juicebox XML.
-    'juicebox_config_xml' => array(
-      'variables' => array('options' => array(), 'images' => array()),
-      'path' => drupal_get_path('module', 'juicebox') . '/themes',
-      'file' => 'juicebox.theme.inc',
-    ),
-    // Theme hook to generate embed markup for a Juicebox gallery.
-    'juicebox_embed_markup' => array(
-      'variables' => array('config_url_path' => '', 'style_options' => array()),
-      'path' => drupal_get_path('module', 'juicebox') . '/themes',
-      'file' => 'juicebox.theme.inc',
-      //'template' => 'juicebox-formatter',
-    ),
-    // Note that this module also uses themes for view plugins, but those hooks
-    // are registered through the views API and not here in hook_theme().
-  );
-}
-
-
-/**
  * Generate XML data for a Juicebox gallery from a view object.
  *
  * @param object $view
@@ -171,10 +192,12 @@ function juicebox_theme() {
 function juicebox_get_xml_from_view($view) {
   $view_options = $view->style_options;
   $options = array();
-  $options[] = 'galleryTitle="' . check_plain($view->human_name) . '"';
-  $options[] = 'galleryWidth="' . check_plain($view->style_options['width']) . '"';
-  $options[] = 'galleryHeight="' . check_plain($view->style_options['height']) . '"';
-  $custom_options = explode("\n", filter_xss(trim($view->style_options['advanced']['config'])));
+  if ($view_options['show_title']) {
+    $options[] = 'galleryTitle="' . check_plain($view->human_name) . '"';
+  }
+  $options[] = 'galleryWidth="' . check_plain($view_options['width']) . '"';
+  $options[] = 'galleryHeight="' . check_plain($view_options['height']) . '"';
+  $custom_options = explode("\n", filter_xss(trim($view_options['advanced']['config'])));
   $options = array_merge($options, $custom_options);
   $images = array();
   foreach ($view->result as $row_index => $row) {
@@ -280,29 +303,43 @@ function juicebox_get_xml_from_entity($items, $settings) {
 
 
 /**
- * Implements hook_libraries_info().
+ * Form validation callback: validate width/height inputs.
+ * 
+ * @see: juicebox_field_formatter_settings_form
+ * @see: juicebox_style_plugin
  */
-function juicebox_libraries_info() {
-  $libraries['juicebox'] = array(
-    'name' => 'Juicebox',
-    'vendor url' => 'http://www.juicebox.net/',
-    'download url' => 'http://www.juicebox.net/download/',
-    'version arguments' => array(
-      'file' => 'juicebox.js',
-      'pattern' => '/Juicebox-([0-9a-zA-Z\.\ -]+)/',
-      'lines' => 5,
-    ),
-    'files' => array(
-      'js' => array('juicebox.js'),
-    ),
-  );
-  return $libraries;
+function _juicebox_element_validate_dimension($element, &$form_state, $form) {
+  if (!preg_match('/^[0-9]+?(%|px|em|in|cm|mm|ex|pt|pc)$/u', $element['#value'])) {
+    form_error($element, t('Please ensure that you width and height values are entered in a standard numeric format (such as <strong>100%</strong> or <strong>300px</strong>).'));
+  }
+}
+
+
+/**
+ * Form validation callback: validate Juicebox configuration options.
+ * 
+ * @see: juicebox_field_formatter_settings_form
+ * @see: juicebox_style_plugin
+ */
+function _juicebox_element_validate_config($element, &$form_state, $form) {
+  // We are looking for input in the format of: optionName="optionValue".
+  // The check here is not too strict, it is just meant to catch general 
+  // formatting issues.
+  $custom_options = explode("\n", $element['#value']);
+  foreach($custom_options as $key => $option) {
+    $line_number = $key + 1;
+    if (!empty($option)) {
+      if (!preg_match('/^[A-Za-z0-9]+?="[^"]+?"\ *$/u', $option)) {
+        form_error($element, t('One of your manual configuration options appears to be formatted incorrectly. Please check line @line of this field and ensure that you are using the format <strong>optionName="optionValue"</strong> and that all spaces have been removed.', array('@line' => $line_number)));
+      }
+    }
+  }
 }
 
 
 /******************************************************************************
- * The following functions related specifically to the implimentation 
- * of the Juiceboxfield formatter.
+ * The following functions relate specifically to the implimentation 
+ * of the Juicebox field formatter.
  ******************************************************************************/
 
 
@@ -350,13 +387,15 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#type' => 'textfield',
     '#title' => t('Gallery Width'),
     '#default_value' => $settings['width'],
-    '#description' => t('Set the gallery width as a pixel value or a percentage.'),
+    '#description' => t('Set the gallery width in a standard numeric format (such as 100% or 300px).'),
+    '#element_validate' => array('_juicebox_element_validate_dimension'),
   );
   $form['height'] = array(
     '#type' => 'textfield',
     '#title' => t('Gallery Heigth'),
     '#default_value' => $settings['height'],
-    '#description' => t('Set the gallery height as a pixel value or a percentage.'),
+    '#description' => t('Set the gallery height in a standard numeric format (such as 100% or 300px).'),
+    '#element_validate' => array('_juicebox_element_validate_dimension'),
   );
   $form['image_style'] = array(
     '#type' => 'select',
@@ -406,7 +445,8 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#type' => 'textarea',
     '#title' => t('Manual configuraton options'),
     '#default_value' => $settings['advanced']['config'],
-    '#description' => t('Define any general configuration options that should be used in this gallery (see: http://www.juicebox.net/support/config_options/). Add one per line in the format <strong>optionName = "optionValue"</strong>. These will be inserted <em>as is</em> within the configuration XML used in this gallery so take care to ensure your formatting is correct.'),
+    '#description' => t('Define any general configuration options that should be used in this gallery (see: http://www.juicebox.net/support/config_options/). Add one per line in the format <strong>optionName="optionValue"</strong>.'),
+    '#element_validate' => array('_juicebox_element_validate_config'),
   );
   return $form;
 }

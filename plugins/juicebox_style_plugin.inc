@@ -22,6 +22,7 @@ class juicebox_style_plugin extends views_plugin_style {
     $options['thumb_field_style'] = array('default' => 'thumbnail');
     $options['title_field'] = array('default' => '');
     $options['caption_field'] = array('default' => '');
+    $options['show_title'] = array('default' => 0);
     $options['advanced'] = NULL;
     $options['advanced']['config'] = '';
     return $options;
@@ -64,13 +65,15 @@ class juicebox_style_plugin extends views_plugin_style {
       '#type' => 'textfield',
       '#title' => t('Gallery Width'),
       '#default_value' => $this->options['width'],
-      '#description' => t('Set the gallery width as a pixel value or a percentage.'),
+      '#description' => t('Set the gallery width in a standard numeric format (such as 100% or 300px).'),
+      '#element_validate' => array('_juicebox_element_validate_dimension'),
     );
     $form['height'] = array(
       '#type' => 'textfield',
       '#title' => t('Gallery Heigth'),
       '#default_value' => $this->options['height'],
-      '#description' => t('Set the gallery height as a pixel value or a percentage.'),
+      '#description' => t('Set the gallery height in a standard numeric format (such as 100% or 300px).'),
+      '#element_validate' => array('_juicebox_element_validate_dimension'),
     );
 
     $form['image_field'] = array(
@@ -119,6 +122,12 @@ class juicebox_style_plugin extends views_plugin_style {
       '#options' => $field_options,
       '#empty_option' => t('None'),
     );
+    $form['show_title'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Show Gallery Title'),
+      '#default_value' => $this->options['show_title'],
+      '#description' => t('Show the view display title as the gallery title (leave unchecked to display no gallery title).'),
+    );
     $form['advanced'] = array(
       '#type' => 'fieldset',
       '#title' => t('Advanced Options'),
@@ -129,7 +138,8 @@ class juicebox_style_plugin extends views_plugin_style {
       '#type' => 'textarea',
       '#title' => t('Manual configuraton options'),
       '#default_value' => $this->options['advanced']['config'],
-      '#description' => t('Define any general configuration options that should be used in this gallery (see: http://www.juicebox.net/support/config_options/). Add one per line in the format <strong>optionName = "optionValue"</strong>. These will be inserted <em>as is</em> within the configuration XML used in this gallery so take care to ensure your formatting is correct.'),
+      '#description' => t('Define any general configuration options that should be used in this gallery (see: http://www.juicebox.net/support/config_options/). Add one per line in the format <strong>optionName="optionValue"</strong>.'),
+      '#element_validate' => array('_juicebox_element_validate_config'),
     );
   }
 

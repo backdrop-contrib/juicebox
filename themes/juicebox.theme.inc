@@ -15,15 +15,18 @@
  * @ingroup themeable
 */
 function theme_juicebox_embed_markup(&$variables) {
+  // Create a gallery id from the XML path
+  $gallery_id = trim($variables['config_url_path'], '/');
+  $gallery_id = str_replace(array('/', ':'), '-', $gallery_id);
   $output = "<script>" . "\n";
   $output .= "  new juicebox({" . "\n";
   $output .= "    configUrl : '" . $variables['config_url_path'] . "'," . "\n";
-  $output .= "    containerId : 'juicebox-container'," . "\n";
+  $output .= "    containerId : '" . $gallery_id . "'," . "\n";
   $output .= "    galleryWidth : '" . check_plain($variables['style_options']['width']) . "'," . "\n";
   $output .= "    galleryHeight : '" . check_plain($variables['style_options']['height']) . "'" . "\n";
   $output .= "  });" . "\n";
   $output .= "</script>" . "\n";
-  $output .= '<div id="juicebox-container"></div>' . "\n";
+  $output .= '<div id="' . $gallery_id . '"></div>' . "\n";
   return $output;
 }
 
@@ -41,7 +44,7 @@ function theme_juicebox_config_xml($variables) {
   $output = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
   $output .= '<juiceboxgallery' . "\n";
   foreach ($variables['options'] as $option) {
-    $output .= '  ' . $option . "\n";
+    $output .= '  ' . trim($option) . "\n";
   }
   $output .= '>' . "\n";
   // Add each image to the xml
