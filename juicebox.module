@@ -65,7 +65,11 @@ function juicebox_libraries_info() {
       'lines' => 5,
     ),
     'files' => array(
-      'js' => array('juicebox.js'),
+      // Note that we do not want the Juicebox library javascript to be
+      // aggregated by Drupal (set preprocess option = FALSE). This is because
+      // some supporting library CSS files must be at a specific location 
+      // RELATIVE to to the main js file. Aggregation breaks this.
+      'js' => array('juicebox.js' => array('preprocess' => FALSE)),
     ),
   );
   return $libraries;
