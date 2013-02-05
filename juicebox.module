@@ -362,6 +362,7 @@ function juicebox_field_formatter_info() {
         'title_source' => 'title',
         'advanced' => array(
           'config' => '',
+          'custom_parent_classes' => '',
         ),
       ),
     ),
@@ -439,7 +440,7 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#type' => 'fieldset',
     '#title' => t('Advanced Options'),
     '#collapsible' => TRUE,
-    '#collapsed' => FALSE,
+    '#collapsed' => TRUE,
   );
   $form['advanced']['config'] = array(
     '#type' => 'textarea',
@@ -447,6 +448,12 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#default_value' => $settings['advanced']['config'],
     '#description' => t('Define any general configuration options that should be used in this gallery (see: http://www.juicebox.net/support/config_options/). Add one per line in the format <strong>optionName="optionValue"</strong>.'),
     '#element_validate' => array('_juicebox_element_validate_config'),
+  );
+  $form['advanced']['custom_parent_classes'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Custom Classes for Parent Container'),
+    '#default_value' => $settings['advanced']['custom_parent_classes'],
+    '#description' => t('Define any custom classes that should be added to the parent container within the Juicebox embed markup. This can be handy if you want to apply more advanced styling or dimensioning rules to this gallery via CSS. Enter as space-separated values.'),
   );
   return $form;
 }
@@ -485,7 +492,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   $element[0] = array(
     '#theme' => 'juicebox_embed_markup', 
     '#config_url_path' => url('juicebox/xml' . $xml_id),
-    '#style_options' => array('width' => $settings['width'], 'height' => $settings['height']),
+    '#style_options' => $settings,
   );
   return $element;
 }
@@ -544,8 +551,11 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
   }
   $settings_display[] = t("Title source: @source", array('@source' => $source));
   // Advance conf setting.
-  if (!empty($settings['advanced']['config'])) {
-    $settings_display[] = t("Advanced options are also set");
+  foreach ($settings['advanced'] as $value) {
+    if (!empty($value)) {
+      $settings_display[] = t("Advanced options are also set");
+      break;
+    }
   }
   $summary = implode('<br />', $settings_display);
   return $summary;

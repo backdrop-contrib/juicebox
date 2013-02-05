@@ -25,6 +25,7 @@ class juicebox_style_plugin extends views_plugin_style {
     $options['show_title'] = array('default' => 0);
     $options['advanced'] = NULL;
     $options['advanced']['config'] = '';
+    $options['advanced']['custom_parent_classes'] = '';
     return $options;
   }
 
@@ -132,7 +133,7 @@ class juicebox_style_plugin extends views_plugin_style {
       '#type' => 'fieldset',
       '#title' => t('Advanced Options'),
       '#collapsible' => TRUE,
-      '#collapsed' => FALSE,
+      '#collapsed' => TRUE,
     );
     $form['advanced']['config'] = array(
       '#type' => 'textarea',
@@ -140,6 +141,12 @@ class juicebox_style_plugin extends views_plugin_style {
       '#default_value' => $this->options['advanced']['config'],
       '#description' => t('Define any general configuration options that should be used in this gallery (see: http://www.juicebox.net/support/config_options/). Add one per line in the format <strong>optionName="optionValue"</strong>.'),
       '#element_validate' => array('_juicebox_element_validate_config'),
+    );
+    $form['advanced']['custom_parent_classes'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Custom Classes for Parent Container'),
+      '#default_value' => $this->options['advanced']['custom_parent_classes'],
+      '#description' => t('Define any custom classes that should be added to the parent container within the Juicebox embed markup. This can be handy if you want to apply more advanced styling or dimensioning rules to this gallery via CSS. Enter as space-separated values.'),
     );
   }
 

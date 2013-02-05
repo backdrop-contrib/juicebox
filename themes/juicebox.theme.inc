@@ -26,7 +26,13 @@ function theme_juicebox_embed_markup(&$variables) {
   $output .= "    galleryHeight : '" . check_plain($variables['style_options']['height']) . "'" . "\n";
   $output .= "  });" . "\n";
   $output .= "</script>" . "\n";
-  $output .= '<div id="' . $gallery_id . '"></div>' . "\n";
+  $custom_classes = '';
+  if (!empty($variables['style_options']['advanced']['custom_parent_classes'])) {
+    $custom_classes = ' ' . check_plain(trim($variables['style_options']['advanced']['custom_parent_classes']));
+  }
+  $output .= '<div class="juicebox-parent' . $custom_classes . '">' . "\n";
+  $output .= '<div id="' . $gallery_id . '" class="juicebox-container"></div>' . "\n";
+  $output .= '</div>' . "\n";
   return $output;
 }
 

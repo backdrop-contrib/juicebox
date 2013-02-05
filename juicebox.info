@@ -2,6 +2,7 @@ name = Juicebox
 description = Integrate Juicebox 
 package = Media
 core = 7.x
+dependencies[] = image
 dependencies[] = libraries
 
 ; General Files
