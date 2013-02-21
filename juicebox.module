@@ -61,7 +61,7 @@ function juicebox_libraries_info() {
     'download url' => 'http://www.juicebox.net/download/',
     'version arguments' => array(
       'file' => 'juicebox.js',
-      'pattern' => '/Juicebox-([0-9a-zA-Z\.\ -]+)/',
+      'pattern' => '/Juicebox.([0-9a-zA-Z\.\ -]+)/',
       'lines' => 5,
     ),
     'files' => array(
