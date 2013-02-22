@@ -105,11 +105,9 @@ function juicebox_page_xml() {
     // Set key variables from the path.
     $view_name = $args[1];
     $view_display = $args[2];
-    // The view arguments are what remains after the 1st and 2nd entries are
+    // The view arguments are what remains after the first 3 entries are
     // removed from $args
-    $view_args = $args;
-    array_shift($view_args);
-    array_shift($view_args);
+    $view_args = array_slice($args, 3);
     // load the view 
     $view = views_get_view($view_name);
     if ($view) {
