@@ -132,8 +132,6 @@ function juicebox_page_xml() {
   // If this XML request is related to an entity field, we first have to 
   // re-construct the entity and the field details before we can extract the 
   // needed XML data.
-  // @TODO: See if some of this build logic could be more efficiently done with
-  // an EFQ.
   if ($args[0] == 'entity') {
     // Set key variables from the path.
     $entity_type = $args[1];

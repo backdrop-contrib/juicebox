@@ -30,6 +30,14 @@ function juicebox_requirements($phase) {
       $requirements['juicebox']['description'] = $library['error message'];
       $requirements['juicebox']['severity'] = REQUIREMENT_ERROR;
     }
+    if (module_exists('devel_themer')) {
+      $requirements['juicebox_devel_themer'] = array(
+        'title' => 'Juicebox Compatibility',
+        'value' => 'Theme Developer module is enabled',
+        'description' => t('The Juicebox module is not compatible with the Theme Developer module. Your Juicebox galleries may not display correctly until the Theme Developer module has been disabled.'),
+        'severity' => REQUIREMENT_ERROR,
+      );
+    }
   }
   return $requirements;
 }

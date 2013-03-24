@@ -3,7 +3,7 @@ description = Integrate Juicebox
 package = Media
 core = 7.x
 dependencies[] = image
-dependencies[] = libraries
+dependencies[] = libraries (>1.0)
 
 ; General Files
 files[] = juicebox.module
