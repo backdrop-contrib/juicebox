@@ -46,7 +46,6 @@ function theme_juicebox_embed_markup(&$variables) {
  * @ingroup themeable
 */
 function theme_juicebox_config_xml($variables) {
-  $output = '';
   $output = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
   $output .= '<juiceboxgallery' . "\n";
   foreach ($variables['options'] as $option) {
@@ -59,7 +58,7 @@ function theme_juicebox_config_xml($variables) {
     $output .= '    thumbURL="' . $image['thumb_src'] . '"' . "\n";
     $output .= '    linkURL="' . $image['image_src'] . '"' . "\n";
     $output .= '    linkTarget="_blank">' . "\n";
-    $output .= '    <title>' . $image['title'] . '</title>' . "\n";
+    $output .= '    <title><![CDATA[' . $image['title'] . ']]></title>' . "\n";
     $output .= '    <caption><![CDATA[' . $image['caption'] . ']]></caption>' . "\n";
     $output .= '  </image>' . "\n";
   }
