@@ -16,12 +16,10 @@
 */
 function theme_juicebox_embed_markup(&$variables) {
   // Create a gallery id from the XML path
-  $gallery_id = trim($variables['config_url_path'], '/');
-  $gallery_id = str_replace(array('/', ':'), '-', $gallery_id);
   $output = "<script>" . "\n";
   $output .= "  new juicebox({" . "\n";
   $output .= "    configUrl : '" . $variables['config_url_path'] . "'," . "\n";
-  $output .= "    containerId : '" . $gallery_id . "'," . "\n";
+  $output .= "    containerId : '" . $variables['gallery_id'] . "'," . "\n";
   $output .= "    galleryWidth : '" . check_plain($variables['style_options']['width']) . "'," . "\n";
   $output .= "    galleryHeight : '" . check_plain($variables['style_options']['height']) . "'" . "\n";
   $output .= "  });" . "\n";
@@ -31,7 +29,7 @@ function theme_juicebox_embed_markup(&$variables) {
     $custom_classes = ' ' . check_plain(trim($variables['style_options']['advanced']['custom_parent_classes']));
   }
   $output .= '<div class="juicebox-parent' . $custom_classes . '">' . "\n";
-  $output .= '<div id="' . $gallery_id . '" class="juicebox-container"></div>' . "\n";
+  $output .= '<div id="' . $variables['gallery_id'] . '" class="juicebox-container"></div>' . "\n";
   $output .= '</div>' . "\n";
   return $output;
 }
@@ -85,9 +83,9 @@ function theme_juicebox_view(&$variables) {
   $view = $variables['view'];
   // Generate a unique ID that can be used to identify this view when
   // fetching the XML
-  $xml_id = '/view/' . $view->name . '/' . $view->current_display;
+  $xml_path = 'view/' . $view->name . '/' . $view->current_display;
   foreach ($view->args as $arg) {
-    $xml_id .= '/' . $arg;
+    $xml_path .= '/' . $arg;
   }
   // If we are previewing the view in the admin interface all the necessary
   // <script> elements in our embed markup seem to get stripped. This means
@@ -109,7 +107,8 @@ function theme_juicebox_view(&$variables) {
     drupal_set_message(t("Due to javascript requirements Juicebox galleries cannot be viewed as a live preview. Please save your view and visit the full page URL for this display to preview this gallery."), 'warning');
   }
   // Set template variables for embed markup.
-  $variables['config_url_path'] = url('juicebox/xml' . $xml_id);
+  $variables['gallery_id'] = str_replace('/', '-', $xml_path);
+  $variables['config_url_path'] = url('juicebox/xml/' . $xml_path);
   $variables['style_options'] = $view->style_options;
   return theme('juicebox_embed_markup', $variables);
 }

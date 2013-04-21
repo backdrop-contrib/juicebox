@@ -40,7 +40,7 @@ function juicebox_theme() {
     ),
     // Theme hook to generate embed markup for a Juicebox gallery.
     'juicebox_embed_markup' => array(
-      'variables' => array('config_url_path' => '', 'style_options' => array()),
+      'variables' => array('gallery_id' => '', 'config_url_path' => '', 'style_options' => array()),
       'path' => drupal_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
       //'template' => 'juicebox-formatter',
@@ -488,10 +488,11 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   }
   // Generate a unique ID that can be used to identify this entity when
   // fetching the XML.
-  $xml_id = '/entity/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . $display_name;
+  $xml_path = 'entity/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . $display_name;
   $element[0] = array(
-    '#theme' => 'juicebox_embed_markup', 
-    '#config_url_path' => url('juicebox/xml' . $xml_id),
+    '#theme' => 'juicebox_embed_markup',
+    '#gallery_id' => str_replace('/', '-', $xml_path),
+    '#config_url_path' => url('juicebox/xml/' . $xml_path),
     '#style_options' => $settings,
   );
   return $element;
