@@ -14,18 +14,23 @@
 class juicebox_style_plugin extends views_plugin_style {
   function option_definition() {
     $options = parent::option_definition();
-    $options['width'] = array('default' => '100%'); 
-    $options['height'] = array('default' => '100%'); 
-    $options['image_field'] = array('default' => '');
-    $options['image_field_style'] = array('default' => '');
-    $options['thumb_field'] = array('default' => '');
-    $options['thumb_field_style'] = array('default' => 'thumbnail');
-    $options['title_field'] = array('default' => '');
-    $options['caption_field'] = array('default' => '');
-    $options['show_title'] = array('default' => 0);
-    $options['advanced'] = NULL;
-    $options['advanced']['config'] = '';
-    $options['advanced']['custom_parent_classes'] = '';
+    $options = array(
+      'image_field' => array('default' => ''),
+      'image_field_style' => array('default' => ''),
+      'thumb_field' => array('default' => ''),
+      'thumb_field_style' => array('default' => 'thumbnail'),
+      'title_field' => array('default' => ''),
+      'caption_field' => array('default' => ''),
+      'show_title' => array('default' => 0),
+      'jlib_galleryWidth' => array('default' => '100%'),
+      'jlib_galleryHeight' => array('default' => '100%'),
+      'jlib_backgroundColor' => array('default' => '#222222'),
+      'jlib_showOpenButton' => array('default' => 1),
+      'jlib_showExpandButton' => array('default' => 1),
+      'jlib_showThumbsButton' => array('default' => 1),
+      'manual_config' => array('default' => ''),
+      'custom_parent_classes' => array('default' => ''),
+    );
     return $options;
   }
 
@@ -57,37 +62,21 @@ class juicebox_style_plugin extends views_plugin_style {
     }
     // Get available image style presets
     $presets = image_style_options(FALSE);
-
-    $form['description'] = array(
-      '#type' => 'markup',
-      '#value' => '<div class="messages">' . t('Options for the Juicebox view.') . '</div>',
-    );
-    $form['width'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Gallery Width'),
-      '#default_value' => $this->options['width'],
-      '#description' => t('Set the gallery width in a standard numeric format (such as 100% or 300px).'),
-      '#element_validate' => array('_juicebox_element_validate_dimension'),
-    );
-    $form['height'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Gallery Heigth'),
-      '#default_value' => $this->options['height'],
-      '#description' => t('Set the gallery height in a standard numeric format (such as 100% or 300px).'),
-      '#element_validate' => array('_juicebox_element_validate_dimension'),
-    );
+    // Initialize the "settings" values before working with them. This is
+    // required for legacy support.
+    $settings = _juicebox_init_display_settings($this->options);
 
     $form['image_field'] = array(
       '#type' => 'select',
       '#title' => t('Main Image Field'),
-      '#default_value' => $this->options['image_field'],
+      '#default_value' => $settings['image_field'],
       '#description' => t('Choose the field from the view that should be used for each main image in the Juicebox gallery. This must be an "image" field.'),
       '#options' => $field_options_images,
     );
     $form['image_field_style'] = array(
       '#type' => 'select',
       '#title' => t('Main Image Field Style'),
-      '#default_value' => $this->options['image_field_style'],
+      '#default_value' => $settings['image_field_style'],
       '#description' => t('Choose the style formatter for the main image. Note that any style or formatting settings configured on the field itself will be ignored and this style setting will always be used.'),
       '#options' => $presets,
       '#empty_option' => t('None (original image)'),
@@ -95,14 +84,14 @@ class juicebox_style_plugin extends views_plugin_style {
     $form['thumb_field'] = array(
       '#type' => 'select',
       '#title' => t('Thumbnail Field'),
-      '#default_value' => $this->options['thumb_field'],
+      '#default_value' => $settings['thumb_field'],
       '#description' => t('Choose the field from the view that should be used for each thumbnail in the Juicebox gallery. This must be an "image" field. Typically you will simply choose the same value that you set in the "Main Image Field" option above.'),
       '#options' => $field_options_images,
     );
     $form['thumb_field_style'] = array(
       '#type' => 'select',
       '#title' => t('Thumbnail Field Style'),
-      '#default_value' => $this->options['thumb_field_style'],
+      '#default_value' => $settings['thumb_field_style'],
       '#description' => t('Choose the style formatter for the thumbnail. Note that any style or formatting settings configured on the field itself will be ignored and this style setting will always be used.'),
       '#options' => $presets,
       '#empty_option' => t('None (original image)'),
@@ -110,7 +99,7 @@ class juicebox_style_plugin extends views_plugin_style {
     $form['title_field'] = array(
       '#type' => 'select',
       '#title' => t('Title Field'),
-      '#default_value' => $this->options['title_field'],
+      '#default_value' => $settings['title_field'],
       '#description' => t('Choose the field from the view that should be used for the title of each image in the Juicebox gallery. The raw markup generated by views for this field will be used and any style or formatting settings configured on the field itself will be respected.'),
       '#options' => $field_options,
       '#empty_option' => t('None'),
@@ -118,7 +107,7 @@ class juicebox_style_plugin extends views_plugin_style {
     $form['caption_field'] = array(
       '#type' => 'select',
       '#title' => t('Caption Field'),
-      '#default_value' => $this->options['caption_field'],
+      '#default_value' => $settings['caption_field'],
       '#description' => t('Choose the field from the view that should be used for the caption of each image in the Juicebox gallery. The raw markup generated by views for this field will be used and any style or formatting settings configured on the field itself will be respected.'),
       '#options' => $field_options,
       '#empty_option' => t('None'),
@@ -126,31 +115,16 @@ class juicebox_style_plugin extends views_plugin_style {
     $form['show_title'] = array(
       '#type' => 'checkbox',
       '#title' => t('Show Gallery Title'),
-      '#default_value' => $this->options['show_title'],
+      '#default_value' => $settings['show_title'],
       '#description' => t('Show the view display title as the gallery title (leave unchecked to display no gallery title).'),
     );
-    $form['advanced'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Advanced Options'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-    );
-    $form['advanced']['config'] = array(
-      '#type' => 'textarea',
-      '#title' => t('Manual configuraton options'),
-      '#default_value' => $this->options['advanced']['config'],
-      '#description' => t('Define any general configuration options that should be used in this gallery (see: http://www.juicebox.net/support/config_options/). Add one per line in the format <strong>optionName="optionValue"</strong>.'),
-      '#element_validate' => array('_juicebox_element_validate_config'),
-    );
-    $form['advanced']['custom_parent_classes'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Custom Classes for Parent Container'),
-      '#default_value' => $this->options['advanced']['custom_parent_classes'],
-      '#description' => t('Define any custom classes that should be added to the parent container within the Juicebox embed markup. This can be handy if you want to apply more advanced styling or dimensioning rules to this gallery via CSS. Enter as space-separated values.'),
-    );
+    // Also add the "common" form elements.
+    $parents_root = array('style_options');
+    $form = _juicebox_common_form_elements($form, $settings, $parents_root);
   }
 
   function validate() {
+    // Make sure the pager is not enabled.
     $errors = parent::validate();
     if ($this->display->handler->use_pager()) {
       $errors[] = t('The Juicebox style cannot be used with a pager. Disable the "Use pager" option for this display.');

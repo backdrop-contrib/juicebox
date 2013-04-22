@@ -20,13 +20,13 @@ function theme_juicebox_embed_markup(&$variables) {
   $output .= "  new juicebox({" . "\n";
   $output .= "    configUrl : '" . $variables['config_url_path'] . "'," . "\n";
   $output .= "    containerId : '" . $variables['gallery_id'] . "'," . "\n";
-  $output .= "    galleryWidth : '" . check_plain($variables['style_options']['width']) . "'," . "\n";
-  $output .= "    galleryHeight : '" . check_plain($variables['style_options']['height']) . "'" . "\n";
+  $output .= "    galleryWidth : '" . check_plain($variables['style_options']['jlib_galleryWidth']) . "'," . "\n";
+  $output .= "    galleryHeight : '" . check_plain($variables['style_options']['jlib_galleryHeight']) . "'" . "\n";
   $output .= "  });" . "\n";
   $output .= "</script>" . "\n";
   $custom_classes = '';
-  if (!empty($variables['style_options']['advanced']['custom_parent_classes'])) {
-    $custom_classes = ' ' . check_plain(trim($variables['style_options']['advanced']['custom_parent_classes']));
+  if (!empty($variables['style_options']['custom_parent_classes'])) {
+    $custom_classes = ' ' . check_plain(trim($variables['style_options']['custom_parent_classes']));
   }
   $output .= '<div class="juicebox-parent' . $custom_classes . '">' . "\n";
   $output .= '<div id="' . $variables['gallery_id'] . '" class="juicebox-container"></div>' . "\n";
@@ -47,14 +47,14 @@ function theme_juicebox_config_xml($variables) {
   $output = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
   $output .= '<juiceboxgallery' . "\n";
   foreach ($variables['options'] as $option) {
-    $output .= '  ' . trim($option) . "\n";
+    $output .= '  ' . $option . "\n";
   }
   $output .= '>' . "\n";
   // Add each image to the xml
   foreach ($variables['images'] as $image) {
     $output .= '  <image imageURL="' . $image['image_src'] . '"' . "\n";
     $output .= '    thumbURL="' . $image['thumb_src'] . '"' . "\n";
-    $output .= '    linkURL="' . $image['image_src'] . '"' . "\n";
+    $output .= '    linkURL="' . $image['image_link_src'] . '"' . "\n";
     $output .= '    linkTarget="_blank">' . "\n";
     $output .= '    <title><![CDATA[' . $image['title'] . ']]></title>' . "\n";
     $output .= '    <caption><![CDATA[' . $image['caption'] . ']]></caption>' . "\n";
@@ -89,14 +89,9 @@ function theme_juicebox_view(&$variables) {
   }
   // If we are previewing the view in the admin interface all the necessary
   // <script> elements in our embed markup seem to get stripped. This means
-  // that the preview cannot render and thus there is no point in loading the
+  // that the preview cannot render and so there is no point in loading the
   // Juicebox lib (doing so can actually cause display problems).
-  $args = arg();
-  $path = '';
-  foreach ($args as $arg) {
-    $path .= '/' . $arg;
-  }
-  if (strpos($path, '/admin/structure/views/') !== 0) {
+  if (strpos(current_path(), 'admin/structure/views') !== 0) {
     // Load the juicebox library, this will include the appropriate js in the
     // page header, etc.
     libraries_load('juicebox');
@@ -106,9 +101,12 @@ function theme_juicebox_view(&$variables) {
     // when the preview does not produce anything useful.
     drupal_set_message(t("Due to javascript requirements Juicebox galleries cannot be viewed as a live preview. Please save your view and visit the full page URL for this display to preview this gallery."), 'warning');
   }
+  // Initialize the "settings" values before working with them. This is
+  // required for legacy support.
+  $settings = _juicebox_init_display_settings($view->style_plugin->options);
   // Set template variables for embed markup.
   $variables['gallery_id'] = str_replace('/', '-', $xml_path);
   $variables['config_url_path'] = url('juicebox/xml/' . $xml_path);
-  $variables['style_options'] = $view->style_options;
+  $variables['style_options'] = $settings;
   return theme('juicebox_embed_markup', $variables);
 }

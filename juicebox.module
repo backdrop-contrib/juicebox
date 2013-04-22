@@ -43,7 +43,6 @@ function juicebox_theme() {
       'variables' => array('gallery_id' => '', 'config_url_path' => '', 'style_options' => array()),
       'path' => drupal_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
-      //'template' => 'juicebox-formatter',
     ),
     // Note that this module also uses themes for view plugins, but those hooks
     // are registered through the views API and not here in hook_theme().
@@ -81,7 +80,7 @@ function juicebox_libraries_info() {
  */
 function juicebox_views_api() {
   return array(
-    'api' => 2.0,
+    'api' => 3.0,
   );
 }
 
@@ -190,31 +189,28 @@ function juicebox_page_xml() {
  *   Fully renderd and themed XML data for a Juicebox gallery.
  */
 function juicebox_get_xml_from_view($view) {
-  $view_options = $view->style_options;
-  $options = array();
-  if ($view_options['show_title']) {
-    $options[] = 'galleryTitle="' . check_plain($view->human_name) . '"';
-  }
-  $options[] = 'galleryWidth="' . check_plain($view_options['width']) . '"';
-  $options[] = 'galleryHeight="' . check_plain($view_options['height']) . '"';
-  $custom_options = explode("\n", filter_xss(trim($view_options['advanced']['config'])));
-  $options = array_merge($options, $custom_options);
+  // Initialize the "settings" values before working with them. This is
+  // required for legacy support.
+  $settings = _juicebox_init_display_settings($view->style_plugin->options);
   $images = array();
   foreach ($view->result as $row_index => $row) {
-    // Get the main image source
-    $field_image_name = "field_{$view_options['image_field']}";
+    // Get the main image sources. Note that the image link source should always
+    // point to the highest resolution version that's available.
+    $field_image_name = "field_{$settings['image_field']}";
     $field_image_uri = $row->{$field_image_name}[0]['raw']['uri'];
-    if (!empty($view_options['image_field_style'])) {
-      $image_src = image_style_url($view_options['image_field_style'], $field_image_uri);
+    if (!empty($settings['image_field_style'])) {
+      $image_src = image_style_url($settings['image_field_style'], $field_image_uri);
+      $image_link_src = file_create_url($field_image_uri);
     }
     else {
       $image_src = file_create_url($field_image_uri);
+      $image_link_src = $image_src;
     }
     // Get the thumbnail source
-    $field_thumb_name = "field_{$view_options['thumb_field']}";
+    $field_thumb_name = "field_{$settings['thumb_field']}";
     $field_thumb_uri = $row->{$field_thumb_name}[0]['raw']['uri'];
-    if (!empty($view_options['thumb_field_style'])) {
-      $thumb_src = image_style_url($view_options['thumb_field_style'], $field_thumb_uri);
+    if (!empty($settings['thumb_field_style'])) {
+      $thumb_src = image_style_url($settings['thumb_field_style'], $field_thumb_uri);
     }
     else {
       $thumb_src = file_create_url($field_image_uri);
@@ -227,15 +223,22 @@ function juicebox_get_xml_from_view($view) {
     // CURRENT row index is set on the main view object, otherwise rendering
     // errors may result in certain situations.
     $view->row_index = $row_index;
-    $title = $view->render_field($view_options['title_field'], $row_index);
-    $caption = $view->render_field($view_options['caption_field'], $row_index);
+    $title = $view->render_field($settings['title_field'], $row_index);
+    $caption = $view->render_field($settings['caption_field'], $row_index);
     // Add each image to the xml
     $images[$row_index]['image_src'] = $image_src;
+    $images[$row_index]['image_link_src'] = $image_link_src;
     $images[$row_index]['thumb_src'] = $thumb_src;
     $images[$row_index]['title'] = $title;
     $images[$row_index]['caption'] = $caption;
   }
-  $data = array('options' => $options, 'images' => $images);
+  // Get the Juicebox library-specific options.
+  $jlib_options = array();
+  if ($settings['show_title']) {
+    $jlib_options[] = 'galleryTitle="' . check_plain($view->human_name) . '"';
+  }
+  $jlib_options = array_merge($jlib_options, _juicebox_get_lib_options($settings));
+  $data = array('options' => $jlib_options, 'images' => $images);
   // Theme the data as juicebox XML
   $xml = theme('juicebox_config_xml', $data);
   return $xml;
@@ -255,22 +258,21 @@ function juicebox_get_xml_from_view($view) {
  *   Fully renderd and themed XML data for a Juicebox gallery.
  */
 function juicebox_get_xml_from_entity($items, $settings) {
-  // Set the gallery options.
-  $options = array();
-  $options[] = 'galleryWidth="' . check_plain($settings['width']) . '"';
-  $options[] = 'galleryHeight="' . check_plain($settings['height']) . '"';
-  $custom_options = explode("\n", filter_xss(trim($settings['advanced']['config'])));
-  $options = array_merge($options, $custom_options); 
-
+  // Initialize the "settings" values before working with them. This is
+  // required for legacy support.
+  $settings = _juicebox_init_display_settings($settings);
   // Prepare images
   $images = array();
   foreach ($items as $id => $item) {
-    // Get image source
+    // Get the main image sources. Note that the image link source should always
+    // point to the highest resolution version that's available.
     if (!empty($settings['image_style'])) {
       $image_src = image_style_url($settings['image_style'], $item['uri']);
+      $image_link_src = file_create_url($item['uri']);
     }
     else {
       $image_src = file_create_url($item['uri']);
+      $image_link_src = $image_src;
     }
     // Get thumb source
     if (!empty($settings['thumb_style'])) {
@@ -291,11 +293,14 @@ function juicebox_get_xml_from_entity($items, $settings) {
     }
     // Add each image to the xml
     $images[$id]['image_src'] = $image_src;
+    $images[$id]['image_link_src'] = $image_link_src;
     $images[$id]['thumb_src'] = $thumb_src;
     $images[$id]['title'] = $title;
     $images[$id]['caption'] = $caption;
   }
-  $data = array('options' => $options, 'images' => $images); 
+  // Get the Juicebox library-specific options.
+  $jlib_options = _juicebox_get_lib_options($settings);
+  $data = array('options' => $jlib_options, 'images' => $images); 
   // Theme the data as juicebox XML
   $xml = theme('juicebox_config_xml', $data);
   return $xml;
@@ -303,10 +308,206 @@ function juicebox_get_xml_from_entity($items, $settings) {
 
 
 /**
+ * Helper to get all Juicebox library conf options from the display settings.
+ * 
+ * This is used in preparation for generating XML output. Some Juicebox XML
+ * configuration options are set via a GUI and others are set as manual strings.
+ * This function merges all of these values into one array. 
+ * 
+ * @param array $settings
+ *   An associative array containing all the settings for a Juicebox gallery.
+ * @return array
+ *   An array of Juicebox XML configuration options in the form
+ *   optionName=optionValue
+ */
+function _juicebox_get_lib_options($settings) {
+  $custom_options = array();
+  // Get the string options set via the GUI.
+  foreach (array('jlib_galleryWidth', 'jlib_galleryHeight', 'jlib_backgroundColor') as $name) {
+    if (!empty($settings[$name])) {
+      $name_real = str_replace('jlib_', '', $name);
+      $custom_options[strtolower($name_real)] = $name_real . '="' . trim(check_plain($settings[$name])) . '"';
+    }
+  }
+  // Get the bool options set via the GUI.
+  foreach (array('jlib_showOpenButton', 'jlib_showExpandButton', 'jlib_showThumbsButton') as $name) {
+    $name_real = str_replace('jlib_', '', $name);
+    $custom_options[strtolower($name_real)] = $name_real . '=' . ($settings[$name] ? '"TRUE"' : '"FALSE"');
+  }
+  // Merge-in the manually assigned options making sure they take priority
+  // over any conflicting GUI options.
+  $manual_options = explode("\n", filter_xss($settings['manual_config']));
+  foreach ($manual_options as $option) {
+    $option = trim($option);
+    if (!empty($option)) {
+      // We assume that each manual option has been properly validated to be in
+      // the form of optionName=optionValue.
+      list($name, $value) = explode('=', $option);
+      $name = trim(strtolower($name));
+      // See if the manual option is also a GUI option. If so, remove the GUI
+      // option.
+      $match = array_search($name, $custom_options);    
+      if ($match) {
+        unset($custom_options[$match]);
+      }
+      $custom_options[$name] = $option;
+    }
+  }
+  return $custom_options;
+}
+
+
+/**
+ * Utility function to modify Juicebox settings after they are loaded from
+ * Drupal but before they are used in any Juicebox module logic.
+ * 
+ * This is a central place to modfy the $settings arrays that describe the
+ * configuration for each Juicebox gallery (for both field formatters and views
+ * displays). Note that for views we could implement an override of
+ * views_plugin_style::init and do these modifications there, but as no such
+ * option exists for field formatters we just use this ad hoc utilty for both
+ * instead.
+ * 
+ * @param array $settings
+ *   An associative array containing all the settings for a Juicebox gallery.
+ * @return array
+ *   A modified version of the input settings array.
+ */
+function _juicebox_init_display_settings($settings) {
+  // Here we check for cases where we may be loading settings stored with an
+  // older version of the module. In these cases the settings "schema" may be
+  // different (i.e. the array is nested differently), so we need to adjust
+  // accordingly. Note that this is done here "realtime" instead of via a
+  // one-time hook_update_n process because this is the only way to correctly
+  // deal with views and fields being loaded from code (exported). Once "old"
+  // settings are re-saved (under the new "schema"), these checks no longer do
+  // anything. See also: http://drupal.org/node/1965786
+  if (!empty($settings['width'])) {
+    $settings['jlib_galleryWidth'] = $settings['width'];
+  }
+  if (!empty($settings['height'])) {
+    $settings['jlib_galleryHeight'] = $settings['height'];
+  }
+  if (!empty($settings['advanced']['config'])) {
+    $settings['manual_config'] = $settings['advanced']['config'];
+  }
+  if (!empty($settings['advanced']['custom_parent_classes'])) {
+    $settings['custom_parent_classes'] = $settings['advanced']['custom_parent_classes'];
+  }
+  return $settings;
+}
+
+
+/******************************************************************************
+ * The following functions are common form helper functions that are used by
+ * both the field formetter and the views plugin.
+ ******************************************************************************/
+
+
+/**
+ * Helper to add common elements to Juicebox configuration forms.
+ * 
+ * Both the field formatter and view plugin share some common configuration
+ * options and structures. These are merged into the appropriate forms via a
+ * call to this function.
+ * 
+ * @param array $form
+ *   The Drupal form array that common elements should be added to.
+ * @param array $settings
+ *   An associative array containing all the settings for a Juicebox gallery
+ *   (used to set default values).
+ * @param array $parents_root
+ *   A numerically keyed array representing the tree of form elements that
+ *   should be used as "parents" for the SAVED values. This is used to set the
+ *   #parents value of form elements that appear in fieldsets. We want our
+ *   saved values to be in a flat structure even though the form uses fieldsets
+ *   and requires all elements to utilize a default #tree setting of TRUE. 
+ * @return array
+ *   The merged form array.
+ */
+function _juicebox_common_form_elements($form, $settings, $parents_root) {
+  $form['juicebox_config'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Juicebox Library Configuration'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#description' => '<p>' . t('The following configuration options are specific to the Juicebox javascript library itself.') . '</p>',
+    '#weight' => 10,
+  );
+  $form['juicebox_config']['jlib_galleryWidth'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Gallery Width'),
+    '#default_value' => $settings['jlib_galleryWidth'],
+    '#description' => t('Set the gallery width in a standard numeric format (such as 100% or 300px).'),
+    '#element_validate' => array('_juicebox_element_validate_dimension'),
+    '#parents' => array_merge($parents_root, array('jlib_galleryWidth')),
+  );
+  $form['juicebox_config']['jlib_galleryHeight'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Gallery Heigth'),
+    '#default_value' => $settings['jlib_galleryHeight'],
+    '#description' => t('Set the gallery height in a standard numeric format (such as 100% or 300px).'),
+    '#element_validate' => array('_juicebox_element_validate_dimension'),
+    '#parents' => array_merge($parents_root, array('jlib_galleryHeight')),
+  );
+  $form['juicebox_config']['jlib_backgroundColor'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Background Color'),
+    '#default_value' => $settings['jlib_backgroundColor'],
+    '#description' => t('Gallery background color as a CSS3 color value (such as #FF00FF or rgba(10,50,100,0.7).'),
+    '#parents' => array_merge($parents_root, array('jlib_backgroundColor')),
+  );
+  $form['juicebox_config']['jlib_showOpenButton'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show Open Image Button'),
+    '#default_value' => $settings['jlib_showOpenButton'],
+    '#description' => t('Whether to show the "Open Image" button. This will link to the full size version of the image within a new tab to facilitate downloading.'),
+    '#parents' => array_merge($parents_root, array('jlib_showOpenButton')),
+  );
+  $form['juicebox_config']['jlib_showExpandButton'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show Expand Button'),
+    '#default_value' => $settings['jlib_showExpandButton'],
+    '#description' => t('Whether to show the "Expand" button. Clicking this button expands the gallery to fill the browser window.'),
+    '#parents' => array_merge($parents_root, array('jlib_showExpandButton')),
+  );
+  $form['juicebox_config']['jlib_showThumbsButton'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show Thumbs Button'),
+    '#default_value' => $settings['jlib_showThumbsButton'],
+    '#description' => t('Whether to show the "Toggle Thumbnails" button.'),
+    '#parents' => array_merge($parents_root, array('jlib_showThumbsButton')),
+  );
+  $form['juicebox_config']['manual_config'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Manual configuraton options'),
+    '#default_value' => $settings['manual_config'],
+    '#description' => t('Define any additional configuration options that should be used in this gallery (see: http://www.juicebox.net/support/config_options/).<br/>Add one per line in the format <strong>optionName="optionValue"</strong>.<br/>Options set here always take precedence over those set above is there is a conflict.'),
+    '#element_validate' => array('_juicebox_element_validate_config'),
+    '#parents' => array_merge($parents_root, array('manual_config')),
+  );
+  $form['advanced'] = array(  
+    '#type' => 'fieldset',
+    '#title' => t('Advanced Options'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#weight' => 20,
+  );
+  $form['advanced']['custom_parent_classes'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Custom Classes for Parent Container'),
+    '#default_value' => $settings['custom_parent_classes'],
+    '#description' => t('Define any custom classes that should be added to the parent container within the Juicebox embed markup.<br/>This can be handy if you want to apply more advanced styling or dimensioning rules to this gallery via CSS. Enter as space-separated values.'),
+    '#parents' => array_merge($parents_root, array('custom_parent_classes')),
+  );
+  return $form;
+}
+
+
+/**
  * Form validation callback: validate width/height inputs.
  * 
- * @see: juicebox_field_formatter_settings_form
- * @see: juicebox_style_plugin
+ * @see: _juicebox_common_form_elements
  */
 function _juicebox_element_validate_dimension($element, &$form_state, $form) {
   if (!preg_match('/^[0-9]+?(%|px|em|in|cm|mm|ex|pt|pc)$/u', $element['#value'])) {
@@ -318,8 +519,7 @@ function _juicebox_element_validate_dimension($element, &$form_state, $form) {
 /**
  * Form validation callback: validate Juicebox configuration options.
  * 
- * @see: juicebox_field_formatter_settings_form
- * @see: juicebox_style_plugin
+ * @see: _juicebox_common_form_elements
  */
 function _juicebox_element_validate_config($element, &$form_state, $form) {
   // We are looking for input in the format of: optionName="optionValue".
@@ -338,7 +538,7 @@ function _juicebox_element_validate_config($element, &$form_state, $form) {
 
 
 /******************************************************************************
- * The following functions relate specifically to the implimentation 
+ * The following functions relate specifically to the implementation 
  * of the Juicebox field formatter.
  ******************************************************************************/
 
@@ -354,16 +554,18 @@ function juicebox_field_formatter_info() {
       'label' => t('Juicebox Gallery'),
       'field types' => array('image'),
       'settings' => array(
-        'width' => '100%',
-        'height' => '100%',
         'image_style' => '',
         'thumb_style' => 'thumbnail',
         'caption_source' => 'alt',
         'title_source' => 'title',
-        'advanced' => array(
-          'config' => '',
-          'custom_parent_classes' => '',
-        ),
+        'jlib_galleryWidth' => '100%',
+        'jlib_galleryHeight' => '100%',
+        'jlib_backgroundColor' => '#222222',
+        'jlib_showOpenButton' => 1,
+        'jlib_showExpandButton' => 1,
+        'jlib_showThumbsButton' => 1,
+        'manual_config' => '',
+        'custom_parent_classes' => '',
       ),
     ),
   );
@@ -378,26 +580,10 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
   $form = array();
     // Get available image style presets
   $presets = image_style_options(FALSE);
-  $settings = $instance['display'][$view_mode]['settings'];
+  // Initialize the "settings" values before working with them. This is
+  // required for legacy support.
+  $settings = _juicebox_init_display_settings($instance['display'][$view_mode]['settings']);
 
-  $form['description'] = array(
-    '#type' => 'markup',
-    '#value' => '<div class="messages">' . t('Options for the Juicebox view.') . '</div>',
-  );
-  $form['width'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Gallery Width'),
-    '#default_value' => $settings['width'],
-    '#description' => t('Set the gallery width in a standard numeric format (such as 100% or 300px).'),
-    '#element_validate' => array('_juicebox_element_validate_dimension'),
-  );
-  $form['height'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Gallery Heigth'),
-    '#default_value' => $settings['height'],
-    '#description' => t('Set the gallery height in a standard numeric format (such as 100% or 300px).'),
-    '#element_validate' => array('_juicebox_element_validate_dimension'),
-  );
   $form['image_style'] = array(
     '#type' => 'select',
     '#title' => t('Main Image Style'),
@@ -436,25 +622,9 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     ),
     '#empty_option' => t('No title'),
   );
-  $form['advanced'] = array(
-    '#type' => 'fieldset',
-    '#title' => t('Advanced Options'),
-    '#collapsible' => TRUE,
-    '#collapsed' => TRUE,
-  );
-  $form['advanced']['config'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Manual configuraton options'),
-    '#default_value' => $settings['advanced']['config'],
-    '#description' => t('Define any general configuration options that should be used in this gallery (see: http://www.juicebox.net/support/config_options/). Add one per line in the format <strong>optionName="optionValue"</strong>.'),
-    '#element_validate' => array('_juicebox_element_validate_config'),
-  );
-  $form['advanced']['custom_parent_classes'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Custom Classes for Parent Container'),
-    '#default_value' => $settings['advanced']['custom_parent_classes'],
-    '#description' => t('Define any custom classes that should be added to the parent container within the Juicebox embed markup. This can be handy if you want to apply more advanced styling or dimensioning rules to this gallery via CSS. Enter as space-separated values.'),
-  );
+  // Also add the "common" form elements.
+  $parents_root = array('fields', $field['field_name'], 'settings_edit_form', 'settings');
+  $form = _juicebox_common_form_elements($form, $settings, $parents_root);
   return $form;
 }
 
@@ -463,15 +633,16 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
  * Implements hook_field_formatter_view().
  */
 function juicebox_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
-  // If there are no images, dont do anything else
+  // If there are no images, don't do anything else.
   if (empty($items)) {
     return;
   }
   $field_name = $instance['field_name'];
   $entity_type_info = entity_get_info($entity_type);
   $entity_id = $entity->{$entity_type_info['entity keys']['id']};
-  // Get field instance setting
-  $settings = $display['settings'];
+  // Initialize the "settings" values before working with them. This is
+  // required for legacy support.
+  $settings = _juicebox_init_display_settings($display['settings']);
   // Load the juicebox javascript.
   libraries_load('juicebox');
   // We need to get the display name to pass as part of our XML path. Though
@@ -482,7 +653,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   // might be the only way.
   $display_name = 'default';
   foreach ($instance['display'] as $display_key => $display_data) {
-    if ($settings == $display_data['settings']) {
+    if ($display['settings'] == $display_data['settings']) {
       $display_name = $display_key;
     }
   }
@@ -506,14 +677,6 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
   $settings_display = array();
-  // Width setting.
-  if (!empty($settings['width'])) {
-    $settings_display[] = t("Width: @width", array('@width' => $settings['width']));
-  }
-  // Height setting.
-  if (!empty($settings['height'])) {
-    $settings_display[] = t("Height: @height", array('@height' => $settings['height']));
-  }
   // Image style setting.
   if (!empty($settings['image_style'])) {
     $style = $settings['image_style'];
@@ -551,13 +714,8 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
     $source = t('None');
   }
   $settings_display[] = t("Title source: @source", array('@source' => $source));
-  // Advance conf setting.
-  foreach ($settings['advanced'] as $value) {
-    if (!empty($value)) {
-      $settings_display[] = t("Advanced options are also set");
-      break;
-    }
-  }
+  // Add-in a note about the additional fieldsets.
+  $settings_display[] = t("Additional Juicebox library configuration options may also be set.");
   $summary = implode('<br />', $settings_display);
   return $summary;
 }
