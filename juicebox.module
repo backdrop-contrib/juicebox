@@ -323,14 +323,14 @@ function juicebox_get_xml_from_entity($items, $settings) {
 function _juicebox_get_lib_options($settings) {
   $custom_options = array();
   // Get the string options set via the GUI.
-  foreach (array('jlib_galleryWidth', 'jlib_galleryHeight', 'jlib_backgroundColor') as $name) {
+  foreach (array('jlib_galleryWidth', 'jlib_galleryHeight', 'jlib_backgroundColor', 'jlib_textColor', 'jlib_thumbFrameColor') as $name) {
     if (!empty($settings[$name])) {
       $name_real = str_replace('jlib_', '', $name);
       $custom_options[strtolower($name_real)] = $name_real . '="' . trim(check_plain($settings[$name])) . '"';
     }
   }
   // Get the bool options set via the GUI.
-  foreach (array('jlib_showOpenButton', 'jlib_showExpandButton', 'jlib_showThumbsButton') as $name) {
+  foreach (array('jlib_showOpenButton', 'jlib_showExpandButton', 'jlib_showThumbsButton', 'jlib_useThumbDots', 'jlib_useFullscreenExpand') as $name) {
     $name_real = str_replace('jlib_', '', $name);
     $custom_options[strtolower($name_real)] = $name_real . '=' . ($settings[$name] ? '"TRUE"' : '"FALSE"');
   }
@@ -361,7 +361,7 @@ function _juicebox_get_lib_options($settings) {
  * Utility function to modify Juicebox settings after they are loaded from
  * Drupal but before they are used in any Juicebox module logic.
  * 
- * This is a central place to modfy the $settings arrays that describe the
+ * This is a central place to modify the $settings arrays that describe the
  * configuration for each Juicebox gallery (for both field formatters and views
  * displays). Note that for views we could implement an override of
  * views_plugin_style::init and do these modifications there, but as no such
@@ -398,6 +398,33 @@ function _juicebox_init_display_settings($settings) {
 }
 
 
+/**
+ * Helper function to parse the Juicebox library version info into chunks.
+ * 
+ * @return array
+ *   Associative array containing parsed chunks of the version statement
+ *   including a 'pro' boolean indicating the Pro version and 'number' with the
+ *   actual numeric version statement. Returns boolean FALSE if the version
+ *   number cannot be found.
+ */
+function juicebox_parse_version_details($version_statement) {
+  // Assume "Lite" if "Pro" text not found.
+  $pro = FALSE;
+  if (stripos($version_statement, "Pro") !== FALSE) {
+    $pro = TRUE;
+  }
+  // Get numeric part.
+  $number = 0;
+  $matches = array();
+  preg_match("/[0-9\.]+[^\.]$/u", $version_statement, $matches);
+  if (!empty($matches[0])) {
+    $number = $matches[0];
+    return array('pro' => $pro, 'number' => $number);
+  }
+  return FALSE;
+}
+
+
 /******************************************************************************
  * The following functions are common form helper functions that are used by
  * both the field formetter and the views plugin.
@@ -426,12 +453,44 @@ function _juicebox_init_display_settings($settings) {
  *   The merged form array.
  */
 function _juicebox_common_form_elements($form, $settings, $parents_root) {
+  // Get Juicebox library details as some of our Juicebox options are
+  // version-specific.
+  $library = libraries_detect('juicebox');
+  // Calculate which v1.x version features we can support. This checking
+  // starts at v1.3. Initially assume v1.3 options are available and don't
+  // disable them unless we are confident they should be.
+  $one_dot_three = TRUE;
+  $notification_top = '';
+  $notification_label = '';
+  if ($library['installed']) {
+    $version_details = juicebox_parse_version_details($library['version']);
+    if ($version_details) {
+      // Some "Pro" features from 1.2 were enabled in the 1.3 "Lite" version.
+      // Check if they are NOT supported and set messages if needed.
+      if (!$version_details['pro'] && version_compare($version_details['number'], '1.3', '<')) {
+        $one_dot_three = FALSE;
+        $notification_top = t('<strong>Notice:</strong> You are currently using Juicebox library version <strong>@version</strong> which is not compatible with some of the options listed below. These options will appear disabled until you upgrade to the most recent Juicebox library version.', array('@version' => $library['version']));
+        $notification_label = t(' (not available in @version)', array('@version' => $library['version']));
+      }
+    }
+    // If we don't have a known version of the Juicebox library, just show a
+    // generic warning.
+    else {
+      $notification_top = t('<strong>Notice:</strong> Your Juicebox Library version could not be detected. Some options below may not function correctly.');
+    }
+  }
+  // If the library itself is not installed, display formal error message.
+  else {
+    $notification_top = t('The Juicebox Javascript library does not appear to be installed. Please download and install the most recent version of the Juicebox library.');
+    drupal_set_message($notification_top, 'error');
+  }
+  
   $form['juicebox_config'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Juicebox Library Configuration'),
+    '#title' => t('Juicebox Library - Lite Config'),
     '#collapsible' => TRUE,
     '#collapsed' => TRUE,
-    '#description' => '<p>' . t('The following configuration options are specific to the Juicebox javascript library itself.') . '</p>',
+    '#description' => !empty($notification_top) ? '<p>' . $notification_top . '</p>' : '',
     '#weight' => 10,
   );
   $form['juicebox_config']['jlib_galleryWidth'] = array(
@@ -454,8 +513,24 @@ function _juicebox_common_form_elements($form, $settings, $parents_root) {
     '#type' => 'textfield',
     '#title' => t('Background Color'),
     '#default_value' => $settings['jlib_backgroundColor'],
-    '#description' => t('Gallery background color as a CSS3 color value (such as #FF00FF or rgba(10,50,100,0.7).'),
+    '#description' => t('Gallery background color as a CSS3 color value (such as rgba(10,50,100,0.7) or #FF00FF).'),
     '#parents' => array_merge($parents_root, array('jlib_backgroundColor')),
+  );
+  $form['juicebox_config']['jlib_textColor'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Text Color') . $notification_label,
+    '#default_value' => $settings['jlib_textColor'],
+    '#description' => t('Color of all gallery text as a CSS3 color value (such as rgba(255,255,255,1) or #FF00FF).'),
+    '#parents' => array_merge($parents_root, array('jlib_textColor')),
+    '#disabled' => $one_dot_three ? FALSE : TRUE,
+  );
+  $form['juicebox_config']['jlib_thumbFrameColor'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Thumbnail Frame Color') . $notification_label,
+    '#default_value' => $settings['jlib_thumbFrameColor'],
+    '#description' => t('Color of the thumbnail frame as a CSS3 color value (such as rgba(255,255,255,.5) or #FF00FF).'),
+    '#parents' => array_merge($parents_root, array('jlib_thumbFrameColor')),
+    '#disabled' => $one_dot_three ? FALSE : TRUE,
   );
   $form['juicebox_config']['jlib_showOpenButton'] = array(
     '#type' => 'checkbox',
@@ -471,6 +546,14 @@ function _juicebox_common_form_elements($form, $settings, $parents_root) {
     '#description' => t('Whether to show the "Expand" button. Clicking this button expands the gallery to fill the browser window.'),
     '#parents' => array_merge($parents_root, array('jlib_showExpandButton')),
   );
+  $form['juicebox_config']['jlib_useFullscreenExpand'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use Fullscreen Expand') . $notification_label,
+    '#default_value' => $settings['jlib_useFullscreenExpand'],
+    '#description' => t('Whether to trigger fullscreen mode when clicking the expand button (for supported browsers).'),
+    '#parents' => array_merge($parents_root, array('jlib_useFullscreenExpand')),
+    '#disabled' => $one_dot_three ? FALSE : TRUE,
+  );
   $form['juicebox_config']['jlib_showThumbsButton'] = array(
     '#type' => 'checkbox',
     '#title' => t('Show Thumbs Button'),
@@ -478,11 +561,27 @@ function _juicebox_common_form_elements($form, $settings, $parents_root) {
     '#description' => t('Whether to show the "Toggle Thumbnails" button.'),
     '#parents' => array_merge($parents_root, array('jlib_showThumbsButton')),
   );
-  $form['juicebox_config']['manual_config'] = array(
+  $form['juicebox_config']['jlib_useThumbDots'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show Thumbs Dots') . $notification_label,
+    '#default_value' => $settings['jlib_useThumbDots'],
+    '#description' => t('Whether to replace the thumbnail images with small dots.'),
+    '#parents' => array_merge($parents_root, array('jlib_useThumbDots')),
+    '#disabled' => $one_dot_three ? FALSE : TRUE,
+  );
+  $form['juicebox_manual_config'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Juicebox Library - Pro / Manual Config'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#description' => '<p>' . t('Specify any additional Juicebox library configuration options (such as "Pro" options) here.<br/><strong>Options set here always take precedence over those set in the "Lite" options above if there is a conflict.<strong>') . '</p>',
+    '#weight' => 20,
+  );
+  $form['juicebox_manual_config']['manual_config'] = array(
     '#type' => 'textarea',
-    '#title' => t('Manual configuraton options'),
+    '#title' => t('Pro / Manual Configuraton Options'),
     '#default_value' => $settings['manual_config'],
-    '#description' => t('Define any additional configuration options that should be used in this gallery (see: http://www.juicebox.net/support/config_options/).<br/>Add one per line in the format <strong>optionName="optionValue"</strong>.<br/>Options set here always take precedence over those set above is there is a conflict.'),
+    '#description' => t('Add one option per line in the format <strong>optionName="optionValue"</strong><br/>See also: http://www.juicebox.net/support/config_options'),
     '#element_validate' => array('_juicebox_element_validate_config'),
     '#parents' => array_merge($parents_root, array('manual_config')),
   );
@@ -491,7 +590,7 @@ function _juicebox_common_form_elements($form, $settings, $parents_root) {
     '#title' => t('Advanced Options'),
     '#collapsible' => TRUE,
     '#collapsed' => TRUE,
-    '#weight' => 20,
+    '#weight' => 30,
   );
   $form['advanced']['custom_parent_classes'] = array(
     '#type' => 'textfield',
@@ -527,9 +626,10 @@ function _juicebox_element_validate_config($element, &$form_state, $form) {
   // formatting issues.
   $custom_options = explode("\n", $element['#value']);
   foreach($custom_options as $key => $option) {
+    $option = trim($option);
     $line_number = $key + 1;
     if (!empty($option)) {
-      if (!preg_match('/^[A-Za-z0-9]+?="[^"]+?"\ *$/u', $option)) {
+      if (!preg_match('/^[A-Za-z0-9]+?="[^"]+?"$/u', $option)) {
         form_error($element, t('One of your manual configuration options appears to be formatted incorrectly. Please check line @line of this field and ensure that you are using the format <strong>optionName="optionValue"</strong> and that all spaces have been removed.', array('@line' => $line_number)));
       }
     }
@@ -561,9 +661,13 @@ function juicebox_field_formatter_info() {
         'jlib_galleryWidth' => '100%',
         'jlib_galleryHeight' => '100%',
         'jlib_backgroundColor' => '#222222',
+        'jlib_textColor' => 'rgba(255,255,255,1)',
+        'jlib_thumbFrameColor' => 'rgba(255,255,255,.5)',
         'jlib_showOpenButton' => 1,
         'jlib_showExpandButton' => 1,
         'jlib_showThumbsButton' => 1,
+        'jlib_useThumbDots' => 0,
+        'jlib_useFullscreenExpand' => 0,
         'manual_config' => '',
         'custom_parent_classes' => '',
       ),
@@ -588,7 +692,7 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#type' => 'select',
     '#title' => t('Main Image Style'),
     '#default_value' => $settings['image_style'],
-    '#description' => t('Choose the style formatter for the main image.'),
+    '#description' => t('The style formatter for the main image.'),
     '#options' => $presets,
     '#empty_option' => t('None (original image)'),
   );
@@ -596,7 +700,7 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#type' => 'select',
     '#title' => t('Thumbnail Style'),
     '#default_value' => $settings['thumb_style'],
-    '#description' => t('Choose the style formatter for the thumbnail.'),
+    '#description' => t('The style formatter for the thumbnail.'),
     '#options' => $presets,
     '#empty_option' => t('None (original image)'),
   );
@@ -604,7 +708,7 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#type' => 'select',
     '#title' => t('Caption Source'),
     '#default_value' => $settings['caption_source'],
-    '#description' => t('What part of the image field data should be used for the caption information.'),
+    '#description' => t('The part of the image field data that should be used for the caption.'),
     '#options' => array(
       'alt' => t('Alternate text'),
       'title' => t('Title'),
@@ -615,7 +719,7 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#type' => 'select',
     '#title' => t('Title Source'),
     '#default_value' => $settings['title_source'],
-    '#description' => t('What part of the image field data should be used for the title information.'),
+    '#description' => t('The part of the image field data that should be used for the title.'),
     '#options' => array(
       'alt' => t('Alternate text'),
       'title' => t('Title'),
@@ -719,15 +823,3 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
   $summary = implode('<br />', $settings_display);
   return $summary;
 }
-
-
-/*********** To be implimented if an XML caching solution is setup*********/
-/**
- * Implements hook_flush_caches().
-
-function juicebox_flush_caches() {
-  if (db_table_exists('cache_juicebox')) {
-    return array('cache_juicebox');
-  }
-}
-*/

@@ -43,18 +43,15 @@ function juicebox_requirements($phase) {
 }
 
 
-/*********** To be implimented if an XML caching solution is setup*********/
 /**
- * Implements hook_schema().
-
-function juicebox_schema() {
-  // Setup a special cache table to hold the XML for any gallery rendered with
-  // this module. This gives us a place to "stash" the XML while rendering the
-  // main embed code (so that we only have to build it once). This is necessary
-  // as each gallery requires TWO page requests, one for the embed code and
-  // another, requested by the embed code, to pass the config XML data.
-  $schema['cache_juicebox'] = drupal_get_schema_unprocessed('system', 'cache');
-  $schema['cache_juicebox']['description'] = 'Cache table to store Juicebox conifg XML info across multiple path requests.';
-  return $schema;
+ * Update registry and cache details to ensure that Juicebox galleries made with
+ * beta versions of the module are compatible with post-beta versions.
+ */
+function juicebox_update_7100() {
+  // Empty update to force a rebuild of the cache/registry. We have added a new
+  // theme variable for 'juicebox_embed_markup' ('gallery_id') and have
+  // re-structured the "schema" for configuration variables. For the schema
+  // change, clearing the cache will enforce correct default values but we also
+  // have added some "real-time" handling for manually configured values in
+  // _juicebox_init_display_settings.
 }
-*/
