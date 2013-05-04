@@ -44,6 +44,7 @@ function theme_juicebox_embed_markup(&$variables) {
  * @ingroup themeable
 */
 function theme_juicebox_config_xml($variables) {
+  // @todo: Implement this output as a SimpleXMLElement.
   $output = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
   $output .= '<juiceboxgallery' . "\n";
   foreach ($variables['options'] as $option) {
@@ -52,9 +53,9 @@ function theme_juicebox_config_xml($variables) {
   $output .= '>' . "\n";
   // Add each image to the xml
   foreach ($variables['images'] as $image) {
-    $output .= '  <image imageURL="' . $image['image_src'] . '"' . "\n";
-    $output .= '    thumbURL="' . $image['thumb_src'] . '"' . "\n";
-    $output .= '    linkURL="' . $image['image_link_src'] . '"' . "\n";
+    $output .= '  <image imageURL="' . htmlspecialchars($image['image_src'], ENT_NOQUOTES, 'UTF-8') . '"' . "\n";
+    $output .= '    thumbURL="' . htmlspecialchars($image['thumb_src'], ENT_NOQUOTES, 'UTF-8') . '"' . "\n";
+    $output .= '    linkURL="' . htmlspecialchars($image['image_link_src'], ENT_NOQUOTES, 'UTF-8') . '"' . "\n";
     $output .= '    linkTarget="_blank">' . "\n";
     $output .= '    <title><![CDATA[' . $image['title'] . ']]></title>' . "\n";
     $output .= '    <caption><![CDATA[' . $image['caption'] . ']]></caption>' . "\n";
