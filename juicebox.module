@@ -148,11 +148,15 @@ function juicebox_page_xml() {
       }
       $items = field_get_items($entity_type, $entity, $field_name);
       if ($items) {
-        // See if we have a bundle set. Initially assume we don't.
-        $bundle = $entity_type;
-        if (isset($entity->type)) {
-          $bundle = $entity->type;
+        // Get the bundle details.
+        $info = entity_get_info($entity_type);
+        if (empty($info['entity keys']['bundle'])) {
+          $bundle = $entity_type;
         }
+        else {
+          $bundle = $entity->{$info['entity keys']['bundle']};
+        }
+        // Get the instance and display details.
         $instance_info = field_info_instance($entity_type, $field_name, $bundle);
         if (!empty($instance_info['display'])) {
           // Try to get the specific display settings. Initially assume the
