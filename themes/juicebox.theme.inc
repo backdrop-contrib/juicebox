@@ -20,13 +20,13 @@ function theme_juicebox_embed_markup(&$variables) {
   $output .= "  new juicebox({" . "\n";
   $output .= "    configUrl : '" . $variables['config_url_path'] . "'," . "\n";
   $output .= "    containerId : '" . $variables['gallery_id'] . "'," . "\n";
-  $output .= "    galleryWidth : '" . check_plain($variables['style_options']['jlib_galleryWidth']) . "'," . "\n";
-  $output .= "    galleryHeight : '" . check_plain($variables['style_options']['jlib_galleryHeight']) . "'" . "\n";
+  $output .= "    galleryWidth : '" . check_plain($variables['settings']['jlib_galleryWidth']) . "'," . "\n";
+  $output .= "    galleryHeight : '" . check_plain($variables['settings']['jlib_galleryHeight']) . "'" . "\n";
   $output .= "  });" . "\n";
   $output .= "</script>" . "\n";
   $custom_classes = '';
-  if (!empty($variables['style_options']['custom_parent_classes'])) {
-    $custom_classes = ' ' . check_plain(trim($variables['style_options']['custom_parent_classes']));
+  if (!empty($variables['settings']['custom_parent_classes'])) {
+    $custom_classes = ' ' . check_plain(trim($variables['settings']['custom_parent_classes']));
   }
   $output .= '<div class="juicebox-parent' . $custom_classes . '">' . "\n";
   $output .= '<div id="' . $variables['gallery_id'] . '" class="juicebox-container"></div>' . "\n";
@@ -47,7 +47,7 @@ function theme_juicebox_config_xml($variables) {
   // @todo: Implement this output as a SimpleXMLElement.
   $output = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
   $output .= '<juiceboxgallery' . "\n";
-  foreach ($variables['options'] as $option) {
+  foreach ($variables['jlib_options'] as $option) {
     $output .= '  ' . $option . "\n";
   }
   $output .= '>' . "\n";
@@ -56,7 +56,7 @@ function theme_juicebox_config_xml($variables) {
     $output .= '  <image imageURL="' . htmlspecialchars($image['image_src'], ENT_NOQUOTES, 'UTF-8') . '"' . "\n";
     $output .= '    thumbURL="' . htmlspecialchars($image['thumb_src'], ENT_NOQUOTES, 'UTF-8') . '"' . "\n";
     $output .= '    linkURL="' . htmlspecialchars($image['image_link_src'], ENT_NOQUOTES, 'UTF-8') . '"' . "\n";
-    $output .= '    linkTarget="_blank">' . "\n";
+    $output .= '    linkTarget="' . $variables['settings']['linkurl_target'] . '">' . "\n";
     $output .= '    <title><![CDATA[' . $image['title'] . ']]></title>' . "\n";
     $output .= '    <caption><![CDATA[' . $image['caption'] . ']]></caption>' . "\n";
     $output .= '  </image>' . "\n";
@@ -108,6 +108,6 @@ function theme_juicebox_view(&$variables) {
   // Set template variables for embed markup.
   $variables['gallery_id'] = str_replace('/', '-', $xml_path);
   $variables['config_url_path'] = url('juicebox/xml/' . $xml_path);
-  $variables['style_options'] = $settings;
+  $variables['settings'] = $settings;
   return theme('juicebox_embed_markup', $variables);
 }

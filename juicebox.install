@@ -55,3 +55,12 @@ function juicebox_update_7100() {
   // have added some "real-time" handling for manually configured values in
   // _juicebox_init_display_settings.
 }
+
+
+/**
+ * Update registry and cache details to accomodate new theme variables.
+ */
+function juicebox_update_7101() {
+  // Empty update to force a rebuild of the cache/registry. We have changed
+  // some theme variable names ("jlib_options" and "settings").
+}

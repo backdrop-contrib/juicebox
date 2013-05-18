@@ -34,13 +34,13 @@ function juicebox_theme() {
   return array(
     // Theme hook to generate final Juicebox XML.
     'juicebox_config_xml' => array(
-      'variables' => array('options' => array(), 'images' => array()),
+      'variables' => array('jlib_options' => array(), 'images' => array(), 'settings' => array()),
       'path' => drupal_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
     ),
     // Theme hook to generate embed markup for a Juicebox gallery.
     'juicebox_embed_markup' => array(
-      'variables' => array('gallery_id' => '', 'config_url_path' => '', 'style_options' => array()),
+      'variables' => array('gallery_id' => '', 'config_url_path' => '', 'settings' => array()),
       'path' => drupal_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
     ),
@@ -179,7 +179,10 @@ function juicebox_page_xml() {
   }
   else {
     drupal_add_http_header('Content-Type', 'text/xml');
+    // Bypass all themeing but still return so that drupal_page_footer() is
+    // called.
     print($xml);
+    return NULL;
   }
 }
 
@@ -204,7 +207,10 @@ function juicebox_get_xml_from_view($view) {
     $field_image_uri = $row->{$field_image_name}[0]['raw']['uri'];
     if (!empty($settings['image_field_style'])) {
       $image_src = image_style_url($settings['image_field_style'], $field_image_uri);
-      $image_link_src = file_create_url($field_image_uri);
+      // This calculation is only needed if no custom linkURL field is set.
+      if (empty($settings['linkurl_field'])) {
+        $image_link_src = file_create_url($field_image_uri);
+      }
     }
     else {
       $image_src = file_create_url($field_image_uri);
@@ -229,6 +235,9 @@ function juicebox_get_xml_from_view($view) {
     $view->row_index = $row_index;
     $title = $view->render_field($settings['title_field'], $row_index);
     $caption = $view->render_field($settings['caption_field'], $row_index);
+    if (!empty($settings['linkurl_field'])) {
+      $image_link_src = $view->render_field($settings['linkurl_field'], $row_index);
+    }
     // Add each image to the xml
     $images[$row_index]['image_src'] = $image_src;
     $images[$row_index]['image_link_src'] = $image_link_src;
@@ -242,7 +251,7 @@ function juicebox_get_xml_from_view($view) {
     $jlib_options[] = 'galleryTitle="' . check_plain($view->human_name) . '"';
   }
   $jlib_options = array_merge($jlib_options, _juicebox_get_lib_options($settings));
-  $data = array('options' => $jlib_options, 'images' => $images);
+  $data = array('jlib_options' => $jlib_options, 'images' => $images, 'settings' => $settings);
   // Theme the data as juicebox XML
   $xml = theme('juicebox_config_xml', $data);
   return $xml;
@@ -304,7 +313,7 @@ function juicebox_get_xml_from_entity($items, $settings) {
   }
   // Get the Juicebox library-specific options.
   $jlib_options = _juicebox_get_lib_options($settings);
-  $data = array('options' => $jlib_options, 'images' => $images); 
+  $data = array('jlib_options' => $jlib_options, 'images' => $images, 'settings' => $settings); 
   // Theme the data as juicebox XML
   $xml = theme('juicebox_config_xml', $data);
   return $xml;
@@ -578,7 +587,7 @@ function _juicebox_common_form_elements($form, $settings, $parents_root) {
     '#title' => t('Juicebox Library - Pro / Manual Config'),
     '#collapsible' => TRUE,
     '#collapsed' => TRUE,
-    '#description' => '<p>' . t('Specify any additional Juicebox library configuration options (such as "Pro" options) here.<br/><strong>Options set here always take precedence over those set in the "Lite" options above if there is a conflict.<strong>') . '</p>',
+    '#description' => '<p>' . t('Specify any additional Juicebox library configuration options (such as "Pro" options) here.<br/><strong>Options set here always take precedence over those set in the "Lite" options above if there is a conflict.</strong>') . '</p>',
     '#weight' => 20,
   );
   $form['juicebox_manual_config']['manual_config'] = array(
@@ -596,12 +605,22 @@ function _juicebox_common_form_elements($form, $settings, $parents_root) {
     '#collapsed' => TRUE,
     '#weight' => 30,
   );
+  $form['advanced']['linkurl_target'] = array(
+    '#type' => 'select',
+    '#title' => t('LinkURL Target'),
+    '#options' => array('_blank' => '_blank', '_self' => '_self', '_parent' => '_parent', '_top' => '_top'),
+    '#default_value' => $settings['linkurl_target'],
+    '#description' => t('Some Juicebox settings make use of a linkURL parameter (such as the "Show Open Button"). Here you can specify a target for the resulting link.'),
+    '#parents' => array_merge($parents_root, array('linkurl_target')),
+    '#weight' => 10,
+  );
   $form['advanced']['custom_parent_classes'] = array(
     '#type' => 'textfield',
     '#title' => t('Custom Classes for Parent Container'),
     '#default_value' => $settings['custom_parent_classes'],
-    '#description' => t('Define any custom classes that should be added to the parent container within the Juicebox embed markup.<br/>This can be handy if you want to apply more advanced styling or dimensioning rules to this gallery via CSS. Enter as space-separated values.'),
+    '#description' => t('Define any custom classes that should be added to the parent container within the Juicebox embed markup. This can be handy if you want to apply more advanced styling or dimensioning rules to this gallery via CSS. Enter as space-separated values.'),
     '#parents' => array_merge($parents_root, array('custom_parent_classes')),
+    '#weight' => 30,
   );
   return $form;
 }
@@ -674,6 +693,7 @@ function juicebox_field_formatter_info() {
         'jlib_useFullscreenExpand' => 0,
         'manual_config' => '',
         'custom_parent_classes' => '',
+        'linkurl_target' => '_blank',
       ),
     ),
   );
@@ -692,6 +712,10 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
   // required for legacy support.
   $settings = _juicebox_init_display_settings($instance['display'][$view_mode]['settings']);
 
+  // Start with the "common" form elements.
+  $parents_root = array('fields', $field['field_name'], 'settings_edit_form', 'settings');
+  $form = _juicebox_common_form_elements($form, $settings, $parents_root);
+  // Add the field-formatter-specific elements.
   $form['image_style'] = array(
     '#type' => 'select',
     '#title' => t('Main Image Style'),
@@ -730,9 +754,6 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     ),
     '#empty_option' => t('No title'),
   );
-  // Also add the "common" form elements.
-  $parents_root = array('fields', $field['field_name'], 'settings_edit_form', 'settings');
-  $form = _juicebox_common_form_elements($form, $settings, $parents_root);
   return $form;
 }
 
@@ -772,7 +793,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
     '#theme' => 'juicebox_embed_markup',
     '#gallery_id' => str_replace('/', '-', $xml_path),
     '#config_url_path' => url('juicebox/xml/' . $xml_path),
-    '#style_options' => $settings,
+    '#settings' => $settings,
   );
   return $element;
 }
