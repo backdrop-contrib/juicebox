@@ -43,7 +43,7 @@ class juicebox_style_plugin extends views_plugin_style {
   function options_form(&$form, &$form_state) {
     parent::options_form($form, $form_state);
     // Get the active field options
-    $fields_options = array();
+    $field_options = array();
     $field_options_images = array();
     $field_handlers = $this->display->handler->get_handlers('field');
     foreach ($field_handlers as $field => $handler) {
@@ -141,12 +141,22 @@ class juicebox_style_plugin extends views_plugin_style {
   }
 
   function validate() {
-    // Make sure the pager is not enabled.
     $errors = parent::validate();
+    // Make sure the pager is not enabled.
     if ($this->display->handler->use_pager()) {
       $errors[] = t('The Juicebox style cannot be used with a pager. Disable the "Use pager" option for this display.');
     }
+    // We want to somewhat "nag" the user if they have not yet configured the
+    // Juicebox-specific plugin settings (because things won't work until they
+    // do). However, we do NOT want to formally set an error. This is because
+    // the validate method runs on pages where the user can't actaully touch 
+    // the Juicebox-specific plugin settings (such as
+    // admin/structure/views/add).
+    static $nag_message_set = FALSE;
+    if (!$nag_message_set && empty($this->options['image_field'])) {
+      drupal_set_message(t("To ensure a fully functional Juicebox gallery please remember to add at least one image field to your Juicebox view display and configure the Juicebox Gallery format settings."), 'warning');
+      $nag_message_set = TRUE;
+    }
     return $errors;
   }
-
 }
