@@ -248,7 +248,7 @@ function juicebox_get_xml_from_view($view) {
   // Get the Juicebox library-specific options.
   $jlib_options = array();
   if ($settings['show_title']) {
-    $jlib_options[] = 'galleryTitle="' . check_plain($view->human_name) . '"';
+    $jlib_options[] = 'galleryTitle="' . check_plain($view->get_title()) . '"';
   }
   $jlib_options = array_merge($jlib_options, _juicebox_get_lib_options($settings));
   $data = array('jlib_options' => $jlib_options, 'images' => $images, 'settings' => $settings);
@@ -436,12 +436,6 @@ function juicebox_parse_version_details($version_statement) {
   }
   return FALSE;
 }
-
-
-/******************************************************************************
- * The following functions are common form helper functions that are used by
- * both the field formetter and the views plugin.
- ******************************************************************************/
 
 
 /**
@@ -658,12 +652,6 @@ function _juicebox_element_validate_config($element, &$form_state, $form) {
     }
   }
 }
-
-
-/******************************************************************************
- * The following functions relate specifically to the implementation 
- * of the Juicebox field formatter.
- ******************************************************************************/
 
 
 /**
