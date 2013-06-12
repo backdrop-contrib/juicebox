@@ -1,5 +1,6 @@
 <?php
 
+
 /**
  * @file
  * Contains the Juicebox views style plugin.
@@ -12,6 +13,10 @@
  * @ingroup views_style_plugins
  */
 class juicebox_style_plugin extends views_plugin_style {
+
+  /**
+   * Define default plugin options.
+   */
   function option_definition() {
     $options = parent::option_definition();
     $options = array(
@@ -40,6 +45,9 @@ class juicebox_style_plugin extends views_plugin_style {
     return $options;
   }
 
+  /**
+   * Define plugin options form.
+   */
   function options_form(&$form, &$form_state) {
     parent::options_form($form, $form_state);
     // Get the active field options
@@ -95,7 +103,7 @@ class juicebox_style_plugin extends views_plugin_style {
       '#type' => 'select',
       '#title' => t('Thumbnail Field'),
       '#default_value' => $settings['thumb_field'],
-      '#description' => t('The view field that should be used for each thumbnail in the gallery. Typically you will choose the same value that was set in the "Main Image Field" option above. This must be an image field. '),
+      '#description' => t('The view field that should be used for each thumbnail in the gallery. Typically you will choose the same value that was set in the "Main Image Field" option above. This must be an image field.'),
       '#options' => $field_options_images,
     );
     $form['thumb_field_style'] = array(
@@ -140,6 +148,9 @@ class juicebox_style_plugin extends views_plugin_style {
     );
   }
 
+  /**
+   * Define validation rules for the plugin display.
+   */
   function validate() {
     $errors = parent::validate();
     // Make sure the pager is not enabled.
@@ -149,7 +160,7 @@ class juicebox_style_plugin extends views_plugin_style {
     // We want to somewhat "nag" the user if they have not yet configured the
     // Juicebox-specific plugin settings (because things won't work until they
     // do). However, we do NOT want to formally set an error. This is because
-    // the validate method runs on pages where the user can't actaully touch 
+    // this validate method can run on pages where the user can't actaully touch
     // the Juicebox-specific plugin settings (such as
     // admin/structure/views/add).
     static $nag_message_set = FALSE;
@@ -158,5 +169,43 @@ class juicebox_style_plugin extends views_plugin_style {
       $nag_message_set = TRUE;
     }
     return $errors;
+  }
+
+  /**
+   * Render the view page display.
+   *
+   * This is where the Juicebox embed code is built for the view.
+   */
+  function render() {
+    $view = $this->view;
+    // Generate a unique ID that can be used to identify this view when
+    // fetching the XML
+    $xml_id_path = 'view/' . $view->name . '/' . $view->current_display;
+    foreach ($view->args as $arg) {
+      $xml_id_path .= '/' . $arg;
+    }
+    // If we are previewing the view in the admin interface all the necessary
+    // <script> elements in our embed markup seem to get stripped. This means
+    // that the preview cannot render and so there is no point in loading the
+    // Juicebox lib (doing so can actually cause display problems).
+    if (strpos(current_path(), 'admin/structure/views') !== 0) {
+      // Load the juicebox library, this will include the appropriate js in the
+      // page header, etc.
+      libraries_load('juicebox');
+    }
+    else {
+      // Post a notice to admins so that they don't think things are broken
+      // when the preview does not produce anything useful.
+      drupal_set_message(t("Due to javascript requirements Juicebox galleries cannot be viewed as a live preview. Please save your view and visit the full page URL for this display to preview this gallery."), 'warning');
+    }
+    // Initialize the "settings" values before working with them. This is
+    // required for legacy support.
+    $settings = _juicebox_init_display_settings($view->style_plugin->options);
+    // Set template variables for embed markup.
+    $variables['gallery_id'] = str_replace('/', '-', $xml_id_path);
+    $variables['gallery_xml_path'] = url('juicebox/xml/' . $xml_id_path);
+    $variables['settings'] = $settings;
+    $variables['data'] = array(); // This is a placeholder
+    return theme('juicebox_embed_markup', $variables);
   }
 }

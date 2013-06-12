@@ -1,5 +1,6 @@
 <?php
 
+
 /**
  * @file
  * Install, update and uninstall functions for the Juicebox module.
@@ -53,7 +54,7 @@ function juicebox_update_7100() {
   // re-structured the "schema" for configuration variables. For the schema
   // change, clearing the cache will enforce correct default values but we also
   // have added some "real-time" handling for manually configured values in
-  // _juicebox_init_display_settings.
+  // _juicebox_init_display_settings().
 }
 
 
