@@ -35,7 +35,7 @@ function juicebox_theme() {
   return array(
     // Theme hook to generate embed markup for a Juicebox gallery.
     'juicebox_embed_markup' => array(
-      'variables' => array('gallery_id' => '', 'gallery_xml_path' => '', 'settings' => array(), '$data' => array()),
+      'variables' => array('gallery_id' => '', 'gallery_xml_path' => '', 'settings' => array(), 'data' => array()),
       'path' => drupal_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
     ),
@@ -191,8 +191,8 @@ function juicebox_page_xml() {
   }
   else {
     drupal_add_http_header('Content-Type', 'text/xml');
-    // Bypass all themeing but still return so that drupal_page_footer() is
-    // called.
+    // Bypass all themeing but still return (don't die) so that
+    // drupal_page_footer() is called.
     print($xml);
     return NULL;
   }
@@ -267,13 +267,16 @@ function juicebox_build_gallery_data_from_view($view, $xml_path) {
   // Get the Juicebox library-specific options.
   $jlib_options = array();
   if ($settings['show_title']) {
-    $jlib_options['galleryTitle'] = check_plain($view->get_title());
+    $jlib_options['gallerytitle'] = check_plain($view->get_title());
   }
   $jlib_options = array_merge($jlib_options, _juicebox_get_lib_options($settings));
   $data = array('jlib_options' => $jlib_options, 'images' => $images);
   // Allow other modules to alter the data we are using to build the gallery.
   $source_info = array('xml_path' => $xml_path, 'source' => $view);
   drupal_alter('juicebox_gallery_data', $data, $settings, $source_info);
+  // Make sure all Juicebox library configuration keys are lowercase to make
+  // future key lookups easier.
+  $data['jlib_options'] = array_change_key_case($data['jlib_options']);
   return $data;
 }
 
@@ -341,6 +344,9 @@ function juicebox_build_gallery_data_from_entity_field($items, $settings, $entit
   // Allow other modules to alter the data we are using to build the gallery.
   $source_info = array('xml_path' => $xml_path, 'source' => $entity);
   drupal_alter('juicebox_gallery_data', $data, $settings, $source_info);
+  // Make sure all Juicebox library configuration keys are lowercase to make
+  // future key lookups easier.
+  $data['jlib_options'] = array_change_key_case($data['jlib_options']);
   return $data;
 }
 
@@ -841,16 +847,21 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
       $display_name = $display_key;
     }
   }
-  // Generate a unique ID that can be used to identify this entity when
-  // fetching the XML.
-  $xml_id_path = 'entity/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . $display_name;
+  // Generate a unique ID that can be used to identify this gallery and field
+  // source details.
+  $xml_id = 'entity/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . $display_name;
+  $xml_path = 'juicebox/xml/' . $xml_id;
+  // Calculate the data that will ultimately be used to render the gallery XML.
+  // We won't officially generate the XML until the Juicebox javascript requests
+  // it, but we will still need the related data within parts of the embed code.
+  $gallery_data = juicebox_build_gallery_data_from_entity_field($items, $settings, $entity, $xml_path);
   // Build the render array for the embed markup.
   $element[0] = array(
     '#theme' => 'juicebox_embed_markup',
-    '#gallery_id' => str_replace('/', '-', $xml_id_path),
-    '#gallery_xml_path' => url('juicebox/xml/' . $xml_id_path),
+    '#gallery_id' => str_replace('/', '-', $xml_id),
+    '#gallery_xml_path' => url($xml_path),
     '#settings' => $settings,
-    '#data' => array(), // This is a placeholder
+    '#data' => $gallery_data,
   );
   return $element;
 }

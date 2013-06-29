@@ -178,12 +178,13 @@ class juicebox_style_plugin extends views_plugin_style {
    */
   function render() {
     $view = $this->view;
-    // Generate a unique ID that can be used to identify this view when
-    // fetching the XML
-    $xml_id_path = 'view/' . $view->name . '/' . $view->current_display;
+    // Generate a unique ID that can be used to identify this gallery and view
+    // source details.
+    $xml_id = 'view/' . $view->name . '/' . $view->current_display;
     foreach ($view->args as $arg) {
-      $xml_id_path .= '/' . $arg;
+      $xml_id .= '/' . $arg;
     }
+    $xml_path = 'juicebox/xml/' . $xml_id;
     // If we are previewing the view in the admin interface all the necessary
     // <script> elements in our embed markup seem to get stripped. This means
     // that the preview cannot render and so there is no point in loading the
@@ -200,12 +201,17 @@ class juicebox_style_plugin extends views_plugin_style {
     }
     // Initialize the "settings" values before working with them. This is
     // required for legacy support.
-    $settings = _juicebox_init_display_settings($view->style_plugin->options);
+    $view->style_plugin->options = _juicebox_init_display_settings($view->style_plugin->options);
+    // Calculate the data that will ultimately be used to render the gallery
+    // XML. We won't officially generate the XML until the Juicebox javascript
+    // requests it, but we will still need the related data within parts of the
+    // embed code.
+    $gallery_data = juicebox_build_gallery_data_from_view($view, $xml_path);
     // Set template variables for embed markup.
-    $variables['gallery_id'] = str_replace('/', '-', $xml_id_path);
-    $variables['gallery_xml_path'] = url('juicebox/xml/' . $xml_id_path);
-    $variables['settings'] = $settings;
-    $variables['data'] = array(); // This is a placeholder
+    $variables['gallery_id'] = str_replace('/', '-', $xml_id);
+    $variables['gallery_xml_path'] = url($xml_path);
+    $variables['settings'] = $view->style_plugin->options;
+    $variables['data'] = $gallery_data;
     return theme('juicebox_embed_markup', $variables);
   }
 }
