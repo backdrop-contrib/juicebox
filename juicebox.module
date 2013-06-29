@@ -377,9 +377,9 @@ function juicebox_render_gallery_xml($data) {
   }
   foreach ($data['images'] as $image) {
     $juicebox_image = $juicebox->appendChild($dom->createElement('image'));
-    $juicebox_image->setAttribute('imageURL', htmlspecialchars($image['image_src'], ENT_NOQUOTES, 'UTF-8'));
-    $juicebox_image->setAttribute('thumbURL', htmlspecialchars($image['thumb_src'], ENT_NOQUOTES, 'UTF-8'));
-    $juicebox_image->setAttribute('linkURL', htmlspecialchars($image['image_link_src'], ENT_NOQUOTES, 'UTF-8'));
+    $juicebox_image->setAttribute('imageURL',$image['image_src']);
+    $juicebox_image->setAttribute('thumbURL', $image['thumb_src']);
+    $juicebox_image->setAttribute('linkURL', $image['image_link_src']);
     $juicebox_image->setAttribute('linkTarget', $image['linkurl_target']);
     $juicebox_image_title = $juicebox_image->appendChild($dom->createElement('title'));
     $juicebox_image_title->appendChild($dom->createCDATASection($image['title']));
@@ -855,11 +855,14 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   // We won't officially generate the XML until the Juicebox javascript requests
   // it, but we will still need the related data within parts of the embed code.
   $gallery_data = juicebox_build_gallery_data_from_entity_field($items, $settings, $entity, $xml_path);
+  // Get a checksum for the gallery data. This can be useful for invalidating
+  // any old caches of this data. Note json_encode() is faster than serialize().
+  $gallery_checksum = md5(json_encode($gallery_data));
   // Build the render array for the embed markup.
   $element[0] = array(
     '#theme' => 'juicebox_embed_markup',
     '#gallery_id' => str_replace('/', '-', $xml_id),
-    '#gallery_xml_path' => url($xml_path),
+    '#gallery_xml_path' => url($xml_path, array('query' => array('checksum' => $gallery_checksum))),
     '#settings' => $settings,
     '#data' => $gallery_data,
   );
