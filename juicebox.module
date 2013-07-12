@@ -89,7 +89,7 @@ function juicebox_views_api() {
 function juicebox_page_xml() {
   $got_result = FALSE;
   // We don't always know exactly how many args are being passed, so we have to
-  // fetch them programmatically with func_get_args()
+  // fetch them programmatically with func_get_args().
   $args = func_get_args();
 
   // If this XML request is related to a view, we first have to re-construct the
@@ -99,34 +99,23 @@ function juicebox_page_xml() {
     $view_name = $args[1];
     $view_display = $args[2];
     // The view arguments are what remains after the first 3 entries are
-    // removed from $args
+    // removed from $args.
     $view_args = array_slice($args, 3);
     // Load the view.
     $view = views_get_view($view_name);
     if ($view) {
-      // set active display on the view
-      $view->set_display($view_display);
-      // set any needed arguments
-      $view->set_arguments($view_args);
-      // execute the view
-      $view->execute();
-      if ($view->executed) {
-        // Check that this user actually has access to the view we are building
-        // the XML for. Kill callback with "access denied" if not.
-        if (!$view->access($view_display)) {
-          return MENU_ACCESS_DENIED;
-        }
-        // Initialize the "settings" values before working with them. This is
-        // required for legacy support.
-        $view->style_plugin->options = _juicebox_init_display_settings($view->style_plugin->options);
-        // Build the Juicebox gallery data.
-        $xml_path = current_path();
-        $data = juicebox_build_gallery_data_from_view($view, $xml_path);
-        if (!empty($data)) {
-          // Render the Juicebox XML.
-          $xml = juicebox_render_gallery_xml($data);
-          $got_result = TRUE;
-        }
+      // Check that this user actually has access to the view we are building
+      // the XML for. Kill callback with "access denied" if not.
+      if (!$view->access($view_display)) {
+        return MENU_ACCESS_DENIED;
+      }
+      // Render the view. This will calculate our gallery-specific data
+      // during the style plugin's render() method.
+      $view->preview($view_display, $view_args);
+      if (!empty($view->juicebox_gallery_data)) {
+        // Render the Juicebox XML.
+        $xml = juicebox_render_gallery_xml($view->juicebox_gallery_data);
+        $got_result = TRUE;
       }
     }
   }
@@ -213,6 +202,8 @@ function juicebox_page_xml() {
 function juicebox_build_gallery_data_from_view($view, $xml_path) {
   $images = array();
   $settings = $view->style_plugin->options;
+  // Get rendered field data that's not available in $view->result
+  $rendered_fields = $view->style_plugin->render_fields($view->result);
   foreach ($view->result as $row_index => $row) {
     // First make sure that we have image field data to work with. This prevents
     // php errors from coming up if the user has not yet configured their
@@ -220,8 +211,8 @@ function juicebox_build_gallery_data_from_view($view, $xml_path) {
     $field_image_name = "field_{$settings['image_field']}";
     $field_thumb_name = "field_{$settings['thumb_field']}";
     if (!empty($row->{$field_image_name}[0]['raw']['uri']) && !empty($row->{$field_thumb_name}[0]['raw']['uri'])) {
-      // Get the main image sources. Note that the image link source should always
-      // point to the highest resolution version that's available.
+      // Get the main image sources. Note that the image link source should 
+      // always point to the highest resolution version that's available.
       $field_image_uri = $row->{$field_image_name}[0]['raw']['uri'];
       if (!empty($settings['image_field_style'])) {
         $image_src = image_style_url($settings['image_field_style'], $field_image_uri);
@@ -242,18 +233,18 @@ function juicebox_build_gallery_data_from_view($view, $xml_path) {
       else {
         $thumb_src = file_create_url($field_image_uri);
       }
-      // We use $view->render_field in the code below to provide an easy way
-      // to get the raw rendered output for each individual non-image field. This
-      // gives us a consistent result no matter what the field type is. However,
-      // there may more efficient ways to do this (sans a "render" call). For now
-      // while using $view->render_field, note that we have to be sure that the
-      // CURRENT row index is set on the main view object, otherwise rendering
-      // errors may result in certain situations.
-      $view->row_index = $row_index;
-      $title = $view->render_field($settings['title_field'], $row_index);
-      $caption = $view->render_field($settings['caption_field'], $row_index);
-      if (!empty($settings['linkurl_field'])) {
-        $image_link_src = $view->render_field($settings['linkurl_field'], $row_index);
+      // Get the other gallery information (title, caption, etc.) from the
+      // rendered view field data.
+      $title = '';
+      $caption = '';
+      if (!empty($settings['title_field']) && !empty($rendered_fields[$row_index][$settings['title_field']])) {
+        $title = $rendered_fields[$row_index][$settings['title_field']];
+      }
+      if (!empty($settings['caption_field']) && !empty($rendered_fields[$row_index][$settings['caption_field']])) {
+        $caption = $rendered_fields[$row_index][$settings['caption_field']];
+      }
+      if (!empty($settings['linkurl_field']) && !empty($rendered_fields[$row_index][$settings['linkurl_field']])) {
+        $image_link_src = $rendered_fields[$row_index][$settings['linkurl_field']];
       }
       // Add each image to the data.
       $images[$row_index]['image_src'] = $image_src;
@@ -858,11 +849,14 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   // Get a checksum for the gallery data. This can be useful for invalidating
   // any old caches of this data. Note json_encode() is faster than serialize().
   $gallery_checksum = md5(json_encode($gallery_data));
+  // Construct the query parameters that should be added to the XML path. Be
+  // sure to retain any currently active query parameters.
+  $query = array_merge(array('checksum' => $gallery_checksum), drupal_get_query_parameters());
   // Build the render array for the embed markup.
   $element[0] = array(
     '#theme' => 'juicebox_embed_markup',
     '#gallery_id' => str_replace('/', '-', $xml_id),
-    '#gallery_xml_path' => url($xml_path, array('query' => array('checksum' => $gallery_checksum))),
+    '#gallery_xml_path' => url($xml_path, array('query' => $query)),
     '#settings' => $settings,
     '#data' => $gallery_data,
   );

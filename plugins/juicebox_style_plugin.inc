@@ -206,16 +206,19 @@ class juicebox_style_plugin extends views_plugin_style {
     // XML. We won't officially generate the XML until the Juicebox javascript
     // requests it, but we will still need the related data within parts of the
     // embed code.
-    $gallery_data = juicebox_build_gallery_data_from_view($view, $xml_path);
+    $view->juicebox_gallery_data = juicebox_build_gallery_data_from_view($view, $xml_path);
     // Get a checksum for the gallery data. This can be useful for invalidating
     // any old caches of this data. Note json_encode() is faster than
     // serialize().
-    $gallery_checksum = md5(json_encode($gallery_data));
+    $gallery_checksum = md5(json_encode($view->juicebox_gallery_data));
+    // Construct the query parameters that should be added to the XML path. Be
+    // sure to retain any currently active query parameters.
+    $query = array_merge(array('checksum' => $gallery_checksum), drupal_get_query_parameters());
     // Set template variables for embed markup.
     $variables['gallery_id'] = str_replace('/', '-', $xml_id);
-    $variables['gallery_xml_path'] = url($xml_path, array('query' => array('checksum' => $gallery_checksum)));
+    $variables['gallery_xml_path'] = url($xml_path, array('query' => $query));
     $variables['settings'] = $view->style_plugin->options;
-    $variables['data'] = $gallery_data;
+    $variables['data'] = $view->juicebox_gallery_data;
     return theme('juicebox_embed_markup', $variables);
   }
 }
