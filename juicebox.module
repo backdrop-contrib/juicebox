@@ -211,19 +211,14 @@ function juicebox_build_gallery_data_from_view($view, $xml_path) {
     $field_image_name = "field_{$settings['image_field']}";
     $field_thumb_name = "field_{$settings['thumb_field']}";
     if (!empty($row->{$field_image_name}[0]['raw']['uri']) && !empty($row->{$field_thumb_name}[0]['raw']['uri'])) {
-      // Get the main image sources. Note that the image link source should 
-      // always point to the highest resolution version that's available.
+      // Get the main image sources.
       $field_image_uri = $row->{$field_image_name}[0]['raw']['uri'];
+      $unstyled_image_src = file_create_url($field_image_uri);
       if (!empty($settings['image_field_style'])) {
         $image_src = image_style_url($settings['image_field_style'], $field_image_uri);
-        // This calculation is only needed if no custom linkURL field is set.
-        if (empty($settings['linkurl_field'])) {
-          $image_link_src = file_create_url($field_image_uri);
-        }
       }
       else {
-        $image_src = file_create_url($field_image_uri);
-        $image_link_src = $image_src;
+        $image_src = $unstyled_image_src;
       }
       // Get the thumbnail source
       $field_thumb_uri = $row->{$field_thumb_name}[0]['raw']['uri'];
@@ -233,18 +228,25 @@ function juicebox_build_gallery_data_from_view($view, $xml_path) {
       else {
         $thumb_src = file_create_url($field_image_uri);
       }
-      // Get the other gallery information (title, caption, etc.) from the
-      // rendered view field data.
+      // Get the image title.
       $title = '';
-      $caption = '';
       if (!empty($settings['title_field']) && !empty($rendered_fields[$row_index][$settings['title_field']])) {
         $title = $rendered_fields[$row_index][$settings['title_field']];
       }
+      // Get the image caption.
+      $caption = '';
       if (!empty($settings['caption_field']) && !empty($rendered_fields[$row_index][$settings['caption_field']])) {
         $caption = $rendered_fields[$row_index][$settings['caption_field']];
       }
-      if (!empty($settings['linkurl_field']) && !empty($rendered_fields[$row_index][$settings['linkurl_field']])) {
-        $image_link_src = $rendered_fields[$row_index][$settings['linkurl_field']];
+      // Get the linkURL.
+      $image_link_src = $unstyled_image_src;
+      if (!empty($settings['linkurl_source'])) {
+        if ($settings['linkurl_source'] == 'image_styled') {
+          $image_link_src = $image_src;
+        }
+        elseif (!empty($rendered_fields[$row_index][$settings['linkurl_source']])) {
+          $image_link_src = $rendered_fields[$row_index][$settings['linkurl_source']];
+        }
       }
       // Add each image to the data.
       $images[$row_index]['image_src'] = $image_src;
@@ -294,32 +296,35 @@ function juicebox_build_gallery_data_from_entity_field($items, $settings, $entit
   // Prepare images
   $images = array();
   foreach ($items as $id => $item) {
-    // Get the main image sources. Note that the image link source should always
-    // point to the highest resolution version that's available.
+    // Get the main image sources.
+    $unstyled_image_src = file_create_url($item['uri']);
     if (!empty($settings['image_style'])) {
       $image_src = image_style_url($settings['image_style'], $item['uri']);
-      $image_link_src = file_create_url($item['uri']);
     }
     else {
       $image_src = file_create_url($item['uri']);
-      $image_link_src = $image_src;
     }
-    // Get thumb source
+    // Get thumb source.
     if (!empty($settings['thumb_style'])) {
       $thumb_src = image_style_url($settings['thumb_style'], $item['uri']);
     }
     else {
       $thumb_src = file_create_url($item['uri']);
     }
+    // Get the image title.
+    $title = '';
+    if (!empty($item[$settings['title_source']])) {
+      $title = check_plain($item[$settings['title_source']]);
+    }
     // Get the image caption.
     $caption = '';
     if (!empty($item[$settings['caption_source']])) {
       $caption = check_plain($item[$settings['caption_source']]);
     }
-    // Get the image title.
-    $title = '';
-    if (!empty($item[$settings['title_source']])) {
-      $title = check_plain($item[$settings['title_source']]);
+    // Get the linkURL.
+    $image_link_src = $unstyled_image_src;
+    if (!empty($settings['linkurl_source'])) {
+      $image_link_src = $image_src;
     }
     // Add each image to the data.
     $images[$id]['image_src'] = $image_src;
@@ -466,6 +471,9 @@ function _juicebox_init_display_settings($settings) {
   }
   if (!empty($settings['advanced']['custom_parent_classes'])) {
     $settings['custom_parent_classes'] = $settings['advanced']['custom_parent_classes'];
+  }
+  if (!empty($settings['linkurl_field'])) {
+    $settings['linkurl_source'] = $settings['linkurl_field'];
   }
   return $settings;
 }
@@ -661,14 +669,22 @@ function _juicebox_common_form_elements($form, $settings, $parents_root) {
     '#collapsed' => TRUE,
     '#weight' => 30,
   );
+  $form['advanced']['linkurl_source'] = array(
+    '#type' => 'select',
+    '#title' => t("LinkURL Source"),
+    '#default_value' => $settings['linkurl_source'],
+    '#description' => t('The linkURL is an image-specific path for accessing each image externally to the gallery. This is used by features such as the "Open Image Button".'),
+    '#options' => array('image_styled' => 'Main Image - Styled (use this gallery\'s main image style setting)'),
+    '#empty_option' => t('Main Image - Unstyled (original image)'),
+    '#parents' => array_merge($parents_root, array('linkurl_source')),
+  );
   $form['advanced']['linkurl_target'] = array(
     '#type' => 'select',
     '#title' => t('LinkURL Target'),
     '#options' => array('_blank' => '_blank', '_self' => '_self', '_parent' => '_parent', '_top' => '_top'),
     '#default_value' => $settings['linkurl_target'],
-    '#description' => t('Some Juicebox settings make use of a linkURL parameter (such as the "Show Open Button"). Here you can specify a target for the resulting link.'),
+    '#description' => t('Specify a target for any links that make user of the image linkURL.'),
     '#parents' => array_merge($parents_root, array('linkurl_target')),
-    '#weight' => 10,
   );
   $form['advanced']['custom_parent_classes'] = array(
     '#type' => 'textfield',
@@ -676,7 +692,6 @@ function _juicebox_common_form_elements($form, $settings, $parents_root) {
     '#default_value' => $settings['custom_parent_classes'],
     '#description' => t('Define any custom classes that should be added to the parent container within the Juicebox embed markup.<br/>This can be handy if you want to apply more advanced styling or dimensioning rules to this gallery via CSS. Enter as space-separated values.'),
     '#parents' => array_merge($parents_root, array('custom_parent_classes')),
-    '#weight' => 30,
   );
   return $form;
 }
@@ -743,6 +758,7 @@ function juicebox_field_formatter_info() {
         'jlib_useFullscreenExpand' => 0,
         'manual_config' => '',
         'custom_parent_classes' => '',
+        'linkurl_source' => '',
         'linkurl_target' => '_blank',
       ),
     ),

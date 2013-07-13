@@ -39,7 +39,7 @@ class juicebox_style_plugin extends views_plugin_style {
       'jlib_useFullscreenExpand' => array('default' => 0),
       'manual_config' => array('default' => ''),
       'custom_parent_classes' => array('default' => ''),
-      'linkurl_field' => array('default' => ''),
+      'linkurl_source' => array('default' => ''),
       'linkurl_target' => array('default' => '_blank'),
     );
     return $options;
@@ -136,16 +136,13 @@ class juicebox_style_plugin extends views_plugin_style {
       '#default_value' => $settings['show_title'],
       '#description' => t('Show the view display title as the gallery title (leave unchecked to display no gallery title).'),
     );
-    $form['advanced']['linkurl_field'] = array(
-      '#type' => 'select',
-      '#title' => t("LinkURL Field"),
-      '#default_value' => $settings['linkurl_field'],
-      '#description' => t("By default the Juicebox linkURL parameter is set to the path of each image file, but you can specify an alternative URL source from one of the view's fields. <strong>The selected field must render a properly formatted URL and nothing else</strong>."),
-      '#options' => $field_options,
-      '#empty_option' => t('None (link to image)'),
-      '#parents' => array_merge($parents_root, array('linkurl_field')),
-      '#weight' => 20,
-    );
+    // Add view-sepcific field options for the linkURL setting.
+    $linkurl_field_options = array();
+    foreach ($field_options as $field_key => $field_name) {
+      $linkurl_field_options[$field_key] = t('Field') . ' - ' . $field_name;
+    }
+    $form['advanced']['linkurl_source']['#description'] = $form['advanced']['linkurl_source']['#description'] . '</br><strong>' . t('If using a field for this source the field must render a properly formatted URL and nothing else.') . '</strong>';
+    $form['advanced']['linkurl_source']['#options'] = array_merge($form['advanced']['linkurl_source']['#options'], $linkurl_field_options);
   }
 
   /**
