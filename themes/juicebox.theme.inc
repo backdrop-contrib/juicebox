@@ -35,19 +35,32 @@ function theme_juicebox_embed_markup(&$variables) {
   
   // Also create a search engine friendly version of the gallery. This markup
   // will only be seen by crawlers and users with javascript disabled.
-  if (!(array_key_exists('addseocontent', $variables['data']['jlib_options']) && $variables['data']['jlib_options']['addseocontent'] == 'FALSE' )) {
+  $bypass_noscript = (array_key_exists('addseocontent', $variables['data']['jlib_options']) && $variables['data']['jlib_options']['addseocontent'] == 'FALSE');
+  if (!$bypass_noscript) {
     $output .= '<noscript>' . "\n";
     $output .= '<!-- Image gallery content for non-javascript devices -->' . "\n";
     if (array_key_exists('gallerytitle', $variables['data']['jlib_options'])) {
-      $output .= '<h1>' . strip_tags($variables['data']['jlib_options']['gallerytitle']) . '</h1>' . "\n";
+      $output .= '<div class="jb-name">' . $variables['data']['jlib_options']['gallerytitle'] . '</div>' . "\n";
     }
     if (array_key_exists('gallerydescription', $variables['data']['jlib_options'])) {
-      $output .= '<p>' . strip_tags($variables['data']['jlib_options']['gallerydescription']) . '</p>' . "\n";
+      $output .= '<div class="jb-description">' . $variables['data']['jlib_options']['gallerydescription'] . '</div>' . "\n";
     }
     foreach ($variables['data']['images'] as $image) {
-      $title = !empty($image['title']) ? $image['title'] : '';
-      $caption = !empty($image['caption']) ? $image['caption'] : '';
-      $output .= '<div class="juicebox-noscript-image"><img src="' . $image['image_src'] . '" title="' . strip_tags($title) . '" alt="' . strip_tags($caption) . '"/><br/>' . $title . '<br/>' . $caption . '</div>' . "\n";
+      $img_vars = array();
+      $img_vars['path'] = $image['image_src'];
+      // Note that the title and caption are filtered/sanitized already, but
+      // when using them in attributes we need to force plain text.
+      $title = '';
+      if (!empty($image['title'])) {
+        $title = '<div class="jb-title">' . $image['title'] . '</div>';
+        $img_vars['title'] = check_plain($image['title']);
+      }
+      $caption = '';
+      if (!empty($image['caption'])) {
+        $caption = '<div class="jb-caption">' . $image['caption'] . '</div>';
+        $img_vars['alt'] = check_plain($image['caption']);
+      }
+      $output .= '<div class="jb-image">' . theme('image', $img_vars) . $title . $caption . '</div>' . "\n";
     }
     $output .= '</noscript>' . "\n";
   }
