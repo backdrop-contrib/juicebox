@@ -226,7 +226,7 @@ function juicebox_build_gallery_data_from_view($view, $xml_path) {
         $thumb_src = image_style_url($settings['thumb_field_style'], $field_thumb_uri);
       }
       else {
-        $thumb_src = file_create_url($field_image_uri);
+        $thumb_src = $unstyled_image_src;
       }
       // Get the image title.
       $title = '';
@@ -302,24 +302,24 @@ function juicebox_build_gallery_data_from_entity_field($items, $settings, $entit
       $image_src = image_style_url($settings['image_style'], $item['uri']);
     }
     else {
-      $image_src = file_create_url($item['uri']);
+      $image_src = $unstyled_image_src;
     }
     // Get thumb source.
     if (!empty($settings['thumb_style'])) {
       $thumb_src = image_style_url($settings['thumb_style'], $item['uri']);
     }
     else {
-      $thumb_src = file_create_url($item['uri']);
+      $thumb_src = $unstyled_image_src;
     }
     // Get the image title.
     $title = '';
     if (!empty($item[$settings['title_source']])) {
-      $title = check_plain($item[$settings['title_source']]);
+      $title = check_markup($item[$settings['title_source']]);
     }
     // Get the image caption.
     $caption = '';
     if (!empty($item[$settings['caption_source']])) {
-      $caption = check_plain($item[$settings['caption_source']]);
+      $caption = check_markup($item[$settings['caption_source']]);
     }
     // Get the linkURL.
     $image_link_src = $unstyled_image_src;
@@ -373,7 +373,7 @@ function juicebox_render_gallery_xml($data) {
   }
   foreach ($data['images'] as $image) {
     $juicebox_image = $juicebox->appendChild($dom->createElement('image'));
-    $juicebox_image->setAttribute('imageURL',$image['image_src']);
+    $juicebox_image->setAttribute('imageURL', $image['image_src']);
     $juicebox_image->setAttribute('thumbURL', $image['thumb_src']);
     $juicebox_image->setAttribute('linkURL', $image['image_link_src']);
     $juicebox_image->setAttribute('linkTarget', $image['linkurl_target']);
@@ -414,21 +414,23 @@ function _juicebox_get_lib_options($settings) {
   }
   // Merge-in the manually assigned options making sure they take priority
   // over any conflicting GUI options.
-  $manual_options = explode("\n", filter_xss($settings['manual_config']));
+  $manual_options = explode("\n", $settings['manual_config']);
   foreach ($manual_options as $option) {
     $option = trim($option);
     if (!empty($option)) {
-      // We assume that each manual option has been properly validated to be in
-      // the form of optionName="optionValue".
-      list($name, $value) = explode('=', $option);
-      $name = trim(drupal_strtolower($name));
+      // Each manual option has only been validated (on input) to be in the form
+      // optionName="optionValue". Now we need split and sanitize the values.
+      $matches = array();
+      preg_match('/^([A-Za-z0-9]+?)="([^"]+?)"$/u', $option, $matches);
+      list($full_match, $name, $value) = $matches;
+      $name = drupal_strtolower($name);
       // See if the manual option is also a GUI option. If so, remove the GUI
       // option.
       $match = array_search($name, $custom_options);
       if ($match) {
         unset($custom_options[$match]);
       }
-      $custom_options[$name] = trim($value, '"');
+      $custom_options[$name] = check_plain($value);
     }
   }
   return $custom_options;
@@ -722,10 +724,8 @@ function _juicebox_element_validate_config($element, &$form_state, $form) {
   foreach ($custom_options as $key => $option) {
     $option = trim($option);
     $line_number = $key + 1;
-    if (!empty($option)) {
-      if (!preg_match('/^[A-Za-z0-9]+?="[^"]+?"$/u', $option)) {
-        form_error($element, t('One of your manual configuration options appears to be formatted incorrectly. Please check line @line of this field and ensure that you are using the format <strong>optionName="optionValue"</strong> and that all spaces have been removed.', array('@line' => $line_number)));
-      }
+    if (!empty($option) && !preg_match('/^[A-Za-z0-9]+?="[^"]+?"$/u', $option)) {
+      form_error($element, t('One of your manual configuration options appears to be formatted incorrectly. Please check line @line of this field and ensure that you are using the format <strong>optionName="optionValue"</strong> and that all spaces have been removed.', array('@line' => $line_number)));
     }
   }
 }

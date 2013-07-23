@@ -32,7 +32,7 @@ function theme_juicebox_embed_markup(&$variables) {
   }
   $output .= '<div class="juicebox-parent' . $custom_classes . '">' . "\n";
   $output .= '<div id="' . $variables['gallery_id'] . '" class="juicebox-container">' . "\n";
-  
+
   // Also create a search engine friendly version of the gallery. This markup
   // will only be seen by crawlers and users with javascript disabled.
   $bypass_noscript = (array_key_exists('addseocontent', $variables['data']['jlib_options']) && $variables['data']['jlib_options']['addseocontent'] == 'FALSE');
@@ -65,6 +65,6 @@ function theme_juicebox_embed_markup(&$variables) {
     $output .= '</noscript>' . "\n";
   }
   $output .= '</div></div>' . "\n";
-  
+
   return $output;
 }
