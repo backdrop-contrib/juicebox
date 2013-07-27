@@ -211,22 +211,18 @@ function juicebox_build_gallery_data_from_view($view, $xml_path) {
     $field_image_name = "field_{$settings['image_field']}";
     $field_thumb_name = "field_{$settings['thumb_field']}";
     if (!empty($row->{$field_image_name}[0]['raw']['uri']) && !empty($row->{$field_thumb_name}[0]['raw']['uri'])) {
-      // Get the main image sources.
       $field_image_uri = $row->{$field_image_name}[0]['raw']['uri'];
       $unstyled_image_src = file_create_url($field_image_uri);
+      // Get the main image source.
+      $image_src = $unstyled_image_src;
       if (!empty($settings['image_field_style'])) {
         $image_src = image_style_url($settings['image_field_style'], $field_image_uri);
       }
-      else {
-        $image_src = $unstyled_image_src;
-      }
-      // Get the thumbnail source
+      // Get the thumbnail source.
+      $thumb_src = $unstyled_image_src;
       $field_thumb_uri = $row->{$field_thumb_name}[0]['raw']['uri'];
       if (!empty($settings['thumb_field_style'])) {
         $thumb_src = image_style_url($settings['thumb_field_style'], $field_thumb_uri);
-      }
-      else {
-        $thumb_src = $unstyled_image_src;
       }
       // Get the image title.
       $title = '';
@@ -237,6 +233,11 @@ function juicebox_build_gallery_data_from_view($view, $xml_path) {
       $caption = '';
       if (!empty($settings['caption_field']) && !empty($rendered_fields[$row_index][$settings['caption_field']])) {
         $caption = $rendered_fields[$row_index][$settings['caption_field']];
+      }
+      // Filter the image title and caption markup.
+      if (!empty($settings['apply_markup_filter'])) {
+        $title = _juicebox_filter_markup($title);
+        $caption = _juicebox_filter_markup($caption);
       }
       // Get the linkURL.
       $image_link_src = $unstyled_image_src;
@@ -296,20 +297,16 @@ function juicebox_build_gallery_data_from_entity_field($items, $settings, $entit
   // Prepare images
   $images = array();
   foreach ($items as $id => $item) {
-    // Get the main image sources.
     $unstyled_image_src = file_create_url($item['uri']);
+    // Get the main image source.
+    $image_src = $unstyled_image_src;
     if (!empty($settings['image_style'])) {
       $image_src = image_style_url($settings['image_style'], $item['uri']);
     }
-    else {
-      $image_src = $unstyled_image_src;
-    }
     // Get thumb source.
+    $thumb_src = $unstyled_image_src;
     if (!empty($settings['thumb_style'])) {
       $thumb_src = image_style_url($settings['thumb_style'], $item['uri']);
-    }
-    else {
-      $thumb_src = $unstyled_image_src;
     }
     // Get the image title.
     $title = '';
@@ -320,6 +317,11 @@ function juicebox_build_gallery_data_from_entity_field($items, $settings, $entit
     $caption = '';
     if (!empty($item[$settings['caption_source']])) {
       $caption = check_markup($item[$settings['caption_source']]);
+    }
+    // Filter the image title and caption markup.
+    if (!empty($settings['apply_markup_filter'])) {
+      $title = _juicebox_filter_markup($title);
+      $caption = _juicebox_filter_markup($caption);
     }
     // Get the linkURL.
     $image_link_src = $unstyled_image_src;
@@ -492,7 +494,7 @@ function _juicebox_init_display_settings($settings) {
  *   actual numeric version statement. Returns boolean FALSE if the version
  *   number cannot be found.
  */
-function juicebox_parse_version_details($version_statement) {
+function _juicebox_parse_version_details($version_statement) {
   // Assume "Lite" if "Pro" text not found.
   $pro = FALSE;
   if (stripos($version_statement, "Pro") !== FALSE) {
@@ -542,7 +544,7 @@ function _juicebox_common_form_elements($form, $settings, $parents_root) {
   $notification_top = '';
   $notification_label = '';
   if ($library['installed']) {
-    $version_details = juicebox_parse_version_details($library['version']);
+    $version_details = _juicebox_parse_version_details($library['version']);
     if ($version_details) {
       // Some "Pro" features from 1.2 were enabled in the 1.3 "Lite" version.
       // Check if they are NOT supported and set messages if needed.
@@ -592,14 +594,14 @@ function _juicebox_common_form_elements($form, $settings, $parents_root) {
     '#type' => 'textfield',
     '#title' => t('Background Color'),
     '#default_value' => $settings['jlib_backgroundColor'],
-    '#description' => t('Gallery background color as a CSS3 color value (such as rgba(10,50,100,0.7) or #FF00FF).'),
+    '#description' => t('Set the gallery background color as a CSS3 color value (such as rgba(10,50,100,0.7) or #FF00FF).'),
     '#parents' => array_merge($parents_root, array('jlib_backgroundColor')),
   );
   $form['juicebox_config']['jlib_textColor'] = array(
     '#type' => 'textfield',
     '#title' => t('Text Color') . $notification_label,
     '#default_value' => $settings['jlib_textColor'],
-    '#description' => t('Color of all gallery text as a CSS3 color value (such as rgba(255,255,255,1) or #FF00FF).'),
+    '#description' => t('Set the color of all gallery text as a CSS3 color value (such as rgba(255,255,255,1) or #FF00FF).'),
     '#parents' => array_merge($parents_root, array('jlib_textColor')),
     '#disabled' => $one_dot_three ? FALSE : TRUE,
   );
@@ -607,7 +609,7 @@ function _juicebox_common_form_elements($form, $settings, $parents_root) {
     '#type' => 'textfield',
     '#title' => t('Thumbnail Frame Color') . $notification_label,
     '#default_value' => $settings['jlib_thumbFrameColor'],
-    '#description' => t('Color of the thumbnail frame as a CSS3 color value (such as rgba(255,255,255,.5) or #FF00FF).'),
+    '#description' => t('Set the color of the thumbnail frame as a CSS3 color value (such as rgba(255,255,255,.5) or #FF00FF).'),
     '#parents' => array_merge($parents_root, array('jlib_thumbFrameColor')),
     '#disabled' => $one_dot_three ? FALSE : TRUE,
   );
@@ -653,7 +655,7 @@ function _juicebox_common_form_elements($form, $settings, $parents_root) {
     '#title' => t('Juicebox Library - Pro / Manual Config'),
     '#collapsible' => TRUE,
     '#collapsed' => TRUE,
-    '#description' => '<p>' . t('Specify any additional Juicebox library configuration options (such as "Pro" options) here.<br/><strong>Options set here always take precedence over those set in the "Lite" options above if there is a conflict.</strong>') . '</p>',
+    '#description' => '<p>' . t('Specify any additional Juicebox library configuration options (such as "Pro" options) here.<br/>Options set here always take precedence over those set in the "Lite" options above if there is a conflict.') . '</p>',
     '#weight' => 20,
   );
   $form['juicebox_manual_config']['manual_config'] = array(
@@ -671,11 +673,18 @@ function _juicebox_common_form_elements($form, $settings, $parents_root) {
     '#collapsed' => TRUE,
     '#weight' => 30,
   );
+  $form['advanced']['apply_markup_filter'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Filter title and caption output for compatibility with Juicebox javascript (recommended)'),
+    '#default_value' => $settings['apply_markup_filter'],
+    '#description' => t('This option helps ensure title/caption output is syntactically compatible with the Juicebox javascript library by removing block-level tags.'),
+    '#parents' => array_merge($parents_root, array('apply_markup_filter')),
+  );
   $form['advanced']['linkurl_source'] = array(
     '#type' => 'select',
     '#title' => t("LinkURL Source"),
     '#default_value' => $settings['linkurl_source'],
-    '#description' => t('The linkURL is an image-specific path for accessing each image externally to the gallery. This is used by features such as the "Open Image Button".'),
+    '#description' => t('The linkURL is an image-specific path for accessing each image outside the gallery. This is used by features such as the "Open Image Button".'),
     '#options' => array('image_styled' => 'Main Image - Styled (use this gallery\'s main image style setting)'),
     '#empty_option' => t('Main Image - Unstyled (original image)'),
     '#parents' => array_merge($parents_root, array('linkurl_source')),
@@ -732,6 +741,33 @@ function _juicebox_element_validate_config($element, &$form_state, $form) {
 
 
 /**
+ * Filter markup for valid display in a Juicebox gallery.
+ *
+ * Some markup that validates fine via common Drupal text format filters will
+ * not be syntactically valid once rendered within Juicebox. This is because
+ * Juicebox will wrap titles and captions in block-level tags, like <p>, making
+ * any block-level elements they contain invalid. This filter accommodates for
+ * this and is meant to be applied AFTER any Drupal text formats.
+ * 
+ * @param string $markup
+ *   The markup to be filtered after it has been processed by Drupal's text
+ *   format rules.
+ * @return string
+ *   Valid filtered markup ready for display in a Juicebox gallery.
+ */
+function _juicebox_filter_markup($markup) {
+  // Set inline elements that are safe in a Juicebox gallery. References:
+  // http://www.htmlhelp.com/reference/html40/inline.html
+  // https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/HTML5/HTML5_element_list
+  $valid_elements = "<a><abbr><acronym><b><basefont><bdi><bdo><big><br><cite><code><data><del><dfn><em><font><i><img><ins><kbd><label><mark><q><rp><rt><ruby><s><samp><small><span><strike><strong><sub><sup><time><tt><u><var><wbr>";
+  $markup = strip_tags($markup, $valid_elements);
+  // Also remove newlines to keep the output concise.
+  $markup = str_replace(array("\r", "\n"), '', $markup);
+  return $markup;
+}
+
+
+/**
  * Implements hook_field_formatter_info().
  *
  * Add juicebox_formatter formatter.
@@ -758,6 +794,7 @@ function juicebox_field_formatter_info() {
         'jlib_useFullscreenExpand' => 0,
         'manual_config' => '',
         'custom_parent_classes' => '',
+        'apply_markup_filter' => 1,
         'linkurl_source' => '',
         'linkurl_target' => '_blank',
       ),
@@ -802,7 +839,7 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#type' => 'select',
     '#title' => t('Caption Source'),
     '#default_value' => $settings['caption_source'],
-    '#description' => t('The part of the image field data that should be used for the caption.'),
+    '#description' => t('The image field value that should be used for the caption. This value will be processed with your fallback text format.'),
     '#options' => array(
       'alt' => t('Alternate text'),
       'title' => t('Title'),
@@ -813,7 +850,7 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#type' => 'select',
     '#title' => t('Title Source'),
     '#default_value' => $settings['title_source'],
-    '#description' => t('The part of the image field data that should be used for the title.'),
+    '#description' => t('The image field value that should be used for the title. This value will be processed with your fallback text format.'),
     '#options' => array(
       'alt' => t('Alternate text'),
       'title' => t('Title'),

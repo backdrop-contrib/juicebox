@@ -40,27 +40,23 @@ function theme_juicebox_embed_markup(&$variables) {
     $output .= '<noscript>' . "\n";
     $output .= '<!-- Image gallery content for non-javascript devices -->' . "\n";
     if (array_key_exists('gallerytitle', $variables['data']['jlib_options'])) {
-      $output .= '<div class="jb-name">' . $variables['data']['jlib_options']['gallerytitle'] . '</div>' . "\n";
+      $output .= '<h1 class="jb-name">' . $variables['data']['jlib_options']['gallerytitle'] . '</h1>' . "\n";
     }
     if (array_key_exists('gallerydescription', $variables['data']['jlib_options'])) {
-      $output .= '<div class="jb-description">' . $variables['data']['jlib_options']['gallerydescription'] . '</div>' . "\n";
+      $output .= '<p class="jb-description">' . $variables['data']['jlib_options']['gallerydescription'] . '</p>' . "\n";
     }
     foreach ($variables['data']['images'] as $image) {
       $img_vars = array();
       $img_vars['path'] = $image['image_src'];
-      // Note that the title and caption are filtered/sanitized already, but
-      // when using them in attributes we need to force plain text.
-      $title = '';
       if (!empty($image['title'])) {
-        $title = '<div class="jb-title">' . $image['title'] . '</div>';
-        $img_vars['title'] = check_plain($image['title']);
+        $img_vars['title'] = $image['title'];
+        $image['title'] = '<span class="jb-title">' . $image['title'] . '</span><br/>';
       }
-      $caption = '';
       if (!empty($image['caption'])) {
-        $caption = '<div class="jb-caption">' . $image['caption'] . '</div>';
-        $img_vars['alt'] = check_plain($image['caption']);
+        $img_vars['alt'] = $image['caption'];
+        $image['caption'] = '<span class="jb-caption">' . $image['caption'] . '</span>';
       }
-      $output .= '<div class="jb-image">' . theme('image', $img_vars) . $title . $caption . '</div>' . "\n";
+      $output .= '<p class="jb-image">' . theme('image', $img_vars) . '<br/>' . $image['title'] . $image['caption'] . '</p>' . "\n";
     }
     $output .= '</noscript>' . "\n";
   }
