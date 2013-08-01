@@ -16,7 +16,7 @@ function juicebox_menu() {
   // specific view or entity field.
   $items['juicebox/xml/%'] = array(
     'title' => 'Juicebox XML from view',
-    'description' => '',
+    'description' => 'Deliver configuration XML for a Juicebox gallery.',
     'page callback' => 'juicebox_page_xml',
     'page arguments' => array(2),
     // For efficiency we'll check access in parallel to other logic in the
@@ -133,36 +133,36 @@ function juicebox_page_xml() {
     $entities = entity_load($entity_type, array($entity_id));
     if (isset($entities[$entity_id])) {
       $entity = $entities[$entity_id];
-      // Check that this user actually has access to the field we are building
-      // the XML for. Kill callback with "access denied" if not.
-      if (!field_access('view', $field_name, $entity_type, $entity)) {
-        return MENU_ACCESS_DENIED;
+      // Get the bundle details.
+      $info = entity_get_info($entity_type);
+      if (empty($info['entity keys']['bundle'])) {
+        $bundle = $entity_type;
       }
-      $items = field_get_items($entity_type, $entity, $field_name);
-      if ($items) {
-        // Get the bundle details.
-        $info = entity_get_info($entity_type);
-        if (empty($info['entity keys']['bundle'])) {
-          $bundle = $entity_type;
+      else {
+        $bundle = $entity->{$info['entity keys']['bundle']};
+      }
+      // Get the instance and display details.
+      $instance = field_info_instance($entity_type, $field_name, $bundle);
+      if (!empty($instance['display'])) {
+        $settings = $instance['display']['default']['settings'];
+        if (isset($instance['display'][$display_name]['settings'])) {
+          $settings = $instance['display'][$display_name]['settings'];
         }
-        else {
-          $bundle = $entity->{$info['entity keys']['bundle']};
+        // Build the field. We don't actually need a fully built field (we just
+        // need the raw items) but building easily triggers all field hooks.
+        $built_field = field_view_field($entity_type, $entity, $field_name, $instance['display']);
+        // Check that this user has access this specific field.
+        if (empty($built_field['#access'])) {
+          return MENU_ACCESS_DENIED;
         }
-        // Get the instance and display details.
-        $instance_info = field_info_instance($entity_type, $field_name, $bundle);
-        if (!empty($instance_info['display'])) {
-          // Try to get the specific display settings. Initially assume the
-          // default display settings.
-          $settings = $instance_info['display']['default']['settings'];
-          if (isset($instance_info['display'][$display_name]['settings'])) {
-            $settings = $instance_info['display'][$display_name]['settings'];
-          }
+        // If we have items proceed building the Juicebox XML data.
+        if (!empty($built_field['#items'])) {
           // Initialize the "settings" values before working with them. This is
           // required for legacy support.
           $settings = _juicebox_init_display_settings($settings);
           // Build the Juicebox gallery data.
           $xml_path = current_path();
-          $data = juicebox_build_gallery_data_from_entity_field($items, $settings, $entity, $xml_path);
+          $data = juicebox_build_gallery_data_from_entity_field($built_field['#items'], $settings, $entity, $xml_path);
           if (!empty($data)) {
             // Render the Juicebox XML.
             $xml = juicebox_render_gallery_xml($data);
