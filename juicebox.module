@@ -148,18 +148,19 @@ function juicebox_page_xml() {
         if (isset($instance['display'][$display_name]['settings'])) {
           $settings = $instance['display'][$display_name]['settings'];
         }
+        // Initialize the "settings" values before working with them. This is
+        // required for legacy support.
+        $settings = _juicebox_init_display_settings($settings);
         // Build the field. We don't actually need a fully built field (we just
         // need the raw items) but building easily triggers all field hooks.
         $built_field = field_view_field($entity_type, $entity, $field_name, $instance['display']);
-        // Check that this user has access this specific field.
-        if (empty($built_field['#access'])) {
+        // Check that this user has access. We need to check both field-level
+        // and entity-level access.
+        if (empty($built_field['#access']) || !_juicebox_check_entity_view_access($entity_type, $entity)) {
           return MENU_ACCESS_DENIED;
         }
         // If we have items proceed building the Juicebox XML data.
         if (!empty($built_field['#items'])) {
-          // Initialize the "settings" values before working with them. This is
-          // required for legacy support.
-          $settings = _juicebox_init_display_settings($settings);
           // Build the Juicebox gallery data.
           $xml_path = current_path();
           $data = juicebox_build_gallery_data_from_entity_field($built_field['#items'], $settings, $entity, $xml_path);
@@ -385,6 +386,38 @@ function juicebox_render_gallery_xml($data) {
     $juicebox_image_caption->appendChild($dom->createCDATASection($image['caption']));
   }
   return $dom->saveXML();
+}
+
+
+/**
+ * Check view access for an arbitrary entity that contains a Juicebox gallery.
+ *
+ * @param string $entity_type
+ *   The type of entity being checked (e.g. "node").
+ * @param object $entity
+ *   The full entity object that the Juicebox gallery field is attached to.
+ * @return boolean
+ *   Returns TRUE if view access is allowed for the current user or FALSE if
+ *   not. If access cannot be confirmed, returns NULL.
+ */
+function _juicebox_check_entity_view_access($entity_type, $entity) {
+  // If the Entity API module is installed we can use entity_access() to check
+  // access for numerous entity types via their access callbacks. All core
+  // entities, and many custom ones, can be handled here.
+  if (module_exists('entity')) {
+    return entity_access('view', $entity_type, $entity);
+  }
+  // If we can't do a check with entity_access() we only maintain checks for a
+  // couple popular core entity types that provide thier own explicit access
+  // functions.
+  switch ($entity_type) {
+    case 'node':
+      return node_access('view', $entity);
+    case 'user':
+      return user_view_access($entity);
+  }
+  // Log a warning and return NULL if we can't do a conclusive check.
+  watchdog('juicebox', 'Could not verify view access for entity type %type while building Juicebox XML. This may have resulted in a broken gallery display. You may be able to remove this error by installing the Entity API module and ensuring that an access callback exists for entities of type %type.', array('%type' => $entity_type), WATCHDOG_ERROR);
 }
 
 
@@ -748,7 +781,7 @@ function _juicebox_element_validate_config($element, &$form_state, $form) {
  * Juicebox will wrap titles and captions in block-level tags, like <p>, making
  * any block-level elements they contain invalid. This filter accommodates for
  * this and is meant to be applied AFTER any Drupal text formats.
- * 
+ *
  * @param string $markup
  *   The markup to be filtered after it has been processed by Drupal's text
  *   format rules.
