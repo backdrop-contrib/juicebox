@@ -176,8 +176,8 @@ function juicebox_page_xml() {
 
   // If we did not get any XML result take any special actions needed.
   if (!$got_result) {
-    // Make it clear to Juicebox that we don't have any XML to give it.
-    drupal_add_http_header('Status', '404 Not Found');
+    // Make it clear that we don't have any XML to send.
+    return MENU_NOT_FOUND;
   }
   else {
     drupal_add_http_header('Content-Type', 'text/xml');
@@ -209,8 +209,8 @@ function juicebox_build_gallery_data_from_view($view, $xml_path) {
     // First make sure that we have image field data to work with. This prevents
     // php errors from coming up if the user has not yet configured their
     // view page display or if the view lists items that don't contain an image.
-    $field_image_name = "field_{$settings['image_field']}";
-    $field_thumb_name = "field_{$settings['thumb_field']}";
+    $field_image_name = 'field_' . $settings['image_field'];
+    $field_thumb_name = 'field_' . $settings['thumb_field'];
     if (!empty($row->{$field_image_name}[0]['raw']['uri']) && !empty($row->{$field_thumb_name}[0]['raw']['uri'])) {
       $field_image_uri = $row->{$field_image_name}[0]['raw']['uri'];
       $unstyled_image_src = file_create_url($field_image_uri);
@@ -524,8 +524,8 @@ function _juicebox_init_display_settings($settings) {
  * @return array
  *   Associative array containing parsed chunks of the version statement
  *   including a 'pro' boolean indicating the Pro version and 'number' with the
- *   actual numeric version statement. Returns boolean FALSE if the version
- *   number cannot be found.
+ *   actual numeric version statement. Returns an empty array if the version
+ *   info cannot be found.
  */
 function _juicebox_parse_version_details($version_statement) {
   // Assume "Lite" if "Pro" text not found.
@@ -541,7 +541,7 @@ function _juicebox_parse_version_details($version_statement) {
     $number = $matches[0];
     return array('pro' => $pro, 'number' => $number);
   }
-  return FALSE;
+  return array();
 }
 
 
