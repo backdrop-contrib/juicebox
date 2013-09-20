@@ -283,7 +283,7 @@ function juicebox_build_gallery_data_from_view($view, $xml_path) {
  *   A list of image items from an image field that is part of an entity. This
  *   will typically be constructed with field_get_items().
  * @param array $settings
- *   A associative array of field formatter settings specific to this gallery
+ *   An associative array of field formatter settings specific to this gallery
  *   display.
  * @param object $entity
  *   The full entity object that the field we are rendering as a gallery
@@ -298,6 +298,12 @@ function juicebox_build_gallery_data_from_entity_field($items, $settings, $entit
   // Prepare images
   $images = array();
   foreach ($items as $id => $item) {
+    // Try to detect if this is NOT an image item. This is a loose check and
+    // only meant to streamline the display and processing logic if non-image
+    // items are included (e.g. a mixed-type file field).
+    if (!empty($item['filemime']) && strpos($item['filemime'], 'image') !== 0) {
+      continue;
+    }
     $unstyled_image_src = file_create_url($item['uri']);
     // Get the main image source.
     $image_src = $unstyled_image_src;
@@ -312,12 +318,26 @@ function juicebox_build_gallery_data_from_entity_field($items, $settings, $entit
     // Get the image title.
     $title = '';
     if (!empty($item[$settings['title_source']])) {
-      $title = check_markup($item[$settings['title_source']]);
+      // If a field option is specified we need to try to get the value from a
+      // file entity.
+      if (strpos($settings['title_source'], 'field_') === 0) {
+        $title = _juicebox_get_field_value_from_file_entity($item['fid'], $settings['title_source']);
+      }
+      else {
+        $title = check_markup($item[$settings['title_source']]);
+      }
     }
     // Get the image caption.
     $caption = '';
     if (!empty($item[$settings['caption_source']])) {
-      $caption = check_markup($item[$settings['caption_source']]);
+      // If a field option is specified we need to try to get the value from a
+      // file entity.
+      if (strpos($settings['caption_source'], 'field_') === 0) {
+        $caption = _juicebox_get_field_value_from_file_entity($item['fid'], $settings['caption_source']);
+      }
+      else {
+        $caption = check_markup($item[$settings['caption_source']]);
+      }
     }
     // Filter the image title and caption markup.
     if (!empty($settings['apply_markup_filter'])) {
@@ -809,7 +829,7 @@ function juicebox_field_formatter_info() {
   $formatters = array(
     'juicebox_formatter' => array(
       'label' => t('Juicebox Gallery'),
-      'field types' => array('image'),
+      'field types' => array('image', 'file'),
       'settings' => array(
         'image_style' => '',
         'thumb_style' => 'thumbnail',
@@ -842,7 +862,13 @@ function juicebox_field_formatter_info() {
  */
 function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
   $form = array();
-    // Get available image style presets
+  // Get available title and caption sources.
+  $text_sources = _juicebox_field_formatter_get_text_sources($instance);
+  $formatting_message = '';
+  if (!empty($instance['widget']['module']) && $instance['widget']['module'] == 'image') {
+    $formatting_message = ' ' . t('This value will be processed with your fallback text format.');
+  }
+  // Get available image style presets
   $presets = image_style_options(FALSE);
   // Initialize the "settings" values before working with them. This is
   // required for legacy support.
@@ -872,22 +898,16 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#type' => 'select',
     '#title' => t('Caption Source'),
     '#default_value' => $settings['caption_source'],
-    '#description' => t('The image field value that should be used for the caption. This value will be processed with your fallback text format.'),
-    '#options' => array(
-      'alt' => t('Alternate text'),
-      'title' => t('Title'),
-    ),
+    '#description' => t('The image value that should be used for the caption.') . $formatting_message,
+    '#options' => $text_sources,
     '#empty_option' => t('No caption'),
   );
   $form['title_source'] = array(
     '#type' => 'select',
     '#title' => t('Title Source'),
     '#default_value' => $settings['title_source'],
-    '#description' => t('The image field value that should be used for the title. This value will be processed with your fallback text format.'),
-    '#options' => array(
-      'alt' => t('Alternate text'),
-      'title' => t('Title'),
-    ),
+    '#description' => t('The image value that should be used for the title.') . $formatting_message,
+    '#options' => $text_sources,
     '#empty_option' => t('No title'),
   );
   return $form;
@@ -974,21 +994,18 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
   }
   $settings_display[] = t("Thumbnail style: @style", array('@style' => $style));
   // Define display options for caption and title source.
-  $options = array(
-    'alt' => t('Alternate text'),
-    'title' => t('Title'),
-  );
+  $text_sources = _juicebox_field_formatter_get_text_sources($instance);
   // Caption source setting.
-  if (!empty($settings['caption_source'])) {
-    $source = $options[$settings['caption_source']];
+  if (!empty($text_sources[$settings['caption_source']])) {
+    $source = $text_sources[$settings['caption_source']];
   }
   else {
     $source = t('None');
   }
   $settings_display[] = t("Caption source: @source", array('@source' => $source));
   // Title source setting.
-  if (!empty($settings['title_source'])) {
-    $source = $options[$settings['title_source']];
+  if (!empty($text_sources[$settings['title_source']])) {
+    $source = $text_sources[$settings['title_source']];
   }
   else {
     $source = t('None');
@@ -998,4 +1015,69 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
   $settings_display[] = t("Additional Juicebox library configuration options may also be set.");
   $summary = implode('<br />', $settings_display);
   return $summary;
+}
+
+
+/**
+ * Utility to fetch the title and caption source options for field-based
+ * galleries (primarily for Media module support).
+ *
+ * @param array $instance
+ *   An associative array containing the Drupal field instance information for
+ *   a Juicebox field.
+ * @return array
+ *   An associative array representing the key => label pairs for each title and
+ *   caption source option. Each key will match a keyed value on the image
+ *   source array when the gallery is built.
+ */
+function _juicebox_field_formatter_get_text_sources($instance) {
+  $text_source_options = array();
+  // Options if media module is powering the input.
+  if (module_exists('media') && !empty($instance['widget']['module']) && $instance['widget']['module'] == 'media') {
+    // Get the fields that are available on the image file type.
+    $image_fields = field_info_instances('file', 'image');
+    foreach ($image_fields as $image_field_name => $image_field) {
+      // Only text-based fields should be options.
+      if (!empty($image_field['widget']['module']) && $image_field['widget']['module'] == 'text') {
+        $text_source_options[$image_field_name] = $image_field['label'];
+      }
+    }
+  }
+  // Options if standard image module is powering the input.
+  elseif (!empty($instance['widget']['module']) && $instance['widget']['module'] == 'image') {
+    $text_source_options = array(
+      'alt' => t('Alt text'),
+      'title' => t('Title text'),
+    );
+  }
+  return $text_source_options;
+}
+
+
+/**
+ * Utility to fetch a field value from an entity field (primarily for Media
+ * module support).
+ *
+ * @param int $fid
+ *   The id of a file that can be represented as a file entity. This id will
+ *   match the file entity id.
+ * @param string $field_name
+ *   The name of the field to fetch from the file entity.
+ * @return mixed
+ *   The safe value for the requested field. For multiple-value fields only the
+ *   first value will be returned. Returns NULL if no value can be found.
+ */
+function _juicebox_get_field_value_from_file_entity($fid, $field_name) {
+  // We depend on the entity cache for performance when loading the file entity.
+  // If the passed fid does in fact represent a file entity then there
+  // is a very good chance it's been loaded already by the time this function is
+  // called.
+  $file_entity = entity_load('file', array($fid));
+  if (!empty($file_entity[$fid])) {
+    $field = field_get_items('file', $file_entity[$fid], $field_name);
+    if (!empty($field[0]['safe_value'])) {
+      return $field[0]['safe_value'];
+    }
+  }
+  return NULL;
 }
