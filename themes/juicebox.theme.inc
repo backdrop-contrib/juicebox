@@ -23,7 +23,8 @@ function theme_juicebox_embed_markup(&$variables) {
   $output .= "    configUrl : '" . $variables['gallery_xml_path'] . "'," . "\n";
   $output .= "    containerId : '" . $variables['gallery_id'] . "'," . "\n";
   $output .= "    galleryWidth : '" . check_plain($variables['settings']['jlib_galleryWidth']) . "'," . "\n";
-  $output .= "    galleryHeight : '" . check_plain($variables['settings']['jlib_galleryHeight']) . "'" . "\n";
+  $output .= "    galleryHeight : '" . check_plain($variables['settings']['jlib_galleryHeight']) . "'," . "\n";
+  $output .= "    backgroundColor : '" . check_plain($variables['settings']['jlib_backgroundColor']) . "'" . "\n";
   $output .= "  });" . "\n";
   $output .= "</script>" . "\n";
   $custom_classes = '';
