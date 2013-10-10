@@ -18,6 +18,7 @@ function juicebox_requirements($phase) {
   // functions will not always be available then (if installing Drupal via an
   // install profile, etc.).
   if ($phase == 'runtime') {
+    // Get locally installed library details.
     $library = _juicebox_library_detect();
     $requirements['juicebox'] = array(
       'title' => $t('Juicebox Javascript Library'),
