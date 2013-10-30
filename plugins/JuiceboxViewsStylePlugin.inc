@@ -12,7 +12,7 @@
  *
  * @ingroup views_style_plugins
  */
-class juicebox_style_plugin extends views_plugin_style {
+class JuiceboxViewsStylePlugin extends views_plugin_style {
 
   /**
    * Define default plugin options.
@@ -51,6 +51,7 @@ class juicebox_style_plugin extends views_plugin_style {
    */
   function options_form(&$form, &$form_state) {
     parent::options_form($form, $form_state);
+    $settings = $this->options;
     // Get the active field options
     $field_options = array();
     $field_options_images = array();
@@ -77,13 +78,10 @@ class juicebox_style_plugin extends views_plugin_style {
     }
     // Get available image style presets
     $presets = image_style_options(FALSE);
-    // Initialize the "settings" values before working with them. This is
-    // required for legacy support.
-    $settings = _juicebox_init_display_settings($this->options);
 
     // Start with the "common" form elements.
-    $parents_root = array('style_options');
-    $form = _juicebox_common_form_elements($form, $settings, $parents_root);
+    $class = juicebox_gallery_class('view');
+    $form = call_user_func($class . '::confBaseForm', $form, $settings);
     // Add the view-specific elements.
     $form['image_field'] = array(
       '#type' => 'select',
@@ -142,8 +140,8 @@ class juicebox_style_plugin extends views_plugin_style {
     foreach ($field_options as $field_key => $field_name) {
       $linkurl_field_options[$field_key] = t('Field') . ' - ' . $field_name;
     }
-    $form['advanced']['linkurl_source']['#description'] = $form['advanced']['linkurl_source']['#description'] . '</br><strong>' . t('If using a field for this source the field must render a properly formatted URL and nothing else.') . '</strong>';
-    $form['advanced']['linkurl_source']['#options'] = array_merge($form['advanced']['linkurl_source']['#options'], $linkurl_field_options);
+    $form['linkurl_source']['#description'] = $form['linkurl_source']['#description'] . '</br><strong>' . t('If using a field for this source the field must render a properly formatted URL and nothing else.') . '</strong>';
+    $form['linkurl_source']['#options'] = array_merge($form['linkurl_source']['#options'], $linkurl_field_options);
   }
 
   /**
@@ -176,13 +174,11 @@ class juicebox_style_plugin extends views_plugin_style {
    */
   function render() {
     $view = $this->view;
-    // Generate a unique ID that can be used to identify this gallery and view
-    // source details.
-    $xml_id = 'view/' . $view->name . '/' . $view->current_display;
-    foreach ($view->args as $arg) {
-      $xml_id .= '/' . $arg;
+    // If this is being called when loading data for an XML request (inside
+    // a view->preview call) we can bypass the creation of the embed code.
+    if (!empty($view->juicebox_bypass_embed)) {
+      return array();
     }
-    $xml_path = 'juicebox/xml/' . $xml_id;
     // If we are previewing the view in the admin interface all the necessary
     // <script> elements in our embed markup seem to get stripped. This means
     // that the preview cannot render and so there is no point in loading the
@@ -197,26 +193,33 @@ class juicebox_style_plugin extends views_plugin_style {
       // when the preview does not produce anything useful.
       drupal_set_message(t("Due to javascript requirements Juicebox galleries cannot be viewed as a live preview. Please save your view and visit the full page URL for this display to preview this gallery."), 'warning');
     }
-    // Initialize the "settings" values before working with them. This is
-    // required for legacy support.
-    $view->style_plugin->options = _juicebox_init_display_settings($view->style_plugin->options);
-    // Calculate the data that will ultimately be used to render the gallery
-    // XML. We won't officially generate the XML until the Juicebox javascript
-    // requests it, but we will still need the related data within parts of the
-    // embed code.
-    $view->juicebox_gallery_data = juicebox_build_gallery_data_from_view($view, $xml_path);
-    // Get a checksum for the gallery data. This can be useful for invalidating
-    // any old caches of this data. Note json_encode() is faster than
-    // serialize().
-    $gallery_checksum = md5(json_encode($view->juicebox_gallery_data));
-    // Construct the query parameters that should be added to the XML path. Be
-    // sure to retain any currently active query parameters.
-    $query = array_merge(array('checksum' => $gallery_checksum), drupal_get_query_parameters());
-    // Set template variables for embed markup.
-    $variables['gallery_id'] = str_replace('/', '-', $xml_id);
-    $variables['gallery_xml_path'] = url($xml_path, array('query' => $query));
-    $variables['settings'] = $view->style_plugin->options;
-    $variables['data'] = $view->juicebox_gallery_data;
-    return theme('juicebox_embed_markup', $variables);
+    
+    // Generate a unique ID that can be used to identify this gallery and view
+    // source details.
+    $xml_id = 'view/' . $view->name . '/' . $view->current_display;
+    foreach ($view->args as $arg) {
+      $xml_id .= '/' . $arg;
+    }
+    $xml_path = 'juicebox/xml/' . $xml_id;
+    $xml_args = explode('/', $xml_path);
+    
+    // Instantiate and build the Juicebox gallery.
+    try {
+      $class = juicebox_gallery_class('view');
+      $juicebox = new $class($xml_args, $view, $view->style_plugin->options);
+      // Build the gallery.
+      $juicebox->build();
+      // Get the full XML url.
+      $xml_query = array_merge(array('checksum' => $juicebox->galleryChecksum), drupal_get_query_parameters());
+      $xml_url = url($xml_path, array('query' => $xml_query));
+      // Load the gallery-specific javascript.
+      drupal_add_js($juicebox->getJavascript($xml_url), 'inline');
+      $element = array('#markup' => $juicebox->getEmbed());
+    }
+    catch (Exception $e) {
+      $message = 'Exception building Juicebox embed code: !message in %function (line %line of %file).';
+      watchdog_exception('juicebox', $e, $message);
+    }
+    return $element;
   }
 }

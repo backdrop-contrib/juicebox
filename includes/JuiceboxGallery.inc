@@ -1,0 +1,131 @@
+<?php
+
+
+/**
+ * @file
+ * 
+ */
+
+
+class JuiceboxGallery {
+  
+  public $galleryId = '';
+  public $options = array();
+  public $images = array();
+  
+  
+  function __construct($id) {
+    $this->galleryId = $id;
+  }
+  
+  
+  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE) {
+    // Make sure we have sufficient image data to work with.
+    if (empty($src_data['image_url']) || empty($src_data['thumb_url'])) {
+      return FALSE;
+    }
+    if (!isset($src_data['link_url'])) {
+      $src_data['link_url'] = $src_data['image_url'];
+    }
+    if (empty($src_data['link_target'])) {
+      $src_data['link_target'] = '_blank';
+    }
+    // Filter markup if needed.
+    if ($filter) {
+      $title = $this->filterMarkup($title);
+      $caption = $this->filterMarkup($caption);
+    }
+    // Add image to gallery.
+    $this->images[] = array(
+      'src_data' => $src_data,
+      'title' => $title,
+      'caption' => $caption,
+    );
+    return TRUE;
+  }
+  
+  
+  public function addOption($option_name, $option_value, $override = TRUE) {
+    if (!$override && array_key_exists(strtolower($option_name), $this->options)) {
+      return FALSE;
+    }
+    $this->options[strtolower($option_name)] = $option_value;
+    return TRUE;
+  }
+  
+  
+  public function getXml() {
+    // We use DOMDocument instead of a SimpleXMLElement to build the XML as it's
+    // much more flexible (CDATA is supported, etc.).
+    $dom = new DOMDocument('1.0', 'UTF-8');
+    $dom->formatOutput = TRUE;
+    $juicebox = $dom->appendChild($dom->createElement('juicebox'));
+    foreach ($this->options as $option => $value) {
+      $juicebox->setAttribute($option, $value);
+    }
+    foreach ($this->images as $image) {
+      $juicebox_image = $juicebox->appendChild($dom->createElement('image'));
+      $juicebox_image->setAttribute('imageURL', $image['src_data']['image_url']);
+      $juicebox_image->setAttribute('thumbURL', $image['src_data']['thumb_url']);
+      $juicebox_image->setAttribute('linkURL', $image['src_data']['link_url']);
+      $juicebox_image->setAttribute('linkTarget', $image['src_data']['link_target']);
+      $juicebox_image_title = $juicebox_image->appendChild($dom->createElement('title'));
+      $juicebox_image_title->appendChild($dom->createCDATASection($image['title']));
+      $juicebox_image_caption = $juicebox_image->appendChild($dom->createElement('caption'));
+      $juicebox_image_caption->appendChild($dom->createCDATASection($image['caption']));
+    }
+    return $dom->saveXML();
+  }
+  
+  
+  public function getEmbed($custom_classes = '') {
+    $output = '';
+    $output .= '<div class="juicebox-parent' . $custom_classes . '">';
+    $output .= '<div id="' . $this->galleryId . '" class="juicebox-container">';
+    $output .= '</div></div>';
+    return $output;
+  }
+  
+  
+  public function getJavascript($xml_path) {
+    $output = '';
+    $output .= "new juicebox({";
+    $output .= "configUrl:'" . $xml_path . "',";
+    $output .= "containerId:'" . $this->galleryId . "',";
+    // Add options that need to be loaded immediately (before XML is available).
+    foreach (array('gallerywidth', 'galleryheight', 'backgroundcolor') as $option) {
+      if (!empty($this->options[$option])) {
+        $output .= $option . ":'" . $this->options[$option] . "',";
+      }
+    }
+    $output .= "});";
+    return $output;
+  }
+  
+  
+  /**
+   * Filter markup for valid display in a Juicebox gallery.
+   *
+   * Some markup that validates fine via external filters will not be
+   * syntactically valid once rendered within Juicebox. This is because Juicebox
+   * will wrap titles and captions in block-level tags, like <p>, making any
+   * block-level elements they contain invalid. This filter accommodates for
+   * this and is meant to be applied AFTER any external filters.
+   *
+   * @param string $markup
+   *   The markup to be filtered after it has been processed externally.
+   * @return string
+   *   Valid filtered markup ready for display in a Juicebox gallery.
+   */
+  protected function filterMarkup($markup) {
+    // Set inline elements that are safe in a Juicebox gallery. References:
+    // http://www.htmlhelp.com/reference/html40/inline.html
+    // https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/HTML5/HTML5_element_list
+    $valid_elements = "<a><abbr><acronym><b><basefont><bdi><bdo><big><br><cite><code><data><del><dfn><em><font><i><img><ins><kbd><label><mark><q><rp><rt><ruby><s><samp><small><span><strike><strong><sub><sup><time><tt><u><var><wbr>";
+    $markup = strip_tags($markup, $valid_elements);
+    // Also remove newlines to keep the output concise.
+    $markup = str_replace(array("\r", "\n"), '', $markup);
+    return $markup;
+  }
+  
+}

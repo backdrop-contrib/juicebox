@@ -19,7 +19,7 @@ function juicebox_requirements($phase) {
   // install profile, etc.).
   if ($phase == 'runtime') {
     // Get locally installed library details.
-    $library = _juicebox_library_detect();
+    $library = JuiceboxGalleryDrupal::detectLibrary();
     $requirements['juicebox'] = array(
       'title' => $t('Juicebox Javascript Library'),
     );

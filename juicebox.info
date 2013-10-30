@@ -7,10 +7,13 @@ dependencies[] = libraries (>1.0)
 
 ; General Files
 files[] = juicebox.module
-files[] = juicebox.views.inc
 
-; Plugin Files
-files[] = plugins/juicebox_style_plugin.inc
+; Local Class and Plugin Files
+files[] = includes/JuiceboxGallery.inc
+files[] = includes/JuiceboxGalleryDrupal.inc
+files[] = includes/JuiceboxGalleryDrupalField.inc
+files[] = includes/JuiceboxGalleryDrupalViewsStyle.inc
+files[] = plugins/JuiceboxViewsStylePlugin.inc
 
 ; Theme Files
 files[] = themes/juicebox.theme.inc
