@@ -3,19 +3,43 @@
 
 /**
  * @file
- * 
+ * A connector plugin containing methods for structuring a Drupal views display
+ * into a Juicebox gallery.
  */
 
 
-class JuiceboxGalleryDrupalViewsStyle extends JuiceboxGalleryDrupal {
+class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
   
-  public $viewName;
-  public $viewDisplay;
-  public $viewArgs;
+  /**
+   * Base properies specific to this connector.
+   */
+  protected $viewName;
+  protected $viewDisplay;
+  protected $viewArgs;
  
-  function __construct($xml_path_args, view $data = NULL, $settings = array()) {
-    // Run common Drupal construct logic.
-    parent::__construct($xml_path_args, $data, $settings);
+  /**
+   * Constructor
+   * 
+   * @param array $xml_path_args
+   *   An indexed array of XML path arguments that describe this gallery (and
+   *   make up its XML URL). This information uniquely identifies the gallery
+   *   and contains all the descriptive data needed to (re)build it.
+   * @param mixed $data
+   *   (Optional) Loaded Drupal data that the gallery can be built from. When
+   *   the embed code is being generated for a Drupal display formatter this
+   *   data will typically be available already. However when building the XML
+   *   this will be NULL, and we will need to be load it ourselves (based on the
+   *   XML args) later.
+   * @param object $gallery
+   *   An empty gallery object, implementing JuiceboxGalleryInterface, that can
+   *   be built into a Juicebox gallery.
+   * @param array $library
+   *   An associative array of the juicebox library information as structured by
+   *   the libraries API.
+   */
+  function __construct($xml_path_args, view $data = NULL, JuiceboxGalleryInterface $gallery, $library) {
+    // Run common construct logic.
+    parent::__construct($xml_path_args, $data, $gallery, $library);
     // We need at least 3 data sources to build a view-based gallery (the type
     // along with 2 identifiers for the view display).
     if (empty($this->xmlPathArgs) || count($this->xmlPathArgs) < 3) {
@@ -27,24 +51,27 @@ class JuiceboxGalleryDrupalViewsStyle extends JuiceboxGalleryDrupal {
     $this->viewArgs = array_slice($xml_path_args, 3);
   }
   
-  
-  public function load() {
+  /**
+   * Load the Drupal data needed to build the gallery.
+   */
+  function load() {
     // Load the view.
     $view = views_get_view($this->viewName);
     if ($view) {
       // Execute the view. This is easiest to do by simply calling the preview
-      // method (as it handles all needed sub-processes). However, this will
-      // trigger the style plugins render() method, which would also build the
-      // Juicebox embed code. So set a flag that can be used internally to
-      // bypass that process.
-      $view->juicebox_bypass_embed = TRUE;
+      // method (as it handles all needed sub-processes).
       $view->preview($this->viewDisplay, $this->viewArgs);
       $this->data = $view;
-      $this->settings = $view->style_plugin->options;
     }
   }
   
-  
+  /**
+   * Check access to the Drupal data that will be used to build the gallery.
+   * 
+   * @return boolean
+   *   Return TRUE if access is allowed for the current user and FALSE if not.
+   *   Can also return NULL if access cannot be determined.
+   */
   function access() {
     if (!$this->data) {
       $view = views_get_view($this->viewName);
@@ -53,10 +80,12 @@ class JuiceboxGalleryDrupalViewsStyle extends JuiceboxGalleryDrupal {
     return $this->data->access($this->viewDisplay);
   }
   
-  
-  public function buildType() {
+  /**
+   * Build the gallery based on loaded Drupal data specific to this connector.
+   */
+  protected function buildGallery() {
     $view = $this->data;
-    $settings = $this->settings;
+    $settings = $view->style_plugin->options;
     // Get rendered field data that's not available in $view->result
     $rendered_fields = $view->style_plugin->render_fields($view->result);
     $images = array();
@@ -109,13 +138,13 @@ class JuiceboxGalleryDrupalViewsStyle extends JuiceboxGalleryDrupal {
           'link_target' => $settings['linkurl_target'],
         );
         $filter = !empty($settings['apply_markup_filter']);
-        $this->addImage($images_src_data, $title, $caption, $filter);
+        $this->gallery->addImage($images_src_data, $title, $caption, $filter);
       }
     }
     if ($settings['show_title']) {
-      $this->addOption('gallerytitle', check_plain($view->get_title()));
+      $this->gallery->addOption('gallerytitle', check_plain($view->get_title()));
     }
-    $this->setOptions();
+    $this->setOptions($settings);
   }
 
 }

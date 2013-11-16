@@ -10,9 +10,10 @@ files[] = juicebox.module
 
 ; Local Class and Plugin Files
 files[] = includes/JuiceboxGallery.inc
-files[] = includes/JuiceboxGalleryDrupal.inc
-files[] = includes/JuiceboxGalleryDrupalField.inc
-files[] = includes/JuiceboxGalleryDrupalViewsStyle.inc
+files[] = includes/JuiceboxGalleryInterface.inc
+files[] = includes/JuiceboxConnector.inc
+files[] = plugins/JuiceboxConnectorField.inc
+files[] = plugins/JuiceboxConnectorViewsStyle.inc
 files[] = plugins/JuiceboxViewsStylePlugin.inc
 
 ; Theme Files

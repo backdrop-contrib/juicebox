@@ -3,7 +3,8 @@
 
 /**
  * @file
- * Provides Drupal integration with the Juicebox library.
+ * Provides Drupal integration with the Juicebox library. This file contains
+ * the relevant Drupal hook implementations and callbacks.
  */
 
 
@@ -13,7 +14,7 @@
 function juicebox_menu() {
   $items = array();
   // Add menu item that produces the "config.xml" data that is linked to a
-  // specific view or entity field.
+  // specific gallery.
   $items['juicebox/xml/%'] = array(
     'title' => 'Juicebox XML from view',
     'description' => 'Deliver configuration XML for a Juicebox gallery.',
@@ -35,7 +36,7 @@ function juicebox_theme() {
   return array(
     // Theme hook to generate embed markup for a Juicebox gallery.
     'juicebox_embed_markup' => array(
-      'variables' => array('gallery_id' => '', 'gallery_xml_path' => '', 'settings' => array(), 'data' => array()),
+      'variables' => array('gallery' => NULL, 'settings' => array()),
       'path' => drupal_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
     ),
@@ -103,6 +104,122 @@ function juicebox_views_plugins() {
 
 
 /**
+ * Instantiate a Juicebox connector object along with its dependencies.
+ * 
+ * @param array $xml_path_args
+ *   An indexed array of XML path arguments that describe this gallery (and
+ *   make up its XML URL). This information uniquely identifies the gallery and
+ *   contains all the descriptive data needed to (re)build it.
+ * @param mixed $data
+ *   (Optional) Loaded Drupal data that the gallery can be built from. When
+ *   the embed code is being generated for a Drupal display formatter this data
+ *   will typically be available already. However when building the XML this
+ *   will be NULL, and we will need to be load it ourselves (based on the XML
+ *   args) after the objects are instantiated.
+ * @return object
+ *   A new Juicebox plugin object that contains an empty Juicebox gallery
+ *   object.
+ */
+function juicebox($xml_path_args, $data = NULL, $xml = FALSE) {
+  // The XML args may be passed as a full set of path args. If so we can
+  // drop some args that are only used for menu routing.
+  if ($xml_path_args[0] == 'juicebox' && $xml_path_args[1] == 'xml') {
+    $xml_path_args = array_slice($xml_path_args, 2);
+  }
+  // Calculate the gallery ID.
+  $id = '';
+  foreach ($xml_path_args as $arg) {
+    $id .= $arg . '-';
+  }
+  $id = trim($id, '- ');
+  // The type should match the first argument.
+  $type = $xml_path_args[0];
+  // Get the library data. We do this early (before instantiating) as the lib
+  // details should be allowed to impact which classes are used.
+  $library = juicebox_detect_library();
+  // Calculate the connector classes that are supported directly by this module.
+  $classes = array('connector_plugin' => '', 'gallery' => 'JuiceboxGallery');
+  switch ($type) {
+    case 'field':
+      $classes['plugin_class'] = 'JuiceboxConnectorField';
+      break;
+    case 'view':
+      $classes['plugin_class'] = 'JuiceboxConnectorViewsStyle';
+      break;
+  }
+  // Allow other modules to alter the classes that will be used.
+  $context = array('data' => $data, 'library' => $library);
+  drupal_alter('juicebox_classes', $classes, $xml_path_args, $context);
+  // Instantiate the Juicebox gallery object.
+  $gallery = new $classes['gallery']($id);
+  // Instantiate the Juicebox connector object.
+  $juicebox = new $classes['plugin_class']($xml_path_args, $data, $gallery, $library);
+  if (is_object($juicebox)) {
+    return $juicebox;
+  }
+  return NULL;
+}
+
+
+/**
+ * Get/detect the details of a Juicebox javascript library without loading it.
+ * 
+ * This is essentially a wrapper for libraries_detect() with some caching added.
+ * It also allows library info to be fetched independently from the currently
+ * loaded version if needed (e.g. to accomodate XML requests that don't come
+ * from this site).
+ * 
+ * @param boolean $force_local
+ *   Whether-or-not to force detection of the LOCALLY installed Juicebox library
+ *   details. If FALSE Libraries API detection may be bypased if library version
+ *   details can be detected through the URL.
+ * @param boolean $reset
+ *   Whether-or-not to bypass and reset any DB caching information for the
+ *   library details.
+ * @return array
+ *   An associative array of the library information.
+ */
+function juicebox_detect_library($force_local = FALSE, $reset = FALSE) {
+  // We use our own static cache for this. Libraries API detection has a static
+  // cache, but as we may be bypassing full local detection in certain
+  // situations, we can't always use it.
+  $library = &drupal_static(__FUNCTION__, array());
+  if (!$library) {
+    // See if we have been passed version details in the URL. If so we bypass
+    // local detection and build our own libraries array.
+    $query = drupal_get_query_parameters();
+    if (!empty($query['jb-version']) && !$force_local) {
+      $version_number = check_plain($query['jb-version']);
+      if (!empty($query['jb-pro'])) {
+        $library['pro'] = TRUE;
+        $version = 'Pro';
+      }
+      else {
+        $version = 'Lite';
+      }
+      $library['version'] = $version . ' ' . $version_number;
+      juicebox_library_post_detect($library);
+    }
+    // Otherwise we just use the Libraries API to detect the local lib.
+    else {
+      // We maintain our own DB cache here because libraries_detect() does not
+      // have one. libaries_load() has one, but we don't want to be actually
+      // loading the library here.
+      $library = cache_get('local_juicebox_library', 'cache');
+      if ($library && !$reset) {
+        $library = $library->data;
+      }
+      else {
+        $library = libraries_detect('juicebox');
+        cache_set('local_juicebox_library', $library, 'cache');
+      }
+    }
+  }
+  return $library;
+}
+
+
+/**
  * Menu callback: generate Juicebox XML.
  *
  * Note that this callback directly sets page headers and prints the XML result
@@ -113,15 +230,14 @@ function juicebox_views_plugins() {
 function juicebox_page_xml() {
   $args = func_get_args();
   try {
-    $class = juicebox_gallery_class($args[0]);
-    $juicebox = new $class($args);
+    $juicebox = juicebox($args, NULL, TRUE);
     $juicebox->load();
     if (!$juicebox->access()) {
       return MENU_ACCESS_DENIED;
     }
     // Build the Juicebox gallery data.
     $juicebox->build();
-    $xml = $juicebox->getXML();
+    $xml = $juicebox->gallery->getXML();
   }
   catch (Exception $e) {
     $message = 'Exception building Juicebox XML: !message in %function (line %line of %file).';
@@ -186,38 +302,9 @@ function juicebox_library_post_detect(&$library) {
 
 
 /**
- * Helper to detect if a given file item is not compatible with Juicebox, and
- * define an alternative file to display if so.
- *
- * @param array $item
- *   An associative array containing all file entity properties for the file to
- *   check.
- * @param array $library
- *   An associative array containing the library information that corresponds
- *   to the Juicebox javascript library that will be used for the display.
- * @return string
- *   If an incompatible file is detected an alternative image path is returned,
- *   otherwise returns NULL.
- */
-function _juicebox_incompatible_file_alternative($item, $library) {
-  if (!empty($library['compatible_mimetypes']) && !in_array($item['filemime'], $library['compatible_mimetypes'])) {
-    $icon_dir = drupal_get_path('module', 'juicebox') . '/images/mimetypes';
-    $icon_path = file_icon_path(file_load($item['fid']), $icon_dir);
-    if ($icon_path) {
-      return url($icon_path);
-    }
-    return url($icon_dir . '/image-x-generic.png');
-  }
-  return NULL;
-}
-
-
-/**
  * Form validation callback: validate width/height inputs.
- *
- * @see _juicebox_common_form_elements()
  */
-function _juicebox_element_validate_dimension($element, &$form_state, $form) {
+function juicebox_element_validate_dimension($element, &$form_state, $form) {
   if (!preg_match('/^[0-9]+?(%|px|em|in|cm|mm|ex|pt|pc)$/u', $element['#value'])) {
     form_error($element, t('Please ensure that you width and height values are entered in a standard numeric format (such as <strong>100%</strong> or <strong>300px</strong>).'));
   }
@@ -226,10 +313,8 @@ function _juicebox_element_validate_dimension($element, &$form_state, $form) {
 
 /**
  * Form validation callback: validate Juicebox configuration options.
- *
- * @see _juicebox_common_form_elements()
  */
-function _juicebox_element_validate_config($element, &$form_state, $form) {
+function juicebox_element_validate_config($element, &$form_state, $form) {
   // We are looking for input in the format of: optionName="optionValue".
   // The check here is not too strict, it is just meant to catch general
   // formatting issues.
@@ -245,14 +330,36 @@ function _juicebox_element_validate_config($element, &$form_state, $form) {
 
 
 /**
+ * Form pre-render callback: visually render fieldsets without affecting
+ * tree-based variable storage.
+ * 
+ * This technique/code is taken almost directly from the Views module in
+ * views_ui_pre_render_add_fieldset_markup()
+ */
+function juicebox_form_pre_render_fieldsets($form) {
+  foreach (element_children($form) as $key) {
+    $element = $form[$key];
+    // In our form builder functions, we added an arbitrary #jb_fieldset
+    // property to any element that belongs in a fieldset. If this form element
+    // has that property, move it into its fieldset.
+    if (isset($element['#jb_fieldset']) && isset($form[$element['#jb_fieldset']])) {
+      $form[$element['#jb_fieldset']][$key] = $element;
+      // Remove the original element this duplicates.
+      unset($form[$key]);
+    }
+  }
+  return $form;
+}
+
+
+/**
  * Implements hook_field_formatter_info().
  *
  * Add juicebox_formatter formatter.
  */
 function juicebox_field_formatter_info() {
   // Get the base settings.
-  $class = juicebox_gallery_class('field');
-  $base_settings = call_user_func($class . '::confBaseOptions');
+  $base_settings = JuiceboxConnector::confBaseOptions();
   $formatters = array(
     'juicebox_formatter' => array(
       'label' => t('Juicebox Gallery'),
@@ -273,6 +380,17 @@ function juicebox_field_formatter_info() {
  * Implements hook_field_formatter_settings_form().
  */
 function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  // If this formatter is being used outside the context of a normal field
+  // display (e.g. within individual view rows, panels, etc.) we display a
+  // message to discourage and prevent it's use. This is due to the fact that
+  // we don't have a reliable way to build the XML for these cases.
+  if (!empty($instance['bundle']) && $instance['bundle'] == 'ctools') {
+    return array('juicebox_formatter_notice' => array(
+      '#prefix' => '<p>',
+      '#markup' => t('<strong>NOTICE: The Juicebox field formatter is not fully supported within individual view rows (and other ctools contexts)</strong>. Using this setting is not recommended. For views support please use the Juicebox display style plugin.'),
+      '#suffix' => '</p>',
+    ));
+  }
   $form = array();
   // Get available title and caption sources.
   $text_sources = _juicebox_field_formatter_get_text_sources($instance);
@@ -280,8 +398,7 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
   $presets = image_style_options(FALSE);
   $settings = $instance['display'][$view_mode]['settings'];
   // Get the common form elements.
-  $class = juicebox_gallery_class('field');
-  $form = call_user_func($class . '::confBaseForm', $form, $settings);
+  $form = JuiceboxConnector::confBaseForm($form, $settings);
   // Add the field-formatter-specific elements.
   $form['image_style'] = array(
     '#type' => 'select',
@@ -344,14 +461,15 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
       $display_name = $display_key;
     }
   }
+  $settings = $instance['display'][$display_name]['settings'];
   // Generate xml path details.
   $xml_path = 'juicebox/xml/field/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . $display_name;
   $xml_args = explode('/', $xml_path);
   
   // Instantiate and build the Juicebox gallery.
   try {
-    $class = juicebox_gallery_class('field');
-    $juicebox = new $class($xml_args, $items, $display['settings']);
+    $data = array('items' => $items, 'settings' => $display['settings']);
+    $juicebox = juicebox($xml_args, $data);
     // For some reason core does not test field access until AFTER this hook.
     // Because of this we run our own (duplicate) field access test here to
     // prevent unneeded logic from running if the output will be hidden. Note
@@ -361,12 +479,12 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
       // Build the gallery.
       $juicebox->build();
       // Get the full XML url.
-      $xml_query = array_merge(array('checksum' => $juicebox->galleryChecksum), drupal_get_query_parameters());
+      $xml_query = array_merge(array('checksum' => $juicebox->gallery->getChecksum()), drupal_get_query_parameters());
       $xml_url = url($xml_path, array('query' => $xml_query));
       // Load the juicebox javascript library and gallery-specific javascript.
       libraries_load('juicebox');
-      drupal_add_js($juicebox->getJavascript($xml_url), 'inline');
-      $element[0] = array('#markup' => $juicebox->getEmbed());
+      drupal_add_js($juicebox->gallery->getJavascript($xml_url), 'inline');
+      $element[0] = array('#markup' => $juicebox->renderEmbed($settings));
     }
   }
   catch (Exception $e) {
@@ -494,42 +612,27 @@ function _juicebox_get_field_value_from_file_entity($fid, $field_name) {
 
 
 /**
- * Form pre-render callback: visually render fieldsets without affecting
- * tree-based variable storage.
- * 
- * This technique/code is taken almost directly from the Views module in
- * views_ui_pre_render_add_fieldset_markup()
+ * Helper to detect if a given file item is not compatible with Juicebox, and
+ * define an alternative file to display if so.
+ *
+ * @param array $item
+ *   An associative array containing all file entity properties for the file to
+ *   check.
+ * @param array $library
+ *   An associative array containing the library information that corresponds
+ *   to the Juicebox javascript library that will be used for the display.
+ * @return string
+ *   If an incompatible file is detected an alternative image path is returned,
+ *   otherwise returns NULL.
  */
-function juicebox_form_pre_render_fieldsets($form) {
-  foreach (element_children($form) as $key) {
-    $element = $form[$key];
-    // In our form builder functions, we added an arbitrary #jb_fieldset
-    // property to any element that belongs in a fieldset. If this form element
-    // has that property, move it into its fieldset.
-    if (isset($element['#jb_fieldset']) && isset($form[$element['#jb_fieldset']])) {
-      $form[$element['#jb_fieldset']][$key] = $element;
-      // Remove the original element this duplicates.
-      unset($form[$key]);
+function _juicebox_incompatible_file_alternative($item, $library) {
+  if (!empty($library['compatible_mimetypes']) && !in_array($item['filemime'], $library['compatible_mimetypes'])) {
+    $icon_dir = drupal_get_path('module', 'juicebox') . '/images/mimetypes';
+    $icon_path = file_icon_path(file_load($item['fid']), $icon_dir);
+    if ($icon_path) {
+      return url($icon_path);
     }
-  }
-  return $form;
-}
-
-
-function juicebox_gallery_class($type) {
-  $class = '';
-  switch ($type) {
-    case 'field':
-      $class = 'JuiceboxGalleryDrupalField';
-      break;
-    case 'view':
-      $class = 'JuiceboxGalleryDrupalViewsStyle';
-      break;
-  }
-  // Allow other modules do alter the class name.
-  drupal_alter('juicebox_gallery_class', $class, $type);
-  if (!empty($class)) {
-    return $class;
+    return url($icon_dir . '/image-x-generic.png');
   }
   return NULL;
 }

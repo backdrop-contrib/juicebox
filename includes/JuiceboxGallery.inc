@@ -3,23 +3,51 @@
 
 /**
  * @file
- * 
+ * A php-only set of methods to create the script and markup components of a
+ * Juicebox gallery.
  */
 
 
-class JuiceboxGallery {
-  
-  public $galleryId = '';
+class JuiceboxGallery implements JuiceboxGalleryInterface {
+
+  /**
+   * Base properies to contain structured gallery data.
+   */
+  public $id = '';
   public $options = array();
   public $images = array();
   
-  
+  /**
+   * Constructor
+   * 
+   * @param string $id
+   *   A unique string id that can represnet this gallery.
+   */
   function __construct($id) {
-    $this->galleryId = $id;
+    $this->id = $id;
   }
   
-  
-  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE) {
+  /**
+   * Add a new image to the gallery.
+   * 
+   * @param array $src_data
+   *   Associative array containing all the source data for a gallery image,
+   *   including the:
+   *   - image_url: URL to the full image to display.
+   *   - thumb_url: URL to the thumbnail to display for the image.
+   *   - link_url: The Juicebox "link URL" value for the image.
+   *   - link_target: The browser target value to use when following a link URL.
+   * @param string $title
+   *   The title markup to display for the image.
+   * @param string $caption
+   *   The caption markup to display for the image.
+   * @param boolean $filter
+   *   Whether-or-not to filter the $title and $caption values for syntactic
+   *   compatibility with Juicebox.
+   * @return boolean
+   *   Returns TRUE on successful addition and FALSE on failure.
+   */
+  function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE) {
     // Make sure we have sufficient image data to work with.
     if (empty($src_data['image_url']) || empty($src_data['thumb_url'])) {
       return FALSE;
@@ -44,8 +72,20 @@ class JuiceboxGallery {
     return TRUE;
   }
   
-  
-  public function addOption($option_name, $option_value, $override = TRUE) {
+  /**
+   * Add a new Juicebox configuration option to the gallery.
+   * 
+   * @param string $option_name
+   *   The option name/key to add.
+   * @param string $option_value
+   *   The option value to add.
+   * @param boolean $override
+   *   Whether-or-not to override any values that already exist in the set
+   *   options for the passed name/key.
+   * @return boolean
+   *   Returns TRUE on successful addition and FALSE on failure.
+   */
+  function addOption($option_name, $option_value, $override = TRUE) {
     if (!$override && array_key_exists(strtolower($option_name), $this->options)) {
       return FALSE;
     }
@@ -53,8 +93,15 @@ class JuiceboxGallery {
     return TRUE;
   }
   
-  
-  public function getXml() {
+  /**
+   * Get the XML for a Juicebox gallery once images and options have been
+   * added.
+   * 
+   * @return string
+   *   Structured Juicebox XML describing a gallery. Note that no header data
+   *   is set or returned here.
+   */
+  function getXml() {
     // We use DOMDocument instead of a SimpleXMLElement to build the XML as it's
     // much more flexible (CDATA is supported, etc.).
     $dom = new DOMDocument('1.0', 'UTF-8');
@@ -77,21 +124,38 @@ class JuiceboxGallery {
     return $dom->saveXML();
   }
   
-  
-  public function getEmbed($custom_classes = '') {
+  /**
+   * Get the embed code for a Juicebox gallery once images and options have been
+   * added.
+   * 
+   * @param string $custom_classes
+   *   Any custom classes to include as part of the Juicebox parent container.
+   * @return string
+   *   Embed code markup describing a gallery.
+   */
+  function getEmbed($custom_classes = '') {
     $output = '';
     $output .= '<div class="juicebox-parent' . $custom_classes . '">';
-    $output .= '<div id="' . $this->galleryId . '" class="juicebox-container">';
+    $output .= '<div id="' . $this->id . '" class="juicebox-container">';
     $output .= '</div></div>';
     return $output;
   }
   
-  
-  public function getJavascript($xml_path) {
+  /**
+   * Get the javascript code for a Juicebox gallery once images and options have
+   * been added.
+   * 
+   * @param string $xml_path
+   *   The path to the Juicebox XML for this gallery.
+   * @return string
+   *   Javascript code describing a gallery. Note that <script> tags are
+   *   excluded.
+   */
+  function getJavascript($xml_path) {
     $output = '';
     $output .= "new juicebox({";
     $output .= "configUrl:'" . $xml_path . "',";
-    $output .= "containerId:'" . $this->galleryId . "',";
+    $output .= "containerId:'" . $this->id . "',";
     // Add options that need to be loaded immediately (before XML is available).
     foreach (array('gallerywidth', 'galleryheight', 'backgroundcolor') as $option) {
       if (!empty($this->options[$option])) {
@@ -102,7 +166,17 @@ class JuiceboxGallery {
     return $output;
   }
   
-  
+  /**
+   * Get a gallery checksum.
+   * 
+   * @return string
+   *   An md5 hash of the image and option data that can be used to validate
+   *   the uniqueness of this gallery's data and settings.
+   */
+  function getChecksum() {
+    return md5(json_encode($this->images) . json_encode($this->options));
+  }
+   
   /**
    * Filter markup for valid display in a Juicebox gallery.
    *

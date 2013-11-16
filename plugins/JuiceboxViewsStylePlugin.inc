@@ -19,7 +19,13 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
    */
   function option_definition() {
     $options = parent::option_definition();
-    $options = array(
+    // Get the base settings.
+    $base_settings = JuiceboxConnector::confBaseOptions();
+    // Structure the base settings in the "default" format that views wants.
+    foreach ($base_settings as $setting => $value) {
+      $base_settings_default[$setting] = array('default' => $value);
+    }
+    $options = array_merge($base_settings_default, array(
       'image_field' => array('default' => ''),
       'image_field_style' => array('default' => ''),
       'thumb_field' => array('default' => ''),
@@ -27,22 +33,7 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
       'title_field' => array('default' => ''),
       'caption_field' => array('default' => ''),
       'show_title' => array('default' => 0),
-      'jlib_galleryWidth' => array('default' => '100%'),
-      'jlib_galleryHeight' => array('default' => '100%'),
-      'jlib_backgroundColor' => array('default' => '#222222'),
-      'jlib_textColor' => array('default' => 'rgba(255,255,255,1)'),
-      'jlib_thumbFrameColor' => array('default' => 'rgba(255,255,255,.5)'),
-      'jlib_showOpenButton' => array('default' => 1),
-      'jlib_showExpandButton' => array('default' => 1),
-      'jlib_showThumbsButton' => array('default' => 1),
-      'jlib_useThumbDots' => array('default' => 0),
-      'jlib_useFullscreenExpand' => array('default' => 0),
-      'manual_config' => array('default' => ''),
-      'custom_parent_classes' => array('default' => ''),
-      'apply_markup_filter' => array('default' => 1),
-      'linkurl_source' => array('default' => ''),
-      'linkurl_target' => array('default' => '_blank'),
-    );
+    ));
     return $options;
   }
 
@@ -80,8 +71,7 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
     $presets = image_style_options(FALSE);
 
     // Start with the "common" form elements.
-    $class = juicebox_gallery_class('view');
-    $form = call_user_func($class . '::confBaseForm', $form, $settings);
+    $form = JuiceboxConnector::confBaseForm($form, $settings);
     // Add the view-specific elements.
     $form['image_field'] = array(
       '#type' => 'select',
@@ -149,9 +139,14 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
    */
   function validate() {
     $errors = parent::validate();
+    // Make sure block caching is not enabled. With block caching enabled the
+    // Juicebox javascript library may not get included.
+    if (isset($this->display->handler->options['block_caching']) && $this->display->handler->options['block_caching'] != DRUPAL_NO_CACHE) {
+      $errors[] = t('The Juicebox style cannot be used with block caching. Please disable the "Block caching" option for this display.');
+    }
     // Make sure the pager is not enabled.
     if ($this->display->handler->use_pager()) {
-      $errors[] = t('The Juicebox style cannot be used with a pager. Disable the "Use pager" option for this display.');
+      $errors[] = t('The Juicebox style cannot be used with a pager. Please disable the "Use pager" option for this display.');
     }
     // We want to somewhat "nag" the user if they have not yet configured the
     // Juicebox-specific plugin settings (because things won't work until they
@@ -174,11 +169,6 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
    */
   function render() {
     $view = $this->view;
-    // If this is being called when loading data for an XML request (inside
-    // a view->preview call) we can bypass the creation of the embed code.
-    if (!empty($view->juicebox_bypass_embed)) {
-      return array();
-    }
     // If we are previewing the view in the admin interface all the necessary
     // <script> elements in our embed markup seem to get stripped. This means
     // that the preview cannot render and so there is no point in loading the
@@ -193,7 +183,7 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
       // when the preview does not produce anything useful.
       drupal_set_message(t("Due to javascript requirements Juicebox galleries cannot be viewed as a live preview. Please save your view and visit the full page URL for this display to preview this gallery."), 'warning');
     }
-    
+    $settings = $view->style_plugin->options;
     // Generate a unique ID that can be used to identify this gallery and view
     // source details.
     $xml_id = 'view/' . $view->name . '/' . $view->current_display;
@@ -205,16 +195,15 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
     
     // Instantiate and build the Juicebox gallery.
     try {
-      $class = juicebox_gallery_class('view');
-      $juicebox = new $class($xml_args, $view, $view->style_plugin->options);
+      $juicebox = juicebox($xml_args, $view);
       // Build the gallery.
       $juicebox->build();
       // Get the full XML url.
-      $xml_query = array_merge(array('checksum' => $juicebox->galleryChecksum), drupal_get_query_parameters());
+      $xml_query = array_merge(array('checksum' => $juicebox->gallery->getChecksum()), drupal_get_query_parameters());
       $xml_url = url($xml_path, array('query' => $xml_query));
       // Load the gallery-specific javascript.
-      drupal_add_js($juicebox->getJavascript($xml_url), 'inline');
-      $element = array('#markup' => $juicebox->getEmbed());
+      drupal_add_js($juicebox->gallery->getJavascript($xml_url), 'inline');
+      $element = array('#markup' => $juicebox->renderEmbed($settings));
     }
     catch (Exception $e) {
       $message = 'Exception building Juicebox embed code: !message in %function (line %line of %file).';

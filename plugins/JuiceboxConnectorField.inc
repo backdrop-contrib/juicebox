@@ -3,24 +3,47 @@
 
 /**
  * @file
- * 
+ * A connector plugin containing methods for structuring Drupal field data into
+ * a Juicebox gallery.
  */
 
 
-class JuiceboxGalleryDrupalField extends JuiceboxGalleryDrupal {
+class JuiceboxConnectorField extends JuiceboxConnector {
   
-  public $entityType;
-  public $entityId;
-  public $fieldName;
-  public $displayName;
-  public $entity;
+  /**
+   * Base properies specific to this connector.
+   */
   public $fieldAccess;
   public $entityAccess;
+  protected $entityType;
+  protected $entityId;
+  protected $fieldName;
+  protected $displayName;
+  protected $entity;
   
-  
-  function __construct($xml_path_args, $data = array(), $settings = array()) {
-    // Run common Drupal construct logic.
-    parent::__construct($xml_path_args, $data, $settings);
+  /**
+   * Constructor
+   * 
+   * @param array $xml_path_args
+   *   An indexed array of XML path arguments that describe this gallery (and
+   *   make up its XML URL). This information uniquely identifies the gallery
+   *   and contains all the descriptive data needed to (re)build it.
+   * @param mixed $data
+   *   (Optional) Loaded Drupal data that the gallery can be built from. When
+   *   the embed code is being generated for a Drupal display formatter this
+   *   data will typically be available already. However when building the XML
+   *   this will be NULL, and we will need to be load it ourselves (based on the
+   *   XML args) later.
+   * @param object $gallery
+   *   An empty gallery object, implementing JuiceboxGalleryInterface, that can
+   *   be built into a Juicebox gallery.
+   * @param array $library
+   *   An associative array of the juicebox library information as structured by
+   *   the libraries API.
+   */
+  function __construct($xml_path_args, $data = NULL, JuiceboxGalleryInterface $gallery, $library) {
+    // Run common construct logic.
+    parent::__construct($xml_path_args, $data, $gallery, $library);
     // We need 5 data sources to build a file-based gallery (the type along
     // with 4 identifiers for the field data).
     if (empty($this->xmlPathArgs) || count($this->xmlPathArgs) < 5) {
@@ -35,9 +58,11 @@ class JuiceboxGalleryDrupalField extends JuiceboxGalleryDrupal {
     $entities = entity_load($this->entityType, array($this->entityId));
     $this->entity = reset($entities);
   }
-  
-  
-  public function load() {
+   
+  /**
+   * Load the Drupal data needed to build the gallery.
+   */
+  function load() {
     $entity = $this->entity;
     // Get the bundle details.
     $info = entity_get_info($this->entityType);
@@ -51,14 +76,14 @@ class JuiceboxGalleryDrupalField extends JuiceboxGalleryDrupal {
     $instance = field_info_instance($this->entityType, $this->fieldName, $bundle);
     if (!empty($instance['display'])) {
       // Get the settings.
-      $this->settings = $instance['display']['default']['settings'];
+      $this->data['settings'] = $instance['display']['default']['settings'];
       if (isset($instance['display'][$this->displayName]['settings'])) {
-        $this->settings = $instance['display'][$this->displayName]['settings'];
+        $this->data['settings'] = $instance['display'][$this->displayName]['settings'];
       }
       // Build the field. This should easily trigger all field hooks.
       $built_field = field_view_field($this->entityType, $entity, $this->fieldName, $instance['display']);
       if ($built_field['#items']) {
-        $this->data = $built_field['#items'];
+        $this->data['items'] = $built_field['#items'];
         // We have the field level access details already, so set then for
         // further reference.
         $this->fieldAccess = $built_field['#access'];
@@ -69,9 +94,14 @@ class JuiceboxGalleryDrupalField extends JuiceboxGalleryDrupal {
     throw new Exception(t('There was an exception while loading Drupal data for a field-based Juicebox gallery.'));
   }
   
-  
-  
-  public function access($check_field = TRUE, $check_entity = TRUE) {
+  /**
+   * Check access to the Drupal data that will be used to build the gallery.
+   * 
+   * @return boolean
+   *   Return TRUE if access is allowed for the current user and FALSE if not.
+   *   Can also return NULL if access cannot be determined.
+   */
+  function access() {
     $access = TRUE;
     // Check field-level access.
     if (!isset($this->fieldAccess)) {
@@ -110,10 +140,13 @@ class JuiceboxGalleryDrupalField extends JuiceboxGalleryDrupal {
     return $access;
   }
   
-  
-  public function buildType() {
+  /**
+   * Build the gallery based on loaded Drupal data specific to this connector.
+   */
+  protected function buildGallery() {
+    $settings = $this->data['settings'];
     $images = array();
-    foreach ($this->data as $id => $item) {
+    foreach ($this->data['items'] as $id => $item) {
       // Initiate source details.
       $image_src = $thumb_src = $unstyled_src = '';
       $src = file_create_url($item['uri']);
@@ -122,8 +155,8 @@ class JuiceboxGalleryDrupalField extends JuiceboxGalleryDrupal {
       }
       // Chech to see if we are dealing with an incompatible file.
       $incompatible_file_alt = _juicebox_incompatible_file_alternative($item, $this->library);
-      if ($incompatible_file_alt && !empty($this->settings['incompatible_file_action'])) {
-        if ($this->settings['incompatible_file_action'] == 'skip') {
+      if ($incompatible_file_alt && !empty($settings['incompatible_file_action'])) {
+        if ($settings['incompatible_file_action'] == 'skip') {
           continue;
         }
         else {
@@ -132,46 +165,46 @@ class JuiceboxGalleryDrupalField extends JuiceboxGalleryDrupal {
       }
       // If we have a compatible file, try to style it.
       else {
-        if (!empty($this->settings['image_style'])) {
-          $image_src = image_style_url($this->settings['image_style'], $item['uri']);
+        if (!empty($settings['image_style'])) {
+          $image_src = image_style_url($settings['image_style'], $item['uri']);
         }
-        if (!empty($this->settings['thumb_style'])) {
-          $thumb_src = image_style_url($this->settings['thumb_style'], $item['uri']);
+        if (!empty($settings['thumb_style'])) {
+          $thumb_src = image_style_url($settings['thumb_style'], $item['uri']);
         }
       }
       // Get the image title.
       $title = '';
       // If we have an incompatible file and are configured to show a link, set
       // the title text as the link.
-      if ($incompatible_file_alt && $this->settings['incompatible_file_action'] == 'show_icon_and_link') {
+      if ($incompatible_file_alt && $settings['incompatible_file_action'] == 'show_icon_and_link') {
         $anchor = !empty($item['description']) ? $item['description'] : $item['filename'];
         $title = l(check_plain($anchor), $unstyled_src);
       }
-      elseif (!empty($item[$this->settings['title_source']])) {
+      elseif (!empty($item[$settings['title_source']])) {
         // If a field option is specified we need to try to get the value from a
         // file entity.
-        if (strpos($this->settings['title_source'], 'field_') === 0) {
-          $title = _juicebox_get_field_value_from_file_entity($item['fid'], $this->settings['title_source']);
+        if (strpos($settings['title_source'], 'field_') === 0) {
+          $title = _juicebox_get_field_value_from_file_entity($item['fid'], $settings['title_source']);
         }
         else {
-          $title = check_markup($item[$this->settings['title_source']]);
+          $title = check_markup($item[$settings['title_source']]);
         }
       }
       // Get the image caption.
       $caption = '';
-      if (!empty($item[$this->settings['caption_source']])) {
+      if (!empty($item[$settings['caption_source']])) {
         // If a field option is specified we need to try to get the value from a
         // file entity.
-        if (strpos($this->settings['caption_source'], 'field_') === 0) {
-          $caption = _juicebox_get_field_value_from_file_entity($item['fid'], $this->settings['caption_source']);
+        if (strpos($settings['caption_source'], 'field_') === 0) {
+          $caption = _juicebox_get_field_value_from_file_entity($item['fid'], $settings['caption_source']);
         }
         else {
-          $caption = check_markup($item[$this->settings['caption_source']]);
+          $caption = check_markup($item[$settings['caption_source']]);
         }
       }
       // Get the linkURL.
       $image_link_src = $unstyled_src;
-      if (!empty($this->settings['linkurl_source']) && !$incompatible_file_alt) {
+      if (!empty($settings['linkurl_source']) && !$incompatible_file_alt) {
         $image_link_src = $image_src;
       }
       // Add each image to the gallery.
@@ -179,12 +212,12 @@ class JuiceboxGalleryDrupalField extends JuiceboxGalleryDrupal {
         'image_url' => $image_src,
         'thumb_url' => $thumb_src,
         'link_url' => $image_link_src,
-        'link_target' => $this->settings['linkurl_target'],
+        'link_target' => $settings['linkurl_target'],
       );
-      $filter = !empty($this->settings['apply_markup_filter']);
-      $this->addImage($images_src_data, $title, $caption, $filter);
+      $filter = !empty($settings['apply_markup_filter']);
+      $this->gallery->addImage($images_src_data, $title, $caption, $filter);
     }   
-    $this->setOptions();
+    $this->setOptions($settings);
   }  
 
 }
