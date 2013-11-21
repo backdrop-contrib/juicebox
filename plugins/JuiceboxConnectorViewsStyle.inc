@@ -137,7 +137,7 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
           'link_url' => $image_link_src,
           'link_target' => $settings['linkurl_target'],
         );
-        $filter = !empty($settings['apply_markup_filter']);
+        $filter = variable_get('juicebox_apply_markup_filter', TRUE);
         $this->gallery->addImage($images_src_data, $title, $caption, $filter);
       }
     }

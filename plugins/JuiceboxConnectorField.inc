@@ -141,83 +141,138 @@ class JuiceboxConnectorField extends JuiceboxConnector {
   }
   
   /**
-   * Build the gallery based on loaded Drupal data specific to this connector.
+   * Build the gallery based on loaded field data.
    */
   protected function buildGallery() {
     $settings = $this->data['settings'];
-    $images = array();
+    // Attach the file entities to the items for reference.
+    $this->appendFilesToItems($this->data['items']);
     foreach ($this->data['items'] as $id => $item) {
-      // Initiate source details.
-      $image_src = $thumb_src = $unstyled_src = '';
-      $src = file_create_url($item['uri']);
-      if ($src) {
-        $image_src = $thumb_src = $unstyled_src = $src;
+      // Style the main item.
+      $item = $this->styleImage($item, $settings['image_style'], (!empty($settings['incompatible_file_action'])));
+      // If the main image is not compatible with Juicebox and this gallery
+      // is configured to skip incompatible files, short-circut this iteration.
+      if (!$item['juicebox_compatible'] && $settings['incompatible_file_action'] == 'skip') {
+        continue;
       }
-      // Chech to see if we are dealing with an incompatible file.
-      $incompatible_file_alt = _juicebox_incompatible_file_alternative($item, $this->library);
-      if ($incompatible_file_alt && !empty($settings['incompatible_file_action'])) {
-        if ($settings['incompatible_file_action'] == 'skip') {
-          continue;
-        }
-        else {
-          $image_src = $thumb_src = $incompatible_file_alt;
-        }
+      // Set image data.
+      $src_data['image_url'] = $item['juicebox_styled_image'];
+      // Set thumb data.
+      $src_data['thumb_url'] = $item['juicebox_unstyled_src'];
+      if (!$item['juicebox_compatible']) {
+        $src_data['thumb_url'] = $item['juicebox_styled_image'];
       }
-      // If we have a compatible file, try to style it.
-      else {
-        if (!empty($settings['image_style'])) {
-          $image_src = image_style_url($settings['image_style'], $item['uri']);
-        }
-        if (!empty($settings['thumb_style'])) {
-          $thumb_src = image_style_url($settings['thumb_style'], $item['uri']);
-        }
+      elseif (!empty($settings['thumb_style'])) {
+        $src_data['thumb_url'] = image_style_url($settings['thumb_style'], $item['uri']);
       }
-      // Get the image title.
-      $title = '';
-      // If we have an incompatible file and are configured to show a link, set
-      // the title text as the link.
-      if ($incompatible_file_alt && $settings['incompatible_file_action'] == 'show_icon_and_link') {
+      // Set the linkURL. This will typically be the full unstyled version of
+      // the file, but can be customized in the configuration.
+      $src_data['link_url'] = $item['juicebox_unstyled_src'];
+      if (!empty($settings['linkurl_source']) && $item['juicebox_compatible']) {
+        $src_data['link_url'] = $item['juicebox_styled_image'];
+      }
+      // Set the link target directly from the gallery settings.
+      $src_data['link_target'] = $settings['linkurl_target'];
+      // Set the image title. If we have an incompatible file and are configured
+      // to show a link, set the title text as the link.
+      if (!$item['juicebox_compatible'] && $settings['incompatible_file_action'] == 'show_icon_and_link') {
         $anchor = !empty($item['description']) ? $item['description'] : $item['filename'];
-        $title = l(check_plain($anchor), $unstyled_src);
+        $title = l($anchor, $item['juicebox_unstyled_src']);
       }
-      elseif (!empty($item[$settings['title_source']])) {
-        // If a field option is specified we need to try to get the value from a
-        // file entity.
-        if (strpos($settings['title_source'], 'field_') === 0) {
-          $title = _juicebox_get_field_value_from_file_entity($item['fid'], $settings['title_source']);
-        }
-        else {
-          $title = check_markup($item[$settings['title_source']]);
-        }
+      else {
+        $title = $this->getTextFromItem($item, $settings['title_source']);
       }
-      // Get the image caption.
-      $caption = '';
-      if (!empty($item[$settings['caption_source']])) {
-        // If a field option is specified we need to try to get the value from a
-        // file entity.
-        if (strpos($settings['caption_source'], 'field_') === 0) {
-          $caption = _juicebox_get_field_value_from_file_entity($item['fid'], $settings['caption_source']);
-        }
-        else {
-          $caption = check_markup($item[$settings['caption_source']]);
-        }
-      }
-      // Get the linkURL.
-      $image_link_src = $unstyled_src;
-      if (!empty($settings['linkurl_source']) && !$incompatible_file_alt) {
-        $image_link_src = $image_src;
-      }
-      // Add each image to the gallery.
-      $images_src_data = array(
-        'image_url' => $image_src,
-        'thumb_url' => $thumb_src,
-        'link_url' => $image_link_src,
-        'link_target' => $settings['linkurl_target'],
-      );
-      $filter = !empty($settings['apply_markup_filter']);
-      $this->gallery->addImage($images_src_data, $title, $caption, $filter);
-    }   
+      // Set the image caption.
+      $caption = $this->getTextFromItem($item, $settings['caption_source']);
+      // See if we are configured to filter title and caption data. 
+      $filter = variable_get('juicebox_apply_markup_filter', TRUE);
+      // Add this image to the gallery.
+      $this->gallery->addImage($src_data, $title, $caption, $filter);
+    }
+    // Add all gallery options directly from the field settings.
     $this->setOptions($settings);
-  }  
+  }
+
+  /**
+   * Utility to get sanitized text directly from a file item.
+   * 
+   * This method will attempt to extract text, in a format safe for display,
+   * from the data contained within a file item.
+   *
+   * @param array $item
+   *   An associative array of file information.
+   * @param string $source
+   *   The key within the $item array that contains the text that we want to
+   *   extract.
+   * @return string
+   *   Safe text for output or an empty string if no text can be extracted.
+   * 
+   * @see JuiceboxConnectorField::confGetTextSources()
+   */
+  protected function getTextFromItem($item, $source) {
+    $text = '';
+    if (!empty($item[$source])) {
+      // If a field option is specified we need to try to get the value from a
+      // file entity.
+      if (strpos($source, 'field_') === 0) {
+        // See if we can already reference the file entity from the item itself.
+        // If not we have to load it (most likely from the static cache).
+        if (!empty($item['file_entity'])) {
+          $file_entity = $item['file_entity'];
+        }
+        else {
+          $file_entity = file_load($item['fid']);
+        }
+        $field = field_get_items('file', $file_entity, $source);
+        if (!empty($field[0]['safe_value'])) {
+          $text = $field[0]['safe_value'];
+        }
+      }
+      else {
+        $text = check_markup($item[$source]);
+      }
+    }
+    return $text;
+  }
+  
+  /**
+   * Utility to fetch the title and caption source options for field-based
+   * galleries (primarily for File Entity and Media module support).
+   *
+   * @param array $instance
+   *   An associative array containing the Drupal field instance information for
+   *   a Juicebox field.
+   * @return array
+   *   An associative array representing the key => label pairs for each title
+   *   and caption source option. Each key will match a keyed value on the file
+   *   item source array when the gallery is built.
+   * 
+   * @see JuiceboxConnectorField::getTextFromItem()
+   */
+  static function confGetTextSources($instance) {
+    // If this is a standard image field, using the image widget, we can use
+    // core image "alt" and "title" values if they are active.
+    if (!empty($instance['widget']['module']) && $instance['widget']['module'] == 'image') {
+      if (!empty($instance['settings']['alt_field'])) {
+        $text_source_options['alt'] = t('Image - Alt text (processed by fallback text format)');
+      }
+      if (!empty($instance['settings']['title_field'])) {
+        $text_source_options['title'] = t('Image - Title text (processed by fallback text format)');
+      }
+    }
+    // If file entity is installed we can use fields attached to the "image"
+    // file entity.
+    if (module_exists('file_entity')) {
+      // Get the fields that are available on the image file type.
+      $image_fields = field_info_instances('file', 'image');
+      foreach ($image_fields as $image_field_name => $image_field) {
+        // Only text-based fields should be options.
+        if (!empty($image_field['widget']['module']) && $image_field['widget']['module'] == 'text') {
+          $text_source_options[$image_field_name] = t('File Entity Image - @label', array('@label' => $image_field['label']));
+        }
+      }
+    }
+    return $text_source_options;
+  }
 
 }

@@ -110,10 +110,12 @@ abstract class JuiceboxConnector {
     else {
       // Build the gallery based on specific plugin logic.
       $this->buildGallery();
+      // Allow other modules to alter the built gallery data before it's
+      // rendered. Note that the $data property is protected but we want to
+      // expose it here for context.
+      drupal_alter('juicebox_gallery', $this, $this->data);
       self::$builtGalleries[$this->gallery->id] = $this->gallery;
     }
-    // Allow other modules to alter the built gallery data before it's rendered.
-    drupal_alter('juicebox_gallery', $this);
   }
   
   /**
@@ -162,17 +164,127 @@ abstract class JuiceboxConnector {
   }
   
   /**
-   * Render the embed code for a Juicebox gallery.
+   * Render the embed code for a Juicebox gallery using the Drupal theme system.
    *
-   * This is a replacement for the gallery object's own getEmbed() method. It
-   * uses the Drupal theme system and allows for more flexible and comprehensive
-   * embed code output.
-   * 
+   * @param string $xml_path
+   *   The path to the gallery's XML.
    * @param array $settings
-   *   An associative array of common Drupal settings for a gallery.
+   *   An associative array of the common Drupal settings for a gallery.
+   * @return string
+   *   Themed markup for the Juicebox embed code.
    */
-  function renderEmbed($settings) {
-    return theme('juicebox_embed_markup', array('gallery' => $this->gallery, 'settings' => $settings));
+  function renderEmbed($xml_path, $settings) {
+    // Capture the current query parameters and a checksum value in the XML.
+    $current_query = drupal_get_query_parameters();
+    $xml_query = array_merge(array('checksum' => $this->gallery->getChecksum()), $current_query);
+    $xml = array(
+      'path' => $xml_path,
+      'options' => array('query' => $xml_query),
+    );
+    // If debugging links are allowed and "jb-debug" is active in the query we
+    // display debug info in place of the actual gallery.
+    $settings['show_debug_links'] = variable_get('juicebox_show_debug_links', FALSE);
+    if ($settings['show_debug_links'] && array_key_exists('jb-debug', $current_query)) {
+      drupal_add_css(drupal_get_path('module', 'juicebox') . '/css/placeholder_styles.css');
+      return theme('juicebox_debug_markup', array('gallery' => $this->gallery, 'xml' => $xml, 'settings' => $settings));
+    }
+    else {
+      // Load the juicebox javascript library and gallery-specific javascript.
+      libraries_load('juicebox');
+      $xml_url = url($xml['path'], $xml['options']);
+      drupal_add_js($this->gallery->getJavascript($xml_url), array('type' => 'inline', 'scope' => variable_get('juicebox_js_scope', 'header')));
+      // Theme the embed code.
+      return theme('juicebox_embed_markup', array('gallery' => $this->gallery, 'settings' => $settings));
+    }
+  }
+  
+  /**
+   * Utility to style an individual image/file item for use in a Juicebox
+   * gallery.
+   * 
+   * This method can detect if the passed item is incompatible with Juicebox.
+   * If so it styles the output as a mimetype image icon representing the file
+   * type. Otherwise the item is styled normally with the passed image style.
+   *
+   * @param array $item
+   *   An associative array of file information.
+   * @param string $style
+   *   The Drupal image style to apply to the item.
+   * @param boolean $check_compatible
+   *   Whether-or-not to detect if the item is compatible with Juicebox, and if
+   *   so, substitute a mimetype icon for its output.
+   * @return array
+   *   The file item with style data appended to the array.
+   */
+  protected function styleImage($item, $style, $check_compatible = TRUE) {
+    $item['juicebox_compatible'] = TRUE;
+    $item['juicebox_styled_image'] = '';
+    // Set the normal, unstyled, url for reference.
+    $item['juicebox_unstyled_src'] = file_create_url($item['uri']);
+    // Check compatibility if configured and if the library info contains
+    // mimetype compatibitly information.
+    if ($check_compatible && !empty($this->library['compatible_mimetypes']) && !in_array($item['filemime'], $this->library['compatible_mimetypes'])) {
+      // If the item is not compatible, find the substitute mimetype icon.
+      $item['juicebox_compatible'] = FALSE;
+      $icon_dir = drupal_get_path('module', 'juicebox') . '/images/mimetypes';
+      // See if we can reference the file entity off the item itself. If not we
+      // have to load the entity (most likely from the static cache).
+      if (!empty($item['file_entity'])) {
+        $file_entity = $item['file_entity'];
+      }
+      else {
+        $file_entity = file_load($item['fid']);
+      }
+      $icon_path = file_icon_path($file_entity, $icon_dir);
+      if ($icon_path) {
+        $item['juicebox_styled_image'] = url($icon_path);
+      }
+      else {
+        $item['juicebox_styled_image'] = url($icon_dir . '/image-x-generic.png');
+      }
+    }
+    // If the item is compatible, style it.
+    elseif (!empty($style)) {
+      $item['juicebox_styled_image'] = image_style_url($style, $item['uri']);
+    }
+    else {
+      $item['juicebox_styled_image'] = $item['juicebox_unstyled_src'];
+    }
+    return $item;
+  }
+  
+  /**
+   * Utility to append a full file entity to each file item in an array.
+   * 
+   * The "item" values available to Drupal display formatters are often
+   * array representations of a full file entity. However, sometimes we need to
+   * use logic in a formatter that requires the ORIGINAL file entity as an
+   * input. This method re-fetches these entities (typically from the static
+   * entity cache) and attaches them to each item as $item['file_entity'].
+   * 
+   * @param array $items
+   *   An array of associative arrays of file information (taken from file
+   *   entity properties).
+   */
+  protected function appendFilesToItems(&$items) {
+    $fids = array();
+    $files = array();
+    // Pass one - get the fids from the items.
+    foreach ($items as $item) {
+      if (!empty($item['fid'])) {
+        $fids[] = $item['fid'];
+      }
+    }
+    // Bulk-load all of the files at once. This may not really provide any
+    // performance advantage if these entities are already in the static cache,
+    // but we still do it this way just in case.
+    $files = file_load_multiple($fids);
+    // Pass two - add the entities to the items.
+    foreach ($items as $item) {
+      if (!empty($files[$item['fid']])) {
+        $item['file_entity'] = $files[$item['fid']];
+      }
+    }
   }
   
   /**
@@ -200,6 +312,7 @@ abstract class JuiceboxConnector {
       'linkurl_source' => '',
       'linkurl_target' => '_blank',
       'incompatible_file_action' => 'show_icon_and_link',
+      'show_debug_links' => 0,
     );
   }
   
@@ -219,7 +332,7 @@ abstract class JuiceboxConnector {
    */
   static function confBaseForm($form, $settings) {
     // Get locally installed library details.
-    $library = juicebox_detect_library();
+    $library = juicebox_library_detect();
     $disallowed_conf = array();
     if (!empty($library)) {
       // If we don't have a known version of the Juicebox library, just show a
@@ -331,12 +444,6 @@ abstract class JuiceboxConnector {
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
       '#weight' => 30,
-    );
-    $form['apply_markup_filter'] = array(
-      '#jb_fieldset' => 'advanced',
-      '#type' => 'checkbox',
-      '#title' => t('Filter title and caption output for compatibility with Juicebox javascript (recommended)'),
-      '#description' => t('This option helps ensure title/caption output is syntactically compatible with the Juicebox javascript library by removing block-level tags.'),
     );
     $form['incompatible_file_action'] = array(
       '#jb_fieldset' => 'advanced',

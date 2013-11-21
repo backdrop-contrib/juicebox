@@ -25,6 +25,13 @@ function juicebox_menu() {
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
+  $items['admin/config/media/juicebox'] = array(
+    'title' => 'Juicebox',
+    'description' => 'Adjust global Juicebox settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('juicebox_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+  );
   return $items;
 }
 
@@ -37,6 +44,18 @@ function juicebox_theme() {
     // Theme hook to generate embed markup for a Juicebox gallery.
     'juicebox_embed_markup' => array(
       'variables' => array('gallery' => NULL, 'settings' => array()),
+      'path' => drupal_get_path('module', 'juicebox') . '/themes',
+      'file' => 'juicebox.theme.inc',
+    ),
+    // Theme hook to generate info/debug information for a Juicebox gallery.
+    'juicebox_debug_markup' => array(
+      'variables' => array('gallery' => NULL, 'xml' => array(), 'settings' => array()),
+      'path' => drupal_get_path('module', 'juicebox') . '/themes',
+      'file' => 'juicebox.theme.inc',
+    ),
+    // Theme hook to generate toggle links between gallery and debug info.
+    'juicebox_toggle_markup' => array(
+      'variables' => array('gallery' => NULL, 'settings' => array(), 'debug' => FALSE),
       'path' => drupal_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
     ),
@@ -62,7 +81,7 @@ function juicebox_libraries_info() {
       // aggregated by Drupal (set preprocess option = FALSE). This is because
       // some supporting library CSS files must be at a specific location
       // RELATIVE to to the main js file. Aggregation breaks this.
-      'js' => array('juicebox.js' => array('preprocess' => FALSE)),
+      'js' => array('juicebox.js' => array('preprocess' => FALSE, 'scope' => variable_get('juicebox_js_scope', 'header'))),
     ),
     'callbacks' => array(
       'info' => array('juicebox_library_info'),
@@ -136,15 +155,15 @@ function juicebox($xml_path_args, $data = NULL, $xml = FALSE) {
   $type = $xml_path_args[0];
   // Get the library data. We do this early (before instantiating) as the lib
   // details should be allowed to impact which classes are used.
-  $library = juicebox_detect_library();
+  $library = juicebox_library_detect();
   // Calculate the connector classes that are supported directly by this module.
   $classes = array('connector_plugin' => '', 'gallery' => 'JuiceboxGallery');
   switch ($type) {
     case 'field':
-      $classes['plugin_class'] = 'JuiceboxConnectorField';
+      $classes['connector_plugin'] = 'JuiceboxConnectorField';
       break;
     case 'view':
-      $classes['plugin_class'] = 'JuiceboxConnectorViewsStyle';
+      $classes['connector_plugin'] = 'JuiceboxConnectorViewsStyle';
       break;
   }
   // Allow other modules to alter the classes that will be used.
@@ -153,7 +172,7 @@ function juicebox($xml_path_args, $data = NULL, $xml = FALSE) {
   // Instantiate the Juicebox gallery object.
   $gallery = new $classes['gallery']($id);
   // Instantiate the Juicebox connector object.
-  $juicebox = new $classes['plugin_class']($xml_path_args, $data, $gallery, $library);
+  $juicebox = new $classes['connector_plugin']($xml_path_args, $data, $gallery, $library);
   if (is_object($juicebox)) {
     return $juicebox;
   }
@@ -174,21 +193,21 @@ function juicebox($xml_path_args, $data = NULL, $xml = FALSE) {
  *   details. If FALSE Libraries API detection may be bypased if library version
  *   details can be detected through the URL.
  * @param boolean $reset
- *   Whether-or-not to bypass and reset any DB caching information for the
- *   library details.
+ *   Whether-or-not to bypass and reset any caching information.
  * @return array
  *   An associative array of the library information.
  */
-function juicebox_detect_library($force_local = FALSE, $reset = FALSE) {
+function juicebox_library_detect($force_local = FALSE, $reset = FALSE) {
   // We use our own static cache for this. Libraries API detection has a static
   // cache, but as we may be bypassing full local detection in certain
   // situations, we can't always use it.
   $library = &drupal_static(__FUNCTION__, array());
-  if (!$library) {
+  if (!$library || $reset) {
     // See if we have been passed version details in the URL. If so we bypass
     // local detection and build our own libraries array.
     $query = drupal_get_query_parameters();
     if (!empty($query['jb-version']) && !$force_local) {
+      juicebox_library_info($library);
       $version_number = check_plain($query['jb-version']);
       if (!empty($query['jb-pro'])) {
         $library['pro'] = TRUE;
@@ -205,13 +224,13 @@ function juicebox_detect_library($force_local = FALSE, $reset = FALSE) {
       // We maintain our own DB cache here because libraries_detect() does not
       // have one. libaries_load() has one, but we don't want to be actually
       // loading the library here.
-      $library = cache_get('local_juicebox_library', 'cache');
+      $library = cache_get('juicebox_local_library', 'cache');
       if ($library && !$reset) {
         $library = $library->data;
       }
       else {
         $library = libraries_detect('juicebox');
-        cache_set('local_juicebox_library', $library, 'cache');
+        cache_set('juicebox_local_library', $library, 'cache');
       }
     }
   }
@@ -353,6 +372,38 @@ function juicebox_form_pre_render_fieldsets($form) {
 
 
 /**
+ * Menu callback: global configuration options to control Juicebox behaviour.
+ * 
+ * @see juicebox_menu()
+ */
+function juicebox_admin_settings() {
+  $form['juicebox_admin_intro'] = array(
+    '#markup' => t("Most Juicebox configuration options are specified within each gallery's unique configuration form. The options here are additional global settings for administrative and debugging purposes. Please be sure to clear your site's caches within the !performance settings after making any changes here.", array('!performance' => l(t('performance'), 'admin/config/development/performance'))),
+  );
+  $form['juicebox_js_scope'] = array(
+    '#type' => 'select',
+    '#title' => t('Javscript Scope'),
+    '#options' => array('header' => t('Header'), 'footer' => t('Footer')),
+    '#default_value' => variable_get('juicebox_js_scope', 'header'),
+    '#description' => t('The scope in which to add the Juicebox javascript library and all gallery-specific definitions.'),
+  );
+  $form['juicebox_apply_markup_filter'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Filter all title and caption output for compatibility with Juicebox javascript (recommended)'),
+    '#default_value' => variable_get('juicebox_apply_markup_filter', TRUE),
+    '#description' => t('This option helps ensure title/caption output is syntactically compatible with the Juicebox javascript library by removing block-level tags.'),
+  );
+  $form['juicebox_show_debug_links'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show links to debug info'),
+    '#default_value' => variable_get('juicebox_show_debug_links', FALSE),
+    '#description' => t('Show links above each gallery to toggle the display of gallery debugging information.'),
+  );
+  return system_settings_form($form);
+}
+
+
+/**
  * Implements hook_field_formatter_info().
  *
  * Add juicebox_formatter formatter.
@@ -393,7 +444,7 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
   }
   $form = array();
   // Get available title and caption sources.
-  $text_sources = _juicebox_field_formatter_get_text_sources($instance);
+  $text_sources = JuiceboxConnectorField::confGetTextSources($instance);
   // Get available image style presets
   $presets = image_style_options(FALSE);
   $settings = $instance['display'][$view_mode]['settings'];
@@ -464,8 +515,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   $settings = $instance['display'][$display_name]['settings'];
   // Generate xml path details.
   $xml_path = 'juicebox/xml/field/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . $display_name;
-  $xml_args = explode('/', $xml_path);
-  
+  $xml_args = explode('/', $xml_path); 
   // Instantiate and build the Juicebox gallery.
   try {
     $data = array('items' => $items, 'settings' => $display['settings']);
@@ -478,13 +528,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
     if ($juicebox->access()) {
       // Build the gallery.
       $juicebox->build();
-      // Get the full XML url.
-      $xml_query = array_merge(array('checksum' => $juicebox->gallery->getChecksum()), drupal_get_query_parameters());
-      $xml_url = url($xml_path, array('query' => $xml_query));
-      // Load the juicebox javascript library and gallery-specific javascript.
-      libraries_load('juicebox');
-      drupal_add_js($juicebox->gallery->getJavascript($xml_url), 'inline');
-      $element[0] = array('#markup' => $juicebox->renderEmbed($settings));
+      $element[0] = array('#markup' => $juicebox->renderEmbed($xml_path, $settings));
     }
   }
   catch (Exception $e) {
@@ -519,7 +563,7 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
   }
   $settings_display[] = t("Thumbnail style: @style", array('@style' => $style));
   // Define display options for caption and title source.
-  $text_sources = _juicebox_field_formatter_get_text_sources($instance);
+  $text_sources = JuiceboxConnectorField::confGetTextSources($instance);
   // Caption source setting.
   if (!empty($text_sources[$settings['caption_source']])) {
     $source = $text_sources[$settings['caption_source']];
@@ -540,99 +584,4 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
   $settings_display[] = t("Additional Juicebox library configuration options may also be set.");
   $summary = implode('<br />', $settings_display);
   return $summary;
-}
-
-
-/**
- * Utility to fetch the title and caption source options for field-based
- * galleries (primarily for File Entity and Media module support).
- *
- * @param array $instance
- *   An associative array containing the Drupal field instance information for
- *   a Juicebox field.
- * @return array
- *   An associative array representing the key => label pairs for each title and
- *   caption source option. Each key will match a keyed value on the image
- *   source array when the gallery is built.
- */
-function _juicebox_field_formatter_get_text_sources($instance) {
-  // If this is a standard image field, using the image widget, we can use core
-  // image "alt" and "title" values if they are active.
-  if (!empty($instance['widget']['module']) && $instance['widget']['module'] == 'image') {
-    if (!empty($instance['settings']['alt_field'])) {
-      $text_source_options['alt'] = t('Image - Alt text (processed by fallback text format)');
-    }
-    if (!empty($instance['settings']['title_field'])) {
-      $text_source_options['title'] = t('Image - Title text (processed by fallback text format)');
-    }
-  }
-  // If file entity is installed we can use fields attached to the "image" file
-  // entity.
-  if (module_exists('file_entity')) {
-    // Get the fields that are available on the image file type.
-    $image_fields = field_info_instances('file', 'image');
-    foreach ($image_fields as $image_field_name => $image_field) {
-      // Only text-based fields should be options.
-      if (!empty($image_field['widget']['module']) && $image_field['widget']['module'] == 'text') {
-        $text_source_options[$image_field_name] = t('File Entity Image - @label', array('@label' => $image_field['label']));
-      }
-    }
-  }
-  return $text_source_options;
-}
-
-
-/**
- * Utility to fetch a field value from an entity field (primarily for Media
- * module support).
- *
- * @param int $fid
- *   The id of a file that can be represented as a file entity. This id will
- *   match the file entity id.
- * @param string $field_name
- *   The name of the field to fetch from the file entity.
- * @return mixed
- *   The safe value for the requested field. For multiple-value fields only the
- *   first value will be returned. Returns NULL if no value can be found.
- */
-function _juicebox_get_field_value_from_file_entity($fid, $field_name) {
-  // We depend on the entity cache for performance when loading the file entity.
-  // If the passed fid does in fact represent a file entity then there
-  // is a very good chance it's been loaded already by the time this function is
-  // called.
-  $file_entity = entity_load('file', array($fid));
-  if (!empty($file_entity[$fid])) {
-    $field = field_get_items('file', $file_entity[$fid], $field_name);
-    if (!empty($field[0]['safe_value'])) {
-      return $field[0]['safe_value'];
-    }
-  }
-  return NULL;
-}
-
-
-/**
- * Helper to detect if a given file item is not compatible with Juicebox, and
- * define an alternative file to display if so.
- *
- * @param array $item
- *   An associative array containing all file entity properties for the file to
- *   check.
- * @param array $library
- *   An associative array containing the library information that corresponds
- *   to the Juicebox javascript library that will be used for the display.
- * @return string
- *   If an incompatible file is detected an alternative image path is returned,
- *   otherwise returns NULL.
- */
-function _juicebox_incompatible_file_alternative($item, $library) {
-  if (!empty($library['compatible_mimetypes']) && !in_array($item['filemime'], $library['compatible_mimetypes'])) {
-    $icon_dir = drupal_get_path('module', 'juicebox') . '/images/mimetypes';
-    $icon_path = file_icon_path(file_load($item['fid']), $icon_dir);
-    if ($icon_path) {
-      return url($icon_path);
-    }
-    return url($icon_dir . '/image-x-generic.png');
-  }
-  return NULL;
 }

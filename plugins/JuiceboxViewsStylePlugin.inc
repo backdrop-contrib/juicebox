@@ -72,21 +72,15 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
 
     // Start with the "common" form elements.
     $form = JuiceboxConnector::confBaseForm($form, $settings);
+    // Media and incompatible file handling are not yet available in views.
+    unset($form['incompatible_file_action']);
     // Add the view-specific elements.
     $form['image_field'] = array(
       '#type' => 'select',
-      '#title' => t('Main Image Field'),
+      '#title' => t('Image Field'),
       '#default_value' => $settings['image_field'],
       '#description' => t('The view\'s image field that should be used for each image in the gallery.'),
       '#options' => $field_options_images,
-    );
-    $form['image_field_style'] = array(
-      '#type' => 'select',
-      '#title' => t('Main Image Field Style'),
-      '#default_value' => $settings['image_field_style'],
-      '#description' => t('The style formatter for the image. Any formatting settings configured on the field itself will be ignored and this style setting will always be used.'),
-      '#options' => $presets,
-      '#empty_option' => t('None (original image)'),
     );
     $form['thumb_field'] = array(
       '#type' => 'select',
@@ -94,6 +88,14 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
       '#default_value' => $settings['thumb_field'],
       '#description' => t('The view\'s image field that should be used for each thumbnail in the gallery. Typically you will choose the same value that was set in the "Main Image Field" option above.'),
       '#options' => $field_options_images,
+    );
+    $form['image_field_style'] = array(
+      '#type' => 'select',
+      '#title' => t('Image Field Style'),
+      '#default_value' => $settings['image_field_style'],
+      '#description' => t('The style formatter for the image. Any formatting settings configured on the field itself will be ignored and this style setting will always be used.'),
+      '#options' => $presets,
+      '#empty_option' => t('None (original image)'),
     );
     $form['thumb_field_style'] = array(
       '#type' => 'select',
@@ -130,7 +132,7 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
     foreach ($field_options as $field_key => $field_name) {
       $linkurl_field_options[$field_key] = t('Field') . ' - ' . $field_name;
     }
-    $form['linkurl_source']['#description'] = $form['linkurl_source']['#description'] . '</br><strong>' . t('If using a field for this source the field must render a properly formatted URL and nothing else.') . '</strong>';
+    $form['linkurl_source']['#description'] = $form['linkurl_source']['#description'] . '</br><strong>' . t('If using a field source it must render a properly formatted URL and nothing else.') . '</strong>';
     $form['linkurl_source']['#options'] = array_merge($form['linkurl_source']['#options'], $linkurl_field_options);
   }
 
@@ -198,12 +200,7 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
       $juicebox = juicebox($xml_args, $view);
       // Build the gallery.
       $juicebox->build();
-      // Get the full XML url.
-      $xml_query = array_merge(array('checksum' => $juicebox->gallery->getChecksum()), drupal_get_query_parameters());
-      $xml_url = url($xml_path, array('query' => $xml_query));
-      // Load the gallery-specific javascript.
-      drupal_add_js($juicebox->gallery->getJavascript($xml_url), 'inline');
-      $element = array('#markup' => $juicebox->renderEmbed($settings));
+      $element = array('#markup' => $juicebox->renderEmbed($xml_path, $settings));
     }
     catch (Exception $e) {
       $message = 'Exception building Juicebox embed code: !message in %function (line %line of %file).';

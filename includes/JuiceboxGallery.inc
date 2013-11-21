@@ -89,6 +89,7 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
     if (!$override && array_key_exists(strtolower($option_name), $this->options)) {
       return FALSE;
     }
+    // Add option with lowercase key (allowing for future lookups).
     $this->options[strtolower($option_name)] = $option_value;
     return TRUE;
   }
@@ -155,11 +156,13 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
     $output = '';
     $output .= "new juicebox({";
     $output .= "configUrl:'" . $xml_path . "',";
-    $output .= "containerId:'" . $this->id . "',";
+    $output .= "containerId:'" . $this->id . "'";
     // Add options that need to be loaded immediately (before XML is available).
-    foreach (array('gallerywidth', 'galleryheight', 'backgroundcolor') as $option) {
+    $load_before_xml = array('gallerywidth', 'galleryheight', 'backgroundcolor');
+    foreach ($load_before_xml as $key => $option) {
       if (!empty($this->options[$option])) {
-        $output .= $option . ":'" . $this->options[$option] . "',";
+        $output .= ',';
+        $output .= $option . ":'" . $this->options[$option] . "'";
       }
     }
     $output .= "});";

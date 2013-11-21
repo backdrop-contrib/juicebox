@@ -8,34 +8,22 @@
 
 
 /**
- * Allow modules to alter the data that's used to to build a Juicebox gallery
- * and XML.
+ * Allow modules to alter the Juicebox gallery object used to build gallery
+ * embed code and and XML.
  *
- * @param array $data
- *   An associative array containing all the content and configuration data that
- *   will be used to render a Juicebox gallery and XML. This includes:
- *   - jlib_options: An associative array of Juicebox configuration options
- *     (these will be added as attributes to the "juicebox" element of the XML).
- *   - images: An indexed array of image data (this will be used to construct
- *     the attributes of each "image" element of the XML, along with the "title"
- *     and "caption" elements nested within).
- * @param array $settings
- *   An associative array of raw settings for the gallery. Provided for context.
- * @param array $source_info
- *   An associative array that provides source infomation for the gallery.
- *   Provided for context. This includes:
- *   - xml_path: The path for the gallery's XML which can also be used as an
- *     unique ID for the gallery. The pieces of this path also describe the
- *     data components from the source that are used to build the gallery.
- *   - source: The source object that was used for the XML data. If $xml_path
- *     starts with "juicebox/xml/view" this will be a rendered view object. If
- *     $xml_path starts with "juicebox/xml/entity" this will be an entity object
- *     (such as a node), etc.
+ * @param object $juicebox
+ *   A Juicebox connector object that contains the gallery ($juicebox->gallery)
+ *   which is going to be rendered. The full object is available for context but
+ *   by this point the only alterations that will have any effect are those
+ *   applied to $juicebox->gallery.
+ * @param mixed $data
+ *   The raw Drupal data that was used to build this gallery. Provided for
+ *   context.
  */
-function hook_juicebox_gallery_data_alter(&$data, $settings, $source_info) {
+function hook_juicebox_gallery_alter($juicebox, $data) {
   // See if this is a gallery sourced from a view.
-  if (strpos($source_info['xml_path'], 'juicebox/xml/view') === 0) {
-    $view = $source_info['source'];
+  if ($juicebox->type === 'view') {
+    $view = $data;
     // Assume we have a view called "galleries" and a page called "page_1" that
     // structures galleries based on a taxonomy term contextual filter. We want
     // the juicebox "galleryDescription" option to be the term description, but
@@ -46,9 +34,53 @@ function hook_juicebox_gallery_data_alter(&$data, $settings, $source_info) {
       if (!empty($view->args)) {
         $term = taxonomy_term_load($view->args[0]);
         if (!empty($term->description)) {
-          $data['jlib_options']['galleryDescription'] = strip_tags($term->description);
+          $juicebox->gallery->addOption('gallerydescription', strip_tags($term->description));
         }
       }
     }
+  }
+}
+
+
+/**
+ * Allow modules to alter the classes that are instantiated when a Juicebox
+ * connector is created (pseudo plugin behavior).
+ *
+ * @param array $classes
+ *   An associative array containing the class names that will be instantiated:
+ *   - connector_plugin: The Juicebox connector plugin (based on the abstract
+ *     base class JuiceboxConnector). This contains the building blocks for
+ *     structuring Drupal data into a Juicebox gallery.
+ *   - gallery: A gallery object dependency (implementing
+ *     JuiceboxGalleryInterface) that's used to create the script and markup
+ *     outputs of a Juicebox gallery.
+ * @param array $xml_path_args
+ *   An indexed array of XML path arguments that describe this gallery (and
+ *   make up its XML URL). This information uniquely identifies the gallery and
+ *   contains all the descriptive data needed to (re)build it. Typically the
+ *   first arg on this array contains the 'type' identifier.
+ * @param array $context
+ *   Additional context variables for reference:
+ *   - data: Loaded Drupal data that the gallery can be built from. Typically
+ *     NULL when instantiating a gallery during an XML request.
+ *   - library: Juicebox javascript library data as provided through Libraries
+ *     API.
+ * 
+ * @see juicebox()
+ */
+function hook_juicebox_classes_alter(&$classes, $xml_path_args, $context) {
+  // Completely swap-out the connector used to build field-based galleries.
+  if ($xml_path_args[0] == 'field') {
+    $classes['connector_plugin'] = 'MyBetterCustomFieldConnector';
+  }
+  // Add a new connector to create a Juicebox display formatter for some kind
+  // of Drupal element not already supported by this module.
+  if ($xml_path_args[0] == 'juicy_drupal_widget') {
+    $classes['connector_plugin'] = 'JuiceboxConnectorJuicyWidget';
+  }
+  // Swap out the gallery dependency object because some future Juicebox
+  // javascript library has a different interface.
+  if (!empty($context['library']['version']) && $context['library']['version'] == 'Pro 12.3') {
+    $classes['gallery'] = 'FutureJuiceboxGallery';
   }
 }
