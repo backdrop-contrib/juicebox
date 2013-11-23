@@ -133,13 +133,13 @@ function juicebox_views_plugins() {
  *   (Optional) Loaded Drupal data that the gallery can be built from. When
  *   the embed code is being generated for a Drupal display formatter this data
  *   will typically be available already. However when building the XML this
- *   will be NULL, and we will need to be load it ourselves (based on the XML
- *   args) after the objects are instantiated.
+ *   will be NULL, and we will need to load it ourselves (based on the XML args)
+ *   after the objects are instantiated.
  * @return object
  *   A new Juicebox plugin object that contains an empty Juicebox gallery
  *   object.
  */
-function juicebox($xml_path_args, $data = NULL, $xml = FALSE) {
+function juicebox($xml_path_args, $data = NULL) {
   // The XML args may be passed as a full set of path args. If so we can
   // drop some args that are only used for menu routing.
   if ($xml_path_args[0] == 'juicebox' && $xml_path_args[1] == 'xml') {
@@ -414,6 +414,7 @@ function juicebox_field_formatter_info() {
   $formatters = array(
     'juicebox_formatter' => array(
       'label' => t('Juicebox Gallery'),
+      'description' => t('Style groups of images or files as a Juicebox gallery.'),
       'field types' => array('image', 'file'),
       'settings' => array_merge($base_settings, array(
         'image_style' => '',
@@ -432,13 +433,22 @@ function juicebox_field_formatter_info() {
  */
 function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
   // If this formatter is being used outside the context of a normal field
-  // display (e.g. within individual view rows, panels, etc.) we display a
-  // message to discourage and prevent it's use. This is due to the fact that
-  // we don't have a reliable way to build the XML for these cases.
+  // display (e.g. within individual view rows, panels, as a file entity
+  // display, etc.) we display a message to discourage and prevent it's use.
+  // This is due to the fact that we don't have a reliable way to build the XML
+  // for these cases.
+  // @todo Consider a "whitelisting" approach instead of "blacklisting".
+  $juicebox_formatter_notice = '';
   if (!empty($instance['bundle']) && $instance['bundle'] == 'ctools') {
+    $juicebox_formatter_notice = t('<strong>NOTICE: The Juicebox field formatter is not fully supported within individual view rows (and other ctools contexts)</strong>. Using this setting is not recommended. For views support please use the Juicebox display style plugin.');
+  }
+  if (!empty($instance['entity_type']) && $instance['entity_type'] == 'file') {
+    $juicebox_formatter_notice = t('<strong>NOTICE: The Juicebox field formatter is not fully supported when rendering individual file entities</strong>. Using this setting is not recommended. For file support please apply the Juicebox field formatter to a <em>field</em> of type file.');
+  }
+  if (!empty($juicebox_formatter_notice)) {
     return array('juicebox_formatter_notice' => array(
       '#prefix' => '<p>',
-      '#markup' => t('<strong>NOTICE: The Juicebox field formatter is not fully supported within individual view rows (and other ctools contexts)</strong>. Using this setting is not recommended. For views support please use the Juicebox display style plugin.'),
+      '#markup' => $juicebox_formatter_notice,
       '#suffix' => '</p>',
     ));
   }
