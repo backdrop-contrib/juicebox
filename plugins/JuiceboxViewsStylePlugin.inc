@@ -156,10 +156,8 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
     // this validate method can run on pages where the user can't actaully touch
     // the Juicebox-specific plugin settings (such as
     // admin/structure/views/add).
-    static $nag_message_set = FALSE;
-    if (!$nag_message_set && empty($this->options['image_field'])) {
-      drupal_set_message(t("To ensure a fully functional Juicebox gallery please remember to add at least one image field to your Juicebox view display and configure the Juicebox Gallery format settings."), 'warning');
-      $nag_message_set = TRUE;
+    if (empty($this->options['image_field'])) {
+      drupal_set_message(t("To ensure a fully functional Juicebox gallery please remember to add at least one image field to your Juicebox view display and configure the Juicebox Gallery format settings."), 'warning', FALSE);
     }
     return $errors;
   }

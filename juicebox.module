@@ -509,6 +509,12 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   if (empty($items)) {
     return;
   }
+  // The gallery shown in preview view will only display field data from the
+  // previously saved version (that is the only version the XML generation
+  // methods will have access to). Display a warning because of this.
+  if (!empty($entity->in_preview)) {
+    drupal_set_message(t('Juicebox galleries may not display correctly in preview mode. Any edits made to gallery data will only be visible after all changes are saved.'), 'warning', FALSE);
+  }
   $field_name = $instance['field_name'];
   $entity_type_info = entity_get_info($entity_type);
   $entity_id = $entity->{$entity_type_info['entity keys']['id']};
