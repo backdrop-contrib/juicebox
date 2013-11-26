@@ -110,6 +110,13 @@ abstract class JuiceboxConnector {
     else {
       // Build the gallery based on specific plugin logic.
       $this->buildGallery();
+      // Also attempt to translate interface strings.
+      if (variable_get('juicebox_translate_interface', FALSE)) {
+        $base_string = variable_get('juicebox_translate_base_languagelist', '');
+        if (!empty($base_string)) {
+          $this->gallery->addOption('languagelist', check_plain(t($base_string)), FALSE);
+        }
+      }
       // Allow other modules to alter the built gallery data before it's
       // rendered. Note that the $data property is protected but we want to
       // expose it here for context.

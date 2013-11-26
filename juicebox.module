@@ -25,9 +25,11 @@ function juicebox_menu() {
     'access callback' => TRUE,
     'type' => MENU_CALLBACK,
   );
+  // Add menu item for the global admin settings.
   $items['admin/config/media/juicebox'] = array(
     'title' => 'Juicebox',
     'description' => 'Adjust global Juicebox settings.',
+    'file' => 'juicebox.admin.inc',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('juicebox_admin_settings'),
     'access arguments' => array('administer site configuration'),
@@ -285,6 +287,7 @@ function juicebox_page_xml() {
 function juicebox_library_info(&$library) {
   $library['disallowed_conf'] = array();
   $library['compatible_mimetypes'] = array('image/gif', 'image/jpeg', 'image/png');
+  $library['base_languagelist'] = 'Show Thumbnails|Hide Thumbnails|Expand Gallery|Close Gallery|Open Image in New Window';
 }
 
 
@@ -303,6 +306,7 @@ function juicebox_library_post_detect(&$library) {
     // Check if this is a Pro version.
     if (stripos($library['version'], "Pro") !== FALSE) {
       $pro = TRUE;
+      $library['base_languagelist'] = 'Show Thumbnails|Hide Thumbnails|Expand Gallery|Close Gallery|Open Image in New Window|Next Image|Previous Image|Play Audio|Pause Audio|Show Information|Hide Information|Start AutoPlay|Stop AutoPlay|AutoPlay ON|AutoPlay OFF|Go Back|Buy this Image|Share on Facebook|Share on Twitter|Share on Google+|Share on Pinterest|Share on Tumblr|of';
     }
     // Get numeric part of the version statement.
     $version_number = 0;
@@ -369,38 +373,6 @@ function juicebox_form_pre_render_fieldsets($form) {
     }
   }
   return $form;
-}
-
-
-/**
- * Menu callback: global configuration options to control Juicebox behaviour.
- * 
- * @see juicebox_menu()
- */
-function juicebox_admin_settings() {
-  $form['juicebox_admin_intro'] = array(
-    '#markup' => t("Most Juicebox configuration options are specified within each gallery's unique configuration form. The options here are additional global settings for administrative and debugging purposes. Please be sure to clear your site's caches within the !performance settings after making any changes here.", array('!performance' => l(t('performance'), 'admin/config/development/performance'))),
-  );
-  $form['juicebox_js_scope'] = array(
-    '#type' => 'select',
-    '#title' => t('Javscript Scope'),
-    '#options' => array('header' => t('Header'), 'footer' => t('Footer')),
-    '#default_value' => variable_get('juicebox_js_scope', 'header'),
-    '#description' => t('The scope in which to add the Juicebox javascript library and all gallery-specific definitions.'),
-  );
-  $form['juicebox_apply_markup_filter'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Filter all title and caption output for compatibility with Juicebox javascript (recommended)'),
-    '#default_value' => variable_get('juicebox_apply_markup_filter', TRUE),
-    '#description' => t('This option helps ensure title/caption output is syntactically compatible with the Juicebox javascript library by removing block-level tags.'),
-  );
-  $form['juicebox_show_debug_links'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Show links to debug info'),
-    '#default_value' => variable_get('juicebox_show_debug_links', FALSE),
-    '#description' => t('Show links above each gallery to toggle the display of gallery debugging information.'),
-  );
-  return system_settings_form($form);
 }
 
 
