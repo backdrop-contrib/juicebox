@@ -29,7 +29,7 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
       'image_field' => array('default' => ''),
       'image_field_style' => array('default' => ''),
       'thumb_field' => array('default' => ''),
-      'thumb_field_style' => array('default' => 'thumbnail'),
+      'thumb_field_style' => array('default' => 'juicebox_square_thumbnail'),
       'title_field' => array('default' => ''),
       'caption_field' => array('default' => ''),
       'show_title' => array('default' => 0),
@@ -136,7 +136,7 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
     // the Juicebox-specific plugin settings (such as
     // admin/structure/views/add).
     if (empty($this->options['image_field'])) {
-      drupal_set_message(t("To ensure a fully functional Juicebox gallery please remember to add at least one image field to your Juicebox view display and configure the Juicebox Gallery format settings."), 'warning', FALSE);
+      drupal_set_message(t("To ensure a fully functional Juicebox gallery please remember to add at least one field of type Image or File ID to your Juicebox view display and configure the Juicebox Gallery format settings."), 'warning', FALSE);
     }
     return $errors;
   }

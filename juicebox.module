@@ -125,6 +125,28 @@ function juicebox_views_plugins() {
 
 
 /**
+ * Implements hook_image_default_styles().
+ * 
+ * Add a default thumbnail style that will fit (without stretching or scaling)
+ * within the stock Juicebox thumbnail space.
+ */
+function juicebox_image_default_styles() {
+  $styles = array();
+  $styles['juicebox_square_thumbnail'] = array(
+    'label' => 'Juicebox square thumbnail (85x85)',
+    'effects' => array(
+      array(
+        'name' => 'image_scale_and_crop',
+        'data' => array('width' => 85, 'height' => 85),
+        'weight' => 0,
+      ),
+    ),
+  );
+  return $styles;
+}
+
+
+/**
  * Instantiate a Juicebox connector object along with its dependencies.
  * 
  * @param array $xml_path_args
@@ -391,7 +413,7 @@ function juicebox_field_formatter_info() {
       'field types' => array('image', 'file'),
       'settings' => array_merge($base_settings, array(
         'image_style' => '',
-        'thumb_style' => 'thumbnail',
+        'thumb_style' => 'juicebox_square_thumbnail',
         'caption_source' => 'alt',
         'title_source' => 'title',
       )),
