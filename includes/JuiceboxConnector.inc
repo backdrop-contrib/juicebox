@@ -206,6 +206,52 @@ abstract class JuiceboxConnector {
   }
   
   /**
+   * Utility to extract image source data in an array structure that can be
+   * added to a Juicebox gallery object.
+   *
+   * @param array $image_item
+   *   An associative array of file item data for the main image.
+   * @param string $image_style
+   *   The Drupal image style to apply to the main image.
+   * @param array $thumb_item
+   *   An associative array of file item data for the the thumbnail
+   *   image.
+   * @param string $thumb_style
+   *   The Drupal image style to apply to the thumbnail image.
+   * @param array $settings
+   *   Common Drupal settings for a Juicebox gallery.
+   * @return array
+   *   An associative array of image source URLs that's ready to be added
+   *   to a Juicebox gallery.
+   */
+  protected function getImageSrcData($image_item, $image_style, $thumb_item, $thumb_style, $settings) {
+    $check_incompatible = (!empty($settings['incompatible_file_action']));
+    $src_data = array();
+    // Style the main item.
+    $image_item = $this->styleImage($image_item, $image_style, $check_incompatible);
+    // Set image data.
+    $src_data['image_url'] = $image_item['juicebox_styled_src'];
+    // Set thumb data.
+    if (!$image_item['juicebox_compatible'] && $image_item['fid'] == $thumb_item['fid']) {
+      $src_data['thumb_url'] = $image_item['juicebox_styled_src'];
+    }
+    else {
+      $thumb_item = $this->styleImage($thumb_item, $thumb_style, $check_incompatible);
+      $src_data['thumb_url'] = $thumb_item['juicebox_styled_src'];
+    }
+    // Check if the linkURL should be customized based on settings.
+    $src_data['link_url'] = $image_item['juicebox_unstyled_src'];   
+    if ($image_item['juicebox_compatible'] && !empty($settings['linkurl_source']) && $settings['linkurl_source'] == 'image_styled') {
+      $src_data['link_url'] = $image_item['juicebox_styled_src'];
+    }
+    // Set the link target directly from the gallery settings.
+    $src_data['link_target'] = $settings['linkurl_target'];
+    // Also set a flag for incompatible files.
+    $src_data['juicebox_compatible'] = $image_item['juicebox_compatible'];
+    return $src_data;
+  }
+  
+  /**
    * Utility to style an individual image/file item for use in a Juicebox
    * gallery.
    * 
@@ -225,7 +271,7 @@ abstract class JuiceboxConnector {
    */
   protected function styleImage($item, $style, $check_compatible = TRUE) {
     $item['juicebox_compatible'] = TRUE;
-    $item['juicebox_styled_image'] = '';
+    $item['juicebox_styled_src'] = '';
     // Set the normal, unstyled, url for reference.
     $item['juicebox_unstyled_src'] = file_create_url($item['uri']);
     // Check compatibility if configured and if the library info contains
@@ -244,18 +290,18 @@ abstract class JuiceboxConnector {
       }
       $icon_path = file_icon_path($file_entity, $icon_dir);
       if ($icon_path) {
-        $item['juicebox_styled_image'] = url($icon_path);
+        $item['juicebox_styled_src'] = url($icon_path);
       }
       else {
-        $item['juicebox_styled_image'] = url($icon_dir . '/image-x-generic.png');
+        $item['juicebox_styled_src'] = url($icon_dir . '/image-x-generic.png');
       }
     }
     // If the item is compatible, style it.
     elseif (!empty($style)) {
-      $item['juicebox_styled_image'] = image_style_url($style, $item['uri']);
+      $item['juicebox_styled_src'] = image_style_url($style, $item['uri']);
     }
     else {
-      $item['juicebox_styled_image'] = $item['juicebox_unstyled_src'];
+      $item['juicebox_styled_src'] = $item['juicebox_unstyled_src'];
     }
     return $item;
   }
@@ -297,6 +343,9 @@ abstract class JuiceboxConnector {
   /**
    * Get the "base" values of common Drupal settings used to describe a gallery.
    * This is used for the management of default configuration values.
+   * 
+   * Note that this may be called when building Drupal configuration forms that
+   * are managed outside of this object.
    *
    * @return array
    *   An associative array of base/default configuration values. 
@@ -327,7 +376,9 @@ abstract class JuiceboxConnector {
    * Get common elements for Juicebox configuration forms.
    *
    * Several Juicebox gallery types can share common options and structures.
-   * These are merged into the appropriate forms via a call to this method.
+   * These are merged into the appropriate forms via a call to this method. Note
+   * that this may be called when building Drupal configuration forms that are
+   * managed outside of this object.
    *
    * @param array $form
    *   The Drupal form array that common elements should be added to.

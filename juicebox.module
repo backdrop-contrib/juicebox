@@ -135,8 +135,8 @@ function juicebox_views_plugins() {
  *   (Optional) Loaded Drupal data that the gallery can be built from. When
  *   the embed code is being generated for a Drupal display formatter this data
  *   will typically be available already. However when building the XML this
- *   will be NULL, and we will need to load it ourselves (based on the XML args)
- *   after the objects are instantiated.
+ *   can be passed as NULL, and we will need to load it ourselves (based on the
+ *   XML args) after the objects are instantiated.
  * @return object
  *   A new Juicebox plugin object that contains an empty Juicebox gallery
  *   object.
@@ -252,7 +252,7 @@ function juicebox_library_detect($force_local = FALSE, $reset = FALSE) {
 function juicebox_page_xml() {
   $args = func_get_args();
   try {
-    $juicebox = juicebox($args, NULL, TRUE);
+    $juicebox = juicebox($args, NULL);
     $juicebox->load();
     if (!$juicebox->access()) {
       return MENU_ACCESS_DENIED;
@@ -432,7 +432,7 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
   $presets = image_style_options(FALSE);
   $settings = $instance['display'][$view_mode]['settings'];
   // Get the common form elements.
-  $form = JuiceboxConnector::confBaseForm($form, $settings);
+  $form = JuiceboxConnectorField::confBaseForm($form, $settings);
   // Add the field-formatter-specific elements.
   $form['image_style'] = array(
     '#type' => 'select',
@@ -521,7 +521,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
     }
   }
   catch (Exception $e) {
-    $message = 'Exception building Juicebox embed code: !message in %function (line %line of %file).';
+    $message = 'Exception building Juicebox embed code for field: !message in %function (line %line of %file).';
     watchdog_exception('juicebox', $e, $message);
   }
   return $element;

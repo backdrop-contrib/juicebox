@@ -148,46 +148,25 @@ class JuiceboxConnectorField extends JuiceboxConnector {
     // Attach the file entities to the items for reference.
     $this->appendFilesToItems($this->data['items']);
     foreach ($this->data['items'] as $id => $item) {
-      // Style the main item.
-      $item = $this->styleImage($item, $settings['image_style'], (!empty($settings['incompatible_file_action'])));
-      // If the main image is not compatible with Juicebox and this gallery
-      // is configured to skip incompatible files, short-circut this iteration.
-      if (!$item['juicebox_compatible'] && $settings['incompatible_file_action'] == 'skip') {
+      // Calculate the source data that Juicebox requires.
+      $src_data = $this->getImageSrcData($item, $settings['image_style'], $item, $settings['thumb_style'], $settings);
+      // Short-circut this iteration if skipping an incompatible file.
+      if (!$src_data['juicebox_compatible'] && $settings['incompatible_file_action'] == 'skip') {
         continue;
       }
-      // Set image data.
-      $src_data['image_url'] = $item['juicebox_styled_image'];
-      // Set thumb data.
-      $src_data['thumb_url'] = $item['juicebox_unstyled_src'];
-      if (!$item['juicebox_compatible']) {
-        $src_data['thumb_url'] = $item['juicebox_styled_image'];
-      }
-      elseif (!empty($settings['thumb_style'])) {
-        $src_data['thumb_url'] = image_style_url($settings['thumb_style'], $item['uri']);
-      }
-      // Set the linkURL. This will typically be the full unstyled version of
-      // the file, but can be customized in the configuration.
-      $src_data['link_url'] = $item['juicebox_unstyled_src'];
-      if (!empty($settings['linkurl_source']) && $item['juicebox_compatible']) {
-        $src_data['link_url'] = $item['juicebox_styled_image'];
-      }
-      // Set the link target directly from the gallery settings.
-      $src_data['link_target'] = $settings['linkurl_target'];
       // Set the image title. If we have an incompatible file and are configured
       // to show a link, set the title text as the link.
-      if (!$item['juicebox_compatible'] && $settings['incompatible_file_action'] == 'show_icon_and_link') {
+      if (!$src_data['juicebox_compatible'] && $settings['incompatible_file_action'] == 'show_icon_and_link') {
         $anchor = !empty($item['description']) ? $item['description'] : $item['filename'];
-        $title = l($anchor, $item['juicebox_unstyled_src']);
+        $title = l($anchor, $src_data['link_url']);
       }
       else {
         $title = $this->getTextFromItem($item, $settings['title_source']);
       }
       // Set the image caption.
       $caption = $this->getTextFromItem($item, $settings['caption_source']);
-      // See if we are configured to filter title and caption data. 
-      $filter = variable_get('juicebox_apply_markup_filter', TRUE);
       // Add this image to the gallery.
-      $this->gallery->addImage($src_data, $title, $caption, $filter);
+      $this->gallery->addImage($src_data, $title, $caption, variable_get('juicebox_apply_markup_filter', TRUE));
     }
     // Add all gallery options directly from the field settings.
     $this->setOptions($settings);
@@ -238,6 +217,9 @@ class JuiceboxConnectorField extends JuiceboxConnector {
   /**
    * Utility to fetch the title and caption source options for field-based
    * galleries (primarily for File Entity and Media module support).
+   * 
+   * Note that this may be called when building Drupal configuration forms that
+   * are managed outside of this object.
    *
    * @param array $instance
    *   An associative array containing the Drupal field instance information for

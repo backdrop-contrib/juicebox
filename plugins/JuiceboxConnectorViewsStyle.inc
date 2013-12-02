@@ -86,65 +86,171 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
   protected function buildGallery() {
     $view = $this->data;
     $settings = $view->style_plugin->options;
-    // Get rendered field data that's not available in $view->result
     $rendered_fields = $view->style_plugin->render_fields($view->result);
-    $images = array();
+    // Get all row image data in the format of Drupal file items.
+    $image_items = $thumb_items = $this->getFileItems($settings['image_field'], $rendered_fields);
+    if ($settings['image_field'] != $settings['thumb_field']) {
+      $thumb_items = $this->getFileItems($settings['thumb_field']);
+    }
+    // Iterate through each view row and calculate the gallery-specific details.
+    foreach ($image_items as $row_index => $image_item) {
+      $thumb_item = !empty($thumb_items[$row_index]) ? $thumb_items[$row_index] : $image_item;
+      // Calculate the source data that Juicebox requires.
+      $src_data = $this->getImageSrcData($image_item, $settings['image_field_style'], $thumb_item, $settings['thumb_field_style'], $settings);
+      // Short-circut this iteration if skipping an incompatible file.
+      if (!$src_data['juicebox_compatible'] && $settings['incompatible_file_action'] == 'skip') {
+        continue;
+      }
+      // Check if the linkURL should be customized based on view settings.
+      if (!empty($settings['linkurl_source']) && !empty($rendered_fields[$row_index][$settings['linkurl_source']])) {
+        $src_data['link_url'] = $rendered_fields[$row_index][$settings['linkurl_source']];
+      }  
+      // Set the image title.
+      $title = '';
+      // If we have an incompatible file the title may need special handeling.
+      if (!$src_data['juicebox_compatible'] && $settings['incompatible_file_action'] == 'show_icon_and_link') {
+        $anchor = !empty($image_item['description']) ? $image_item['description'] : $image_item['filename'];
+        $title = l($anchor, $src_data['link_url']);
+      }
+      elseif (!empty($settings['title_field']) && !empty($rendered_fields[$row_index][$settings['title_field']])) {
+        $title = $rendered_fields[$row_index][$settings['title_field']];
+      }
+      // Set the image caption.
+      $caption = '';
+      if (!empty($settings['caption_field']) && !empty($rendered_fields[$row_index][$settings['caption_field']])) {
+        $caption = $rendered_fields[$row_index][$settings['caption_field']];
+      }
+      // Add this image to the gallery.
+      $this->gallery->addImage($src_data, $title, $caption, variable_get('juicebox_apply_markup_filter', TRUE));
+    }
+    // Add all gallery options directly from the display settings.
+    $this->setOptions($settings);
+    if ($settings['show_title']) {
+      $this->gallery->addOption('gallerytitle', check_plain($view->get_title()), FALSE);
+    }
+  }
+  
+  
+  /**
+   * Utility to get file item arrays from view row data.
+   *
+   * @param string $source_field
+   *   The field source that will contain a file identifer. The exact part of
+   *   the row data to get the file identifer from will depend on the field
+   *   type, and this method will resolve that based on the view's field handler
+   *   details.
+   * @return string
+   *   An indexed array, keyed by row id, of file items that were extracted
+   *   based on row data.
+   * 
+   * @see JuiceboxConnectorViewStyle::confGetFieldSources()
+   */
+  protected function getFileItems($source_field) {
+    $view = $this->data;
+    // Get the field source options and make sure the passed-source is valid.
+    $source_options = self::confGetFieldSources($view);
+    if (empty($source_options['field_options_images_type'][$source_field])) {
+      throw new Exception(t('Empty or invalid field source @source detected for Juicebox view-based gallery.', array('@source' => $source_field)));
+    }
+    else {
+      $source_type = $source_options['field_options_images_type'][$source_field];
+    }
+    $fids = array();
+    $items = array();
+    // Pass 1 - get the fids based on the source type.
     foreach ($view->result as $row_index => $row) {
-      // First make sure that we have image field data to work with.
-      // This prevents php errors from coming up if the user has not yet
-      // configured their view page display or if the view lists items that
-      // don't contain an image.
-      $field_image_name = 'field_' . $settings['image_field'];
-      $field_thumb_name = 'field_' . $settings['thumb_field'];
-      if (!empty($row->{$field_image_name}[0]['raw']['uri']) && !empty($row->{$field_thumb_name}[0]['raw']['uri'])) {
-        $field_image_uri = $row->{$field_image_name}[0]['raw']['uri'];
-        $unstyled_image_src = file_create_url($field_image_uri);
-        // Get the main image source.
-        $image_src = $unstyled_image_src;
-        if (!empty($settings['image_field_style'])) {
-          $image_src = image_style_url($settings['image_field_style'], $field_image_uri);
-        }
-        // Get the thumbnail source.
-        $thumb_src = $unstyled_image_src;
-        $field_thumb_uri = $row->{$field_thumb_name}[0]['raw']['uri'];
-        if (!empty($settings['thumb_field_style'])) {
-          $thumb_src = image_style_url($settings['thumb_field_style'], $field_thumb_uri);
-        }
-        // Get the image title.
-        $title = '';
-        if (!empty($settings['title_field']) && !empty($rendered_fields[$row_index][$settings['title_field']])) {
-          $title = $rendered_fields[$row_index][$settings['title_field']];
-        }
-        // Get the image caption.
-        $caption = '';
-        if (!empty($settings['caption_field']) && !empty($rendered_fields[$row_index][$settings['caption_field']])) {
-          $caption = $rendered_fields[$row_index][$settings['caption_field']];
-        }
-        // Get the linkURL.
-        $image_link_src = $unstyled_image_src;
-        if (!empty($settings['linkurl_source'])) {
-          if ($settings['linkurl_source'] == 'image_styled') {
-            $image_link_src = $image_src;
-          }
-          elseif (!empty($rendered_fields[$row_index][$settings['linkurl_source']])) {
-            $image_link_src = $rendered_fields[$row_index][$settings['linkurl_source']];
-          }
-        }
-        // Add each image to the gallery.
-        $images_src_data = array(
-          'image_url' => $image_src,
-          'thumb_url' => $thumb_src,
-          'link_url' => $image_link_src,
-          'link_target' => $settings['linkurl_target'],
-        );
-        $filter = variable_get('juicebox_apply_markup_filter', TRUE);
-        $this->gallery->addImage($images_src_data, $title, $caption, $filter);
+      switch ($source_type) {
+        case 'file_base':
+          // This is a file-based view so the fid is already in the row data.
+          $fids[$row_index] = $row->fid;
+          continue;
+        case 'file_id_field':
+          // The source is a file ID field so we can fetch the fid from row
+          // data.
+          $field_alias = $view->field[$source_field]->field_alias;
+          $fids[$row_index] = $row->{$field_alias};
+          continue;
+        case 'image_field':
+          // The source in an image field so views should have already loaded
+          // the related file entities which will include the fid. In this case
+          // we also already have a file item array.
+          $fids[$row_index] = $row->{'field_' . $source_field}[0]['raw']['fid'];
+          $items[$row_index] = $row->{'field_' . $source_field}[0]['raw'];
       }
     }
-    if ($settings['show_title']) {
-      $this->gallery->addOption('gallerytitle', check_plain($view->get_title()));
+    // Bulk load all file entities.
+    $file_entities = file_load_multiple($fids);
+    // Pass 2 - Get file items from the file entities. We also save the file
+    // entity itself on the item array for later reference.
+    foreach ($fids as $row_index => $fid) {
+      if (empty($items[$row_index])) {
+        $items[$row_index] = (array)$file_entities[$fid];
+      }
+      $items[$row_index]['file_entity'] = $file_entities[$fid];
     }
-    $this->setOptions($settings);
+    return $items;
+  }
+  
+  /**
+   * Utility to determine which view fields can be used for image data.
+   * 
+   * This method will extract a list of fields that can be used as "sources"
+   * for a Juicebox gallery along with other useful field information. Note that
+   * this may be called when building Drupal configuration forms that are
+   * managed outside of this object.
+   *
+   * @param array $view
+   *   A view object that contains all configuration data (it probably does not
+   *   need to be built/executed).
+   * @return array
+   *   An associative array containing a breakdown of field data that can be
+   *   referenced by other build methods, including:
+   *   - field_options_image: An associative array, keyed by field id, of fields
+   *     that can be used as Juicebox gallery image sources.
+   *   - field_options_image_type: An associative array, keyed by field id, of
+   *     field "types" for all fields listed in 'field_options_image' above.
+   *   - field_options: An associative array, keyed by field id, of fields that
+   *     cannot be used as Juicebox gallery image sources, but may be useful
+   *     for other purposes (text and caption sorces, etc.)
+   * 
+   * @see JuiceboxConnectorViewStyle::getFileItems()
+   */  
+  static function confGetFieldSources($view) {
+    $options = array(
+      'field_options_images' => array(),
+      'field_options_images_type' => array(),
+      'field_options' => array(),
+    );
+    $field_handlers = $view->display_handler->display->handler->get_handlers('field');
+    // If we have a "file" based view we can use the base ids from the view as
+    // fids, so add a "base" option to the image source list.
+    if (!empty($view->base_table) && $view->base_table == 'file_managed') {
+      $options['field_options_images']['file_base'] = t('Base file ID');
+      $options['field_options_images_type']['file_base'] = 'file_base';
+    }
+    // Get the label for each field.
+    foreach ($field_handlers as $field => $handler) {
+      if ($label = $handler->label()) {
+        $name = $label;
+      }
+      else {
+        $name = $handler->ui_name();
+      }
+      // Separate image fields from non-image fields. For image fields we can
+      // work with fids and fields of type image.
+      if (isset($handler->field) && $handler->field == 'fid') {
+        $options['field_options_images'][$field] = $name;
+        $options['field_options_images_type'][$field] = 'file_id_field';
+      }
+      elseif ((isset($handler->field_info['type']) && $handler->field_info['type'] == 'image')) {
+        $options['field_options_images'][$field] = $name;
+        $options['field_options_images_type'][$field] = 'image_field';
+      }
+      else {
+        $options['field_options'][$field] = $name;
+      }
+    }
+    return $options;
   }
 
 }
