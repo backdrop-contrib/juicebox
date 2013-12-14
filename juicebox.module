@@ -172,10 +172,10 @@ function juicebox($xml_path_args, $data = NULL) {
   // Calculate the gallery ID.
   $id = '';
   foreach ($xml_path_args as $arg) {
-    $id .= $arg . '-';
+    $id .= $arg . '--';
   }
-  // Make sure no spaces slipped through inside individual args.
-  $id = str_replace(' ', '_', trim($id, '- '));
+  // Make sure no special characters slipped through inside individual args.
+  $id = trim(preg_replace('/[^0-9a-zA-Z-]/', '-', $id), '- ');
   // The type should match the first argument.
   $type = $xml_path_args[0];
   // Get the library data. We do this early (before instantiating) as the lib
