@@ -49,7 +49,7 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
    */
   function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE) {
     // Make sure we have sufficient image data to work with.
-    if (empty($src_data['image_url']) || empty($src_data['thumb_url'])) {
+    if (!isset($src_data['image_url']) || !isset($src_data['thumb_url'])) {
       return FALSE;
     }
     if (!isset($src_data['link_url'])) {

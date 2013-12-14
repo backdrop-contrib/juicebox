@@ -58,14 +58,14 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
       '#type' => 'select',
       '#title' => t('Image Source'),
       '#default_value' => $settings['image_field'],
-      '#description' => $field_warning . t('The field source to use for each image in the gallery. Must be an image field or a file ID.'),
+      '#description' => $field_warning . t('The field source to use for each image in the gallery. Must be an image field, file field or a file ID.'),
       '#options' => $options['field_options_images'],
     );
     $form['thumb_field'] = array(
       '#type' => 'select',
       '#title' => t('Thumbnail Source'),
       '#default_value' => $settings['thumb_field'],
-      '#description' => $field_warning . t('The field source to use for each thumbnail in the gallery. Must be an image field or a file ID. Typically you will choose the same value that was set in the "Image Source" option above.'),
+      '#description' => $field_warning . t('The field source to use for each thumbnail in the gallery. Must be an image field, file field or a file ID. Typically you will choose the same value that was set in the "Image Source" option above.'),
       '#options' => $options['field_options_images'],
     );
     $form['image_field_style'] = array(
@@ -136,7 +136,7 @@ class JuiceboxViewsStylePlugin extends views_plugin_style {
     // the Juicebox-specific plugin settings (such as
     // admin/structure/views/add).
     if (empty($this->options['image_field'])) {
-      drupal_set_message(t("To ensure a fully functional Juicebox gallery please remember to add at least one field of type Image or File ID to your Juicebox view display and configure the Juicebox Gallery format settings."), 'warning', FALSE);
+      drupal_set_message(t("To ensure a fully functional Juicebox gallery please remember to add at least one field of type image, file or file ID to your Juicebox view display and configure the Juicebox Gallery format settings."), 'warning', FALSE);
     }
     return $errors;
   }

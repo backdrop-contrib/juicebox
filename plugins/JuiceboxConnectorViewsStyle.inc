@@ -62,7 +62,10 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
       // method (as it handles all needed sub-processes).
       $view->preview($this->viewDisplay, $this->viewArgs);
       $this->data = $view;
+      return;
     }
+    // If we got here there was a problem loading the data.
+    throw new Exception(t('There was an exception while loading Drupal data for a view-based Juicebox gallery.'));
   }
   
   /**
@@ -87,13 +90,14 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
     $view = $this->data;
     $settings = $view->style_plugin->options;
     $rendered_fields = $view->style_plugin->render_fields($view->result);
-    // Get all row image data in the format of Drupal file items.
-    $image_items = $thumb_items = $this->getFileItems($settings['image_field'], $rendered_fields);
+    // Get all row image data in the format of Drupal file field items.
+    $image_items = $thumb_items = $this->getItems($settings['image_field']);
     if ($settings['image_field'] != $settings['thumb_field']) {
-      $thumb_items = $this->getFileItems($settings['thumb_field']);
+      $thumb_items = $this->getItems($settings['thumb_field']);
     }
     // Iterate through each view row and calculate the gallery-specific details.
     foreach ($image_items as $row_index => $image_item) {
+      // Make sure each main image has a thumb item.
       $thumb_item = !empty($thumb_items[$row_index]) ? $thumb_items[$row_index] : $image_item;
       // Calculate the source data that Juicebox requires.
       $src_data = $this->getImageSrcData($image_item, $settings['image_field_style'], $thumb_item, $settings['thumb_field_style'], $settings);
@@ -130,22 +134,25 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
     }
   }
   
-  
   /**
-   * Utility to get file item arrays from view row data.
+   * Utility to get the item arrays that contain image data from view rows.
+   * 
+   * The items that this method returns are array representations of Drupal file
+   * objects. This type of array is often used by Drupal to represent file
+   * fields, so this a common format to work with. 
    *
    * @param string $source_field
-   *   The field source that will contain a file identifer. The exact part of
-   *   the row data to get the file identifer from will depend on the field
+   *   The view field source that will contain a file identifer. The exact part
+   *   of the row data to get the file identifer from will depend on the field
    *   type, and this method will resolve that based on the view's field handler
    *   details.
-   * @return string
-   *   An indexed array, keyed by row id, of file items that were extracted
-   *   based on row data.
+   * @return array
+   *   An indexed array, keyed by row id, of file field items that were
+   *   extracted based on row data.
    * 
    * @see JuiceboxConnectorViewStyle::confGetFieldSources()
    */
-  protected function getFileItems($source_field) {
+  protected function getItems($source_field) {
     $view = $this->data;
     // Get the field source options and make sure the passed-source is valid.
     $source_options = self::confGetFieldSources($view);
@@ -162,31 +169,34 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
       switch ($source_type) {
         case 'file_base':
           // This is a file-based view so the fid is already in the row data.
-          $fids[$row_index] = $row->fid;
+          if (!empty($row->fid)) {
+            $fids[$row_index] = $row->fid;
+          }
           continue;
         case 'file_id_field':
           // The source is a file ID field so we can fetch the fid from row
           // data.
-          $field_alias = $view->field[$source_field]->field_alias;
-          $fids[$row_index] = $row->{$field_alias};
+          if (!empty($row->{$view->field[$source_field]->field_alias})) {
+            $fids[$row_index] = $row->{$view->field[$source_field]->field_alias};
+          }
           continue;
-        case 'image_field':
-          // The source in an image field so views should have already loaded
-          // the related file entities which will include the fid. In this case
-          // we also already have a file item array.
-          $fids[$row_index] = $row->{'field_' . $source_field}[0]['raw']['fid'];
-          $items[$row_index] = $row->{'field_' . $source_field}[0]['raw'];
+        case 'file_field':
+          // The source is an image or file field so views should have already
+          // loaded the related file entities which will include the fid. In
+          // this case we also already have our file field item array.
+          if (!empty($row->{'field_' . $source_field}[0]['raw'])) {
+            $fids[$row_index] = $row->{'field_' . $source_field}[0]['raw']['fid'];
+            $items[$row_index] = $row->{'field_' . $source_field}[0]['raw'];
+          }
       }
     }
-    // Bulk load all file entities.
-    $file_entities = file_load_multiple($fids);
-    // Pass 2 - Get file items from the file entities. We also save the file
-    // entity itself on the item array for later reference.
-    foreach ($fids as $row_index => $fid) {
-      if (empty($items[$row_index])) {
-        $items[$row_index] = (array)$file_entities[$fid];
+    if (empty($items)) {
+      // Bulk load all file entities.
+      $file_entities = file_load_multiple($fids);
+      // Pass 2 - Get field items from the file entities.
+      foreach ($fids as $row_index => $fid) {
+        $items[$row_index] = (array) $file_entities[$fid];
       }
-      $items[$row_index]['file_entity'] = $file_entities[$fid];
     }
     return $items;
   }
@@ -237,14 +247,14 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
         $name = $handler->ui_name();
       }
       // Separate image fields from non-image fields. For image fields we can
-      // work with fids and fields of type image.
+      // work with fids and fields of type image or file.
       if (isset($handler->field) && $handler->field == 'fid') {
         $options['field_options_images'][$field] = $name;
         $options['field_options_images_type'][$field] = 'file_id_field';
       }
-      elseif ((isset($handler->field_info['type']) && $handler->field_info['type'] == 'image')) {
+      elseif (isset($handler->field_info['type']) && ($handler->field_info['type'] == 'image' || $handler->field_info['type'] == 'file')) {
         $options['field_options_images'][$field] = $name;
-        $options['field_options_images_type'][$field] = 'image_field';
+        $options['field_options_images_type'][$field] = 'file_field';
       }
       else {
         $options['field_options'][$field] = $name;

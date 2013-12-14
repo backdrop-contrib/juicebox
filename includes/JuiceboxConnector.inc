@@ -210,11 +210,11 @@ abstract class JuiceboxConnector {
    * added to a Juicebox gallery object.
    *
    * @param array $image_item
-   *   An associative array of file item data for the main image.
+   *   An associative array of file field item data for the main image.
    * @param string $image_style
    *   The Drupal image style to apply to the main image.
    * @param array $thumb_item
-   *   An associative array of file item data for the the thumbnail
+   *   An associative array of file field item data for the thumbnail
    *   image.
    * @param string $thumb_style
    *   The Drupal image style to apply to the thumbnail image.
@@ -225,6 +225,10 @@ abstract class JuiceboxConnector {
    *   to a Juicebox gallery.
    */
   protected function getImageSrcData($image_item, $image_style, $thumb_item, $thumb_style, $settings) {
+    // Make sure that we have proper file field items to work with.
+    if (!isset($image_item['fid']) || !isset($thumb_item['fid'])) {
+      throw new Exception(t('Invalid image or thumbnail item detected while extracting Juicebox gallery source information.'));
+    }
     $check_incompatible = (!empty($settings['incompatible_file_action']));
     $src_data = array();
     // Style the main item.
@@ -232,6 +236,7 @@ abstract class JuiceboxConnector {
     // Set image data.
     $src_data['image_url'] = $image_item['juicebox_styled_src'];
     // Set thumb data.
+    $src_data['thumb_url'] = '';
     if (!$image_item['juicebox_compatible'] && $image_item['fid'] == $thumb_item['fid']) {
       $src_data['thumb_url'] = $image_item['juicebox_styled_src'];
     }
@@ -252,7 +257,7 @@ abstract class JuiceboxConnector {
   }
   
   /**
-   * Utility to style an individual image/file item for use in a Juicebox
+   * Utility to style an individual image/file field item for use in a Juicebox
    * gallery.
    * 
    * This method can detect if the passed item is incompatible with Juicebox.
@@ -260,7 +265,7 @@ abstract class JuiceboxConnector {
    * type. Otherwise the item is styled normally with the passed image style.
    *
    * @param array $item
-   *   An associative array of file information.
+   *   An associative array of file field item data.
    * @param string $style
    *   The Drupal image style to apply to the item.
    * @param boolean $check_compatible
@@ -280,15 +285,7 @@ abstract class JuiceboxConnector {
       // If the item is not compatible, find the substitute mimetype icon.
       $item['juicebox_compatible'] = FALSE;
       $icon_dir = drupal_get_path('module', 'juicebox') . '/images/mimetypes';
-      // See if we can reference the file entity off the item itself. If not we
-      // have to load the entity (most likely from the static cache).
-      if (!empty($item['file_entity'])) {
-        $file_entity = $item['file_entity'];
-      }
-      else {
-        $file_entity = file_load($item['fid']);
-      }
-      $icon_path = file_icon_path($file_entity, $icon_dir);
+      $icon_path = file_icon_path((object) $item, $icon_dir);
       if ($icon_path) {
         $item['juicebox_styled_src'] = url($icon_path);
       }
@@ -304,40 +301,6 @@ abstract class JuiceboxConnector {
       $item['juicebox_styled_src'] = $item['juicebox_unstyled_src'];
     }
     return $item;
-  }
-  
-  /**
-   * Utility to append a full file entity to each file item in an array.
-   * 
-   * The "item" values available to Drupal display formatters are often
-   * array representations of a full file entity. However, sometimes we need to
-   * use logic in a formatter that requires the ORIGINAL file entity as an
-   * input. This method re-fetches these entities (typically from the static
-   * entity cache) and attaches them to each item as $item['file_entity'].
-   * 
-   * @param array $items
-   *   An array of associative arrays of file information (taken from file
-   *   entity properties).
-   */
-  protected function appendFilesToItems(&$items) {
-    $fids = array();
-    $files = array();
-    // Pass one - get the fids from the items.
-    foreach ($items as $item) {
-      if (!empty($item['fid'])) {
-        $fids[] = $item['fid'];
-      }
-    }
-    // Bulk-load all of the files at once. This may not really provide any
-    // performance advantage if these entities are already in the static cache,
-    // but we still do it this way just in case.
-    $files = file_load_multiple($fids);
-    // Pass two - add the entities to the items.
-    foreach ($items as $item) {
-      if (!empty($files[$item['fid']])) {
-        $item['file_entity'] = $files[$item['fid']];
-      }
-    }
   }
   
   /**

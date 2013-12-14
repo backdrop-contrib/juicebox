@@ -145,8 +145,6 @@ class JuiceboxConnectorField extends JuiceboxConnector {
    */
   protected function buildGallery() {
     $settings = $this->data['settings'];
-    // Attach the file entities to the items for reference.
-    $this->appendFilesToItems($this->data['items']);
     foreach ($this->data['items'] as $id => $item) {
       // Calculate the source data that Juicebox requires.
       $src_data = $this->getImageSrcData($item, $settings['image_style'], $item, $settings['thumb_style'], $settings);
@@ -173,13 +171,13 @@ class JuiceboxConnectorField extends JuiceboxConnector {
   }
 
   /**
-   * Utility to get sanitized text directly from a file item.
+   * Utility to get sanitized text directly from a file field item.
    * 
    * This method will attempt to extract text, in a format safe for display,
-   * from the data contained within a file item.
+   * from the data contained within a file field item.
    *
    * @param array $item
-   *   An associative array of file information.
+   *   An associative array representing a file field item.
    * @param string $source
    *   The key within the $item array that contains the text that we want to
    *   extract.
@@ -192,17 +190,10 @@ class JuiceboxConnectorField extends JuiceboxConnector {
     $text = '';
     if (!empty($item[$source])) {
       // If a field option is specified we need to try to get the value from a
-      // file entity.
+      // file entity. Note that the entity can be re-created by casting the
+      // field item into an object.
       if (strpos($source, 'field_') === 0) {
-        // See if we can already reference the file entity from the item itself.
-        // If not we have to load it (most likely from the static cache).
-        if (!empty($item['file_entity'])) {
-          $file_entity = $item['file_entity'];
-        }
-        else {
-          $file_entity = file_load($item['fid']);
-        }
-        $field = field_get_items('file', $file_entity, $source);
+        $field = field_get_items('file', (object) $item, $source);
         if (!empty($field[0]['safe_value'])) {
           $text = $field[0]['safe_value'];
         }

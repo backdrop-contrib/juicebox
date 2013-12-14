@@ -16,7 +16,7 @@ function juicebox_admin_settings() {
   $library = juicebox_library_detect(TRUE, TRUE);
   $version = !empty($library['version']) ? $library['version'] : t('Unknown');
   $form['juicebox_admin_intro'] = array(
-    '#markup' => t("Most Juicebox configuration options are set within each gallery's unique configuration form. The options here are additional global settings for administrative and debugging purposes. Please be sure to clear your site's caches via the !performance settings after making any changes here.", array('!performance' => l(t('performance'), 'admin/config/development/performance'))),
+    '#markup' => t("These are global options for Juicebox administration and debugging purposes. Note that most Juicebox configuration options are set within each gallery's unique configuration form and not applied on a global scope like the values here. Please be sure to clear your site's caches via the !performance settings after making any changes here.", array('!performance' => l(t('performance'), 'admin/config/development/performance'))),
   );
   $form['juicebox_js_scope'] = array(
     '#type' => 'select',
@@ -53,7 +53,7 @@ function juicebox_admin_settings() {
     '#type' => 'textarea',
     '#title' => t('Base string for interface translation'),
     '#default_value' => variable_get('juicebox_translate_base_languagelist', $library['base_languagelist']),
-    '#description' => t('Base <strong>English</strong> interface text that Drupal should attempt to translate and pass to the Juicebox javascript for display (using the "languageList" configuration option). This text will be treated as a <strong>single string</strong> by Drupal and must be translated with a tool such as the Locale module. Note that this base string value will rarely change, and any changes made to it will break existing translations.'),
+    '#description' => t('The base <strong>English</strong> interface text that Drupal should attempt to translate and pass to the Juicebox javascript for display (using the "languageList" configuration option). This text will be treated as a <strong>single string</strong> by Drupal and must be translated with a tool such as the Locale module. Note that this base string value will rarely change, and any changes made to it will break existing translations.'),
     '#wysiwyg' => FALSE,
     '#states' => array(
       // Hide the settings when the translate option is disabled.
