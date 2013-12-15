@@ -198,6 +198,12 @@ class JuiceboxConnectorField extends JuiceboxConnector {
           $text = $field[0]['safe_value'];
         }
       }
+      // If an image field caption value is specified we need to format the raw
+      // caption value.
+      elseif ($source == 'image_field_caption' && !empty($item['image_field_caption']['value'])) {
+        $format = empty($item['image_field_caption']['format']) ? filter_fallback_format() : $item['image_field_caption']['format'];
+        $text = check_markup($item['image_field_caption']['value'], $format);
+      }
       else {
         $text = check_markup($item[$source]);
       }
@@ -231,6 +237,11 @@ class JuiceboxConnectorField extends JuiceboxConnector {
       }
       if (!empty($instance['settings']['title_field'])) {
         $text_source_options['title'] = t('Image - Title text (processed by fallback text format)');
+      }
+      // If image field caption is installed and enabled on this image field we
+      // can also use it.
+      if (module_exists('image_field_caption') && !empty($instance['settings']['image_field_caption'])) {
+        $text_source_options['image_field_caption'] = t('Image - Image field caption');
       }
     }
     // If file entity is installed we can use fields attached to the "image"
