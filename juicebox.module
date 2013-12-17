@@ -194,14 +194,18 @@ function juicebox($xml_path_args, $data = NULL) {
   // Allow other modules to alter the classes that will be used.
   $context = array('data' => $data, 'library' => $library);
   drupal_alter('juicebox_classes', $classes, $xml_path_args, $context);
-  // Instantiate the Juicebox gallery object.
-  $gallery = new $classes['gallery']($id);
-  // Instantiate the Juicebox connector object.
-  $juicebox = new $classes['connector_plugin']($xml_path_args, $data, $gallery, $library);
-  if (is_object($juicebox)) {
-    return $juicebox;
+  if (class_exists($classes['connector_plugin']) && class_exists($classes['gallery'])) {
+    // Instantiate the Juicebox gallery object.
+    $gallery = new $classes['gallery']($id);
+    // Instantiate the Juicebox connector object.
+    $juicebox = new $classes['connector_plugin']($xml_path_args, $data, $gallery, $library);
+    if (is_object($juicebox)) {
+      return $juicebox;
+    }
   }
-  return NULL;
+  // If we get here it means that something went wrong and the object could not
+  // be created.
+  throw new Exception(t('Cound not instantiate Juicebox gallery of type @type.', array('@type' => $type)));
 }
 
 
