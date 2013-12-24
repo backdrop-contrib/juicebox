@@ -287,10 +287,10 @@ abstract class JuiceboxConnector {
       $icon_dir = drupal_get_path('module', 'juicebox') . '/images/mimetypes';
       $icon_path = file_icon_path((object) $item, $icon_dir);
       if ($icon_path) {
-        $item['juicebox_styled_src'] = url($icon_path);
+        $item['juicebox_styled_src'] = file_create_url($icon_path);
       }
       else {
-        $item['juicebox_styled_src'] = url($icon_dir . '/image-x-generic.png');
+        $item['juicebox_styled_src'] = file_create_url($icon_dir . '/image-x-generic.png');
       }
     }
     // If the item is compatible, style it.
