@@ -158,7 +158,7 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
     $output .= "configUrl:'" . $xml_path . "',";
     $output .= "containerId:'" . $this->id . "'";
     // Add options that need to be loaded immediately (before XML is available).
-    $load_before_xml = array('gallerywidth', 'galleryheight', 'backgroundcolor');
+    $load_before_xml = array('gallerywidth', 'galleryheight', 'backgroundcolor', 'themeurl', 'baseurl', 'showpreloader', 'debugmode');
     foreach ($load_before_xml as $key => $option) {
       if (!empty($this->options[$option])) {
         $output .= ',';
