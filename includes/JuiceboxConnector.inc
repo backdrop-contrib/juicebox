@@ -9,8 +9,11 @@
  */
 
 
+/**
+ * Base abstract class for a Juicebox connector plugin.
+ */
 abstract class JuiceboxConnector {
-  
+
   /**
    * Base properies of structured data to manage the loading/handling of
    * Drupal info that will be processed into a gallery.
@@ -28,10 +31,10 @@ abstract class JuiceboxConnector {
   // We maintain a static cache of "built" $gallery data objects, keyed by
   // gallery ID.
   static protected $builtGalleries = array();
-  
+
   /**
    * Constructor
-   * 
+   *
    * @param array $xml_path_args
    *   An indexed array of XML path arguments that describe this gallery (and
    *   make up its XML URL). This information uniquely identifies the gallery
@@ -65,36 +68,36 @@ abstract class JuiceboxConnector {
     $this->type = $xml_path_args[0];
     $this->xmlPathArgs = $xml_path_args;
   }
-  
+
   /**
    * Load the Drupal data needed to build the gallery.
-   * 
+   *
    * This method should fully populate the $data propery.
    */
   abstract function load();
-  
+
   /**
    * Check access to the Drupal data that will be used to build the gallery.
-   * 
+   *
    * @return boolean
    *   Return TRUE if access is allowed for the current user and FALSE if not.
    *   Can also return NULL if access cannot be determined.
    */
   abstract function access();
-  
+
   /**
    * Build the gallery based on loaded Drupal data specific to this connector.
-   * 
+   *
    * This method should fully populate the $gallery object propery.
    */
   abstract protected function buildGallery();
-  
+
   /**
    * Build the gallery.
-   * 
+   *
    * This is essentially a wrapper for buildGallery() that ensures some common
    * pre/post-build tasks are done.
-   * 
+   *
    * @param boolean $reset
    *   Whether-or-not to bypass, and reset, any statically cached gallery data.
    */
@@ -102,7 +105,7 @@ abstract class JuiceboxConnector {
     // We maintain a static cache of built gallery data for efficiency. For
     // example, there may be cases where the load() method triggers a series
     // of formatter functions that also build the gallery data. Becuase build()
-    // is often called right after load() (e.g. during an XML request) this can
+    // is often called right after load() (e.g., during an XML request) this can
     // prevent the build logic from running redundantly.
     if (!empty(self::$builtGalleries[$this->gallery->id]) && !$reset) {
       $this->gallery = self::$builtGalleries[$this->gallery->id];
@@ -124,7 +127,7 @@ abstract class JuiceboxConnector {
       self::$builtGalleries[$this->gallery->id] = $this->gallery;
     }
   }
-  
+
   /**
    * Helper to extract Juicebox gallery options from common Drupal display
    * settings, and add them to the gallery.
@@ -133,7 +136,7 @@ abstract class JuiceboxConnector {
    * are set as manual strings. This method fetches all of these values from
    * drupal settings data and merges them into the gallery. Note that this only
    * accounts for common settings.
-   * 
+   *
    * @param array $settings
    *   An associative array of common Drupal settings for a gallery.
    */
@@ -169,7 +172,7 @@ abstract class JuiceboxConnector {
       }
     }
   }
-  
+
   /**
    * Render the embed code for a Juicebox gallery using the Drupal theme system.
    *
@@ -204,7 +207,7 @@ abstract class JuiceboxConnector {
       return theme('juicebox_embed_markup', array('gallery' => $this->gallery, 'settings' => $settings));
     }
   }
-  
+
   /**
    * Utility to extract image source data in an array structure that can be
    * added to a Juicebox gallery object.
@@ -245,7 +248,7 @@ abstract class JuiceboxConnector {
       $src_data['thumb_url'] = $thumb_item['juicebox_styled_src'];
     }
     // Check if the linkURL should be customized based on settings.
-    $src_data['link_url'] = $image_item['juicebox_unstyled_src'];   
+    $src_data['link_url'] = $image_item['juicebox_unstyled_src'];
     if ($image_item['juicebox_compatible'] && !empty($settings['linkurl_source']) && $settings['linkurl_source'] == 'image_styled') {
       $src_data['link_url'] = $image_item['juicebox_styled_src'];
     }
@@ -255,11 +258,11 @@ abstract class JuiceboxConnector {
     $src_data['juicebox_compatible'] = $image_item['juicebox_compatible'];
     return $src_data;
   }
-  
+
   /**
    * Utility to style an individual image/file field item for use in a Juicebox
    * gallery.
-   * 
+   *
    * This method can detect if the passed item is incompatible with Juicebox.
    * If so it styles the output as a mimetype image icon representing the file
    * type. Otherwise the item is styled normally with the passed image style.
@@ -302,16 +305,16 @@ abstract class JuiceboxConnector {
     }
     return $item;
   }
-  
+
   /**
    * Get the "base" values of common Drupal settings used to describe a gallery.
    * This is used for the management of default configuration values.
-   * 
+   *
    * Note that this may be called when building Drupal configuration forms that
    * are managed outside of this object.
    *
    * @return array
-   *   An associative array of base/default configuration values. 
+   *   An associative array of base/default configuration values.
    */
   static function confBaseOptions() {
     return array(
@@ -334,7 +337,7 @@ abstract class JuiceboxConnector {
       'show_debug_links' => 0,
     );
   }
-  
+
   /**
    * Get common elements for Juicebox configuration forms.
    *
@@ -496,7 +499,7 @@ abstract class JuiceboxConnector {
       '#description' => t('Define any custom classes that should be added to the parent container within the Juicebox embed markup.<br/>This can be handy if you want to apply more advanced styling or dimensioning rules to this gallery via CSS. Enter as space-separated values.'),
     );
     // Set values that are directly related to each key.
-    foreach($form as $conf_key => &$conf_value) {
+    foreach ($form as $conf_key => &$conf_value) {
       if (!empty($conf_value['#type']) && $conf_value['#type'] != 'fieldset') {
         $conf_value['#default_value'] = $settings[$conf_key];
         if (in_array($conf_key, $disallowed_conf)) {

@@ -9,7 +9,7 @@
 
 /**
  * Menu callback: global configuration options to control Juicebox behaviour.
- * 
+ *
  * @see juicebox_menu()
  */
 function juicebox_admin_settings() {

@@ -8,6 +8,9 @@
  */
 
 
+/**
+ * Class to generate the script and markup for a Juicebox gallery.
+ */
 class JuiceboxGallery implements JuiceboxGalleryInterface {
 
   /**
@@ -16,20 +19,20 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
   public $id = '';
   public $options = array();
   public $images = array();
-  
+
   /**
    * Constructor
-   * 
+   *
    * @param string $id
    *   A unique string id that can represnet this gallery.
    */
   function __construct($id) {
     $this->id = $id;
   }
-  
+
   /**
    * Add a new image to the gallery.
-   * 
+   *
    * @param array $src_data
    *   Associative array containing all the source data for a gallery image,
    *   including the:
@@ -71,10 +74,10 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
     );
     return TRUE;
   }
-  
+
   /**
    * Add a new Juicebox configuration option to the gallery.
-   * 
+   *
    * @param string $option_name
    *   The option name/key to add.
    * @param string $option_value
@@ -93,11 +96,11 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
     $this->options[strtolower($option_name)] = $option_value;
     return TRUE;
   }
-  
+
   /**
    * Get the XML for a Juicebox gallery once images and options have been
    * added.
-   * 
+   *
    * @return string
    *   Structured Juicebox XML describing a gallery. Note that no header data
    *   is set or returned here.
@@ -124,11 +127,11 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
     }
     return $dom->saveXML();
   }
-  
+
   /**
    * Get the embed code for a Juicebox gallery once images and options have been
    * added.
-   * 
+   *
    * @param string $custom_classes
    *   Any custom classes to include as part of the Juicebox parent container.
    * @return string
@@ -141,11 +144,11 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
     $output .= '</div></div>';
     return $output;
   }
-  
+
   /**
    * Get the javascript code for a Juicebox gallery once images and options have
    * been added.
-   * 
+   *
    * @param string $xml_path
    *   The path to the Juicebox XML for this gallery.
    * @return string
@@ -168,10 +171,10 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
     $output .= "});";
     return $output;
   }
-  
+
   /**
    * Get a gallery checksum.
-   * 
+   *
    * @return string
    *   An md5 hash of the image and option data that can be used to validate
    *   the uniqueness of this gallery's data and settings.
@@ -179,7 +182,7 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
   function getChecksum() {
     return md5(json_encode($this->images) . json_encode($this->options));
   }
-   
+
   /**
    * Filter markup for valid display in a Juicebox gallery.
    *
@@ -204,5 +207,5 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
     $markup = str_replace(array("\r", "\n"), '', $markup);
     return $markup;
   }
-  
+
 }

@@ -8,18 +8,21 @@
  */
 
 
+/**
+ * Class to structure Drupal view data into a Juicebox gallery.
+ */
 class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
-  
+
   /**
    * Base properies specific to this connector.
    */
   protected $viewName;
   protected $viewDisplay;
   protected $viewArgs;
- 
+
   /**
    * Constructor
-   * 
+   *
    * @param array $xml_path_args
    *   An indexed array of XML path arguments that describe this gallery (and
    *   make up its XML URL). This information uniquely identifies the gallery
@@ -50,7 +53,7 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
     $this->viewDisplay = $xml_path_args[2];
     $this->viewArgs = array_slice($xml_path_args, 3);
   }
-  
+
   /**
    * Load the Drupal data needed to build the gallery.
    */
@@ -67,10 +70,10 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
     // If we got here there was a problem loading the data.
     throw new Exception(t('There was an exception while loading Drupal data for a view-based Juicebox gallery.'));
   }
-  
+
   /**
    * Check access to the Drupal data that will be used to build the gallery.
-   * 
+   *
    * @return boolean
    *   Return TRUE if access is allowed for the current user and FALSE if not.
    *   Can also return NULL if access cannot be determined.
@@ -82,7 +85,7 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
     }
     return $this->data->access($this->viewDisplay);
   }
-  
+
   /**
    * Build the gallery based on loaded Drupal data specific to this connector.
    */
@@ -108,7 +111,7 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
       // Check if the linkURL should be customized based on view settings.
       if (!empty($settings['linkurl_source']) && !empty($rendered_fields[$row_index][$settings['linkurl_source']])) {
         $src_data['link_url'] = $rendered_fields[$row_index][$settings['linkurl_source']];
-      }  
+      }
       // Set the image title.
       $title = '';
       // If we have an incompatible file the title may need special handeling.
@@ -133,13 +136,13 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
       $this->gallery->addOption('gallerytitle', check_plain($view->get_title()), FALSE);
     }
   }
-  
+
   /**
    * Utility to get the item arrays that contain image data from view rows.
-   * 
+   *
    * The items that this method returns are array representations of Drupal file
    * objects. This type of array is often used by Drupal to represent file
-   * fields, so this a common format to work with. 
+   * fields, so this a common format to work with.
    *
    * @param string $source_field
    *   The view field source that will contain a file identifer. The exact part
@@ -149,7 +152,7 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
    * @return array
    *   An indexed array, keyed by row id, of file field items that were
    *   extracted based on row data.
-   * 
+   *
    * @see JuiceboxConnectorViewStyle::confGetFieldSources()
    */
   protected function getItems($source_field) {
@@ -200,10 +203,10 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
     }
     return $items;
   }
-  
+
   /**
    * Utility to determine which view fields can be used for image data.
-   * 
+   *
    * This method will extract a list of fields that can be used as "sources"
    * for a Juicebox gallery along with other useful field information. Note that
    * this may be called when building Drupal configuration forms that are
@@ -222,9 +225,9 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
    *   - field_options: An associative array, keyed by field id, of fields that
    *     cannot be used as Juicebox gallery image sources, but may be useful
    *     for other purposes (text and caption sorces, etc.)
-   * 
+   *
    * @see JuiceboxConnectorViewStyle::getFileItems()
-   */  
+   */
   static function confGetFieldSources($view) {
     $options = array(
       'field_options_images' => array(),
@@ -240,12 +243,8 @@ class JuiceboxConnectorViewsStyle extends JuiceboxConnector {
     }
     // Get the label for each field.
     foreach ($field_handlers as $field => $handler) {
-      if ($label = $handler->label()) {
-        $name = $label;
-      }
-      else {
-        $name = $handler->ui_name();
-      }
+      $label = $handler->label();
+      $name = $label ? $label : $handler->ui_name();
       // Separate image fields from non-image fields. For image fields we can
       // work with fids and fields of type image or file.
       if (isset($handler->field) && $handler->field == 'fid') {

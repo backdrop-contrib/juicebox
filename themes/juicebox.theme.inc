@@ -182,7 +182,7 @@ function theme_juicebox_toggle_markup(&$variables) {
   $settings = $variables['settings'];
   $output = '';
   if (!empty($settings['show_debug_links'])) {
-    $output .= '<div id="debug-' . $gallery->id . '">' . $variables['gallery_link'] . ' | ' . $variables['info_link'] . '</div>'; 
+    $output .= '<div id="debug-' . $gallery->id . '">' . $variables['gallery_link'] . ' | ' . $variables['info_link'] . '</div>';
   }
   return $output;
 }

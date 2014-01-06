@@ -1,5 +1,5 @@
 name = Juicebox
-description = Integrate Juicebox 
+description = Provides an integration between the Juicebox HTML5 responsive gallery library and Drupal.
 package = Media
 core = 7.x
 dependencies[] = image

@@ -8,8 +8,11 @@
  */
 
 
+/**
+ * Class to structure Drupal field data into a Juicebox gallery.
+ */
 class JuiceboxConnectorField extends JuiceboxConnector {
-  
+
   /**
    * Base properies specific to this connector.
    */
@@ -20,10 +23,10 @@ class JuiceboxConnectorField extends JuiceboxConnector {
   protected $fieldName;
   protected $displayName;
   protected $entity;
-  
+
   /**
    * Constructor
-   * 
+   *
    * @param array $xml_path_args
    *   An indexed array of XML path arguments that describe this gallery (and
    *   make up its XML URL). This information uniquely identifies the gallery
@@ -58,7 +61,7 @@ class JuiceboxConnectorField extends JuiceboxConnector {
     $entities = entity_load($this->entityType, array($this->entityId));
     $this->entity = reset($entities);
   }
-   
+
   /**
    * Load the Drupal data needed to build the gallery.
    */
@@ -93,10 +96,10 @@ class JuiceboxConnectorField extends JuiceboxConnector {
     // If we got here there was a problem loading the data.
     throw new Exception(t('There was an exception while loading Drupal data for a field-based Juicebox gallery.'));
   }
-  
+
   /**
    * Check access to the Drupal data that will be used to build the gallery.
-   * 
+   *
    * @return boolean
    *   Return TRUE if access is allowed for the current user and FALSE if not.
    *   Can also return NULL if access cannot be determined.
@@ -109,7 +112,7 @@ class JuiceboxConnectorField extends JuiceboxConnector {
       $this->fieldAccess = field_access('view', $field, $this->entityType, $this->entity);
     }
     $access = ($access && $this->fieldAccess);
-    // Check entity-level access. 
+    // Check entity-level access.
     if (!isset($this->entityAccess)) {
       // If the Entity API module is installed we can use entity_access() to
       // check access for numerous entity types via their access callbacks.
@@ -139,7 +142,7 @@ class JuiceboxConnectorField extends JuiceboxConnector {
     $access = ($access && $this->entityAccess);
     return $access;
   }
-  
+
   /**
    * Build the gallery based on loaded field data.
    */
@@ -172,7 +175,7 @@ class JuiceboxConnectorField extends JuiceboxConnector {
 
   /**
    * Utility to get sanitized text directly from a file field item.
-   * 
+   *
    * This method will attempt to extract text, in a format safe for display,
    * from the data contained within a file field item.
    *
@@ -183,7 +186,7 @@ class JuiceboxConnectorField extends JuiceboxConnector {
    *   extract.
    * @return string
    *   Safe text for output or an empty string if no text can be extracted.
-   * 
+   *
    * @see JuiceboxConnectorField::confGetTextSources()
    */
   protected function getTextFromItem($item, $source) {
@@ -210,11 +213,11 @@ class JuiceboxConnectorField extends JuiceboxConnector {
     }
     return $text;
   }
-  
+
   /**
    * Utility to fetch the title and caption source options for field-based
    * galleries (addresses File Entity and Media module support).
-   * 
+   *
    * Note that this may be called when building Drupal configuration forms that
    * are managed outside of this object.
    *
@@ -225,11 +228,12 @@ class JuiceboxConnectorField extends JuiceboxConnector {
    *   An associative array representing the key => label pairs for each title
    *   and caption source option. Each key will match a keyed value on the file
    *   item source array when the gallery is built.
-   * 
+   *
    * @see JuiceboxConnectorField::getTextFromItem()
    */
   static function confGetTextSources($instance) {
-    $text_source_options = array();
+    // The filename should always be an available option.
+    $text_source_options['filename'] = t('File - Filename (processed by fallback text format)');
     if (!empty($instance['widget']['module'])) {
       // If this is a standard image field, using the image widget, we can use
       // core image "alt" and "title" values if they are active.
@@ -240,8 +244,8 @@ class JuiceboxConnectorField extends JuiceboxConnector {
         if (!empty($instance['settings']['title_field'])) {
           $text_source_options['title'] = t('Image - Title text (processed by fallback text format)');
         }
-        // If image field caption is installed and enabled on this image field we
-        // can also use it.
+        // If image field caption is installed and enabled on this image field
+        // we can also use it.
         if (module_exists('image_field_caption') && !empty($instance['settings']['image_field_caption'])) {
           $text_source_options['image_field_caption'] = t('Image - Image field caption');
         }

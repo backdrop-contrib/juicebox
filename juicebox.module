@@ -12,7 +12,6 @@
  * Implements hook_menu().
  */
 function juicebox_menu() {
-  $items = array();
   // Add menu item that produces the "config.xml" data that is linked to a
   // specific gallery.
   $items['juicebox/xml/%'] = array(
@@ -126,7 +125,7 @@ function juicebox_views_plugins() {
 
 /**
  * Implements hook_image_default_styles().
- * 
+ *
  * Add a default thumbnail style that will fit (without stretching or scaling)
  * within the stock Juicebox thumbnail space.
  */
@@ -148,7 +147,7 @@ function juicebox_image_default_styles() {
 
 /**
  * Instantiate a Juicebox connector object along with its dependencies.
- * 
+ *
  * @param array $xml_path_args
  *   An indexed array of XML path arguments that describe this gallery (and
  *   make up its XML URL). This information uniquely identifies the gallery and
@@ -211,12 +210,12 @@ function juicebox($xml_path_args, $data = NULL) {
 
 /**
  * Get/detect the details of a Juicebox javascript library without loading it.
- * 
+ *
  * This is essentially a wrapper for libraries_detect() with some caching added.
  * It also allows library info to be fetched independently from the currently
- * loaded version if needed (e.g. to accomodate XML requests that don't come
+ * loaded version if needed (e.g., to accomodate XML requests that don't come
  * from this site).
- * 
+ *
  * @param boolean $force_local
  *   Whether-or-not to force detection of the LOCALLY installed Juicebox library
  *   details. If FALSE Libraries API detection may be bypased if library version
@@ -291,7 +290,7 @@ function juicebox_page_xml() {
     $message = 'Exception building Juicebox XML: !message in %function (line %line of %file).';
     watchdog_exception('juicebox', $e, $message);
     return MENU_NOT_FOUND;
-  } 
+  }
   drupal_add_http_header('Content-Type', 'text/xml');
   // Bypass all themeing but still return (don't die) so that
   // drupal_page_footer() is called.
@@ -302,13 +301,13 @@ function juicebox_page_xml() {
 
 /**
  * Libraries API Info Callback
- * 
+ *
  * Add baseline variables to a Juicebox library array that are not version
  * specific but should always be defined. These values are generic to all
  * Juicebox libraries and may be referenced even when the local library info
  * cannot be loaded or is not used.
- * 
- * @see juicebox_libraries_info().
+ *
+ * @see juicebox_libraries_info()
  */
 function juicebox_library_info(&$library) {
   $library['disallowed_conf'] = array();
@@ -319,11 +318,11 @@ function juicebox_library_info(&$library) {
 
 /**
  * Libraries API Post-Detect Callback
- * 
+ *
  * Add detailed variables to a Juicebox library array after the version info can
  * be detected.
- * 
- * @see juicebox_libraries_info().
+ *
+ * @see juicebox_libraries_info()
  */
 function juicebox_library_post_detect(&$library) {
   $pro = FALSE;
@@ -382,7 +381,7 @@ function juicebox_element_validate_config($element, &$form_state, $form) {
 /**
  * Form pre-render callback: visually render fieldsets without affecting
  * tree-based variable storage.
- * 
+ *
  * This technique/code is taken almost directly from the Views module in
  * views_ui_pre_render_add_fieldset_markup()
  */
@@ -432,7 +431,7 @@ function juicebox_field_formatter_info() {
  */
 function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
   // If this formatter is being used outside the context of a normal field
-  // display (e.g. within individual view rows, panels, as a file entity
+  // display (e.g., within individual view rows, panels, as a file entity
   // display, etc.) we display a message to discourage and prevent it's use.
   // This is due to the fact that we don't have a reliable way to build the XML
   // for these cases.
@@ -530,7 +529,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   $settings = $instance['display'][$display_name]['settings'];
   // Generate xml path details.
   $xml_path = 'juicebox/xml/field/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . $display_name;
-  $xml_args = explode('/', $xml_path); 
+  $xml_args = explode('/', $xml_path);
   // Instantiate and build the Juicebox gallery.
   try {
     $data = array('items' => $items, 'settings' => $display['settings']);

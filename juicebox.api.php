@@ -65,7 +65,7 @@ function hook_juicebox_gallery_alter($juicebox, $data) {
  *     NULL when instantiating a gallery during an XML request.
  *   - library: Juicebox javascript library data as provided through Libraries
  *     API.
- * 
+ *
  * @see juicebox()
  */
 function hook_juicebox_classes_alter(&$classes, $xml_path_args, $context) {
