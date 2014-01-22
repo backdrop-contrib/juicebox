@@ -37,6 +37,12 @@ function juicebox_admin_settings() {
     '#default_value' => variable_get('juicebox_show_debug_links', FALSE),
     '#description' => t('Show links above each gallery to toggle the display of gallery debugging information.'),
   );
+  $form['juicebox_enable_cors'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Allow galleries to be embedded remotely (CORS support)'),
+    '#default_value' => variable_get('juicebox_enable_cors', FALSE),
+    '#description' => t('Enable cross-origin resource sharing (CORS) for all generated Juicebox XML. This will allow all origins/domains to use Juicebox XML requested from this site for embedding purposes.'),
+  );
   $form['juicebox_multilingual'] = array(
     '#type' => 'fieldset',
     '#title' => t('Multilingual options'),

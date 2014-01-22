@@ -281,6 +281,9 @@ function juicebox_page_xml() {
   }
   // Set headers.
   drupal_add_http_header('Content-Type', 'text/xml');
+  if (variable_get('juicebox_enable_cors', FALSE)) {
+    drupal_add_http_header('Access-Control-Allow-Origin', '*');
+  }
   // Bypass all themeing but still return (don't die) so that
   // drupal_page_footer() is called.
   print($xml);
