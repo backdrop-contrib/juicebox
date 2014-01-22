@@ -16,7 +16,6 @@
  * @ingroup themeable
  */
 function theme_juicebox_embed_markup(&$variables) {
-  $gallery = $variables['gallery'];
   $settings = $variables['settings'];
   $output = '';
   // Create the gallery embed markup. This is what the Juicebox javascript will
@@ -28,22 +27,22 @@ function theme_juicebox_embed_markup(&$variables) {
   $output .= '<div class="juicebox-parent' . $custom_classes . '">' . "\n";
   // Add debug toggle links if configured to display them.
   if (!empty($settings['show_debug_links'])) {
-    $output .= theme('juicebox_toggle_markup', array('gallery' => $gallery, 'settings' => $settings, 'debug' => FALSE));
+    $output .= theme('juicebox_toggle_embed_debug_markup', array('gallery_id' => $variables['gallery_id'], 'settings' => $settings, 'debug' => FALSE));
   }
-  $output .= '<div id="' . $gallery->id . '" class="juicebox-container">' . "\n";
+  $output .= '<div id="' . $variables['gallery_id'] . '" class="juicebox-container">' . "\n";
   // Also create a search engine friendly version of the gallery. This markup
   // will only be seen by crawlers and users with javascript disabled.
-  $bypass_noscript = (array_key_exists('addseocontent', $gallery->options) && $gallery->options['addseocontent'] == 'FALSE');
+  $bypass_noscript = (array_key_exists('addseocontent', $variables['gallery_options']) && $variables['gallery_options']['addseocontent'] == 'FALSE');
   if (!$bypass_noscript) {
     $output .= '<noscript>' . "\n";
     $output .= '<!-- Image gallery content for non-javascript devices -->' . "\n";
-    if (array_key_exists('gallerytitle', $gallery->options)) {
-      $output .= '<h1 class="jb-name">' . $gallery->options['gallerytitle'] . '</h1>' . "\n";
+    if (array_key_exists('gallerytitle', $variables['gallery_options'])) {
+      $output .= '<h1 class="jb-name">' . $variables['gallery_options']['gallerytitle'] . '</h1>' . "\n";
     }
-    if (array_key_exists('gallerydescription', $gallery->options)) {
-      $output .= '<p class="jb-description">' . $gallery->options['gallerydescription'] . '</p>' . "\n";
+    if (array_key_exists('gallerydescription', $variables['gallery_options'])) {
+      $output .= '<p class="jb-description">' . $variables['gallery_options']['gallerydescription'] . '</p>' . "\n";
     }
-    foreach ($gallery->images as $image) {
+    foreach ($variables['gallery_images'] as $image) {
       $img_vars = array();
       $img_vars['path'] = $image['src_data']['image_url'];
       if (!empty($image['title'])) {
@@ -59,7 +58,6 @@ function theme_juicebox_embed_markup(&$variables) {
     $output .= '</noscript>' . "\n";
   }
   $output .= '</div></div>' . "\n";
-
   return $output;
 }
 
@@ -73,8 +71,6 @@ function theme_juicebox_embed_markup(&$variables) {
  * @ingroup themeable
  */
 function juicebox_preprocess_juicebox_debug_markup(&$variables) {
-  $gallery = $variables['gallery'];
-  $settings = $variables['settings'];
   // Calculate the XML link that will be displayed. This should not have the
   // "checksum" or "jb-debug" query strings and should be absolute.
   if (!empty($variables['xml']['options']['query'])) {
@@ -85,10 +81,10 @@ function juicebox_preprocess_juicebox_debug_markup(&$variables) {
   $xml_url = url($variables['xml']['path'], $variables['xml']['options']);
   $variables['xml_link'] = l($xml_url, $variables['xml']['path'], $variables['xml']['options']);
   // Get image count.
-  $variables['image_count'] = count($gallery->images);
+  $variables['image_count'] = count($variables['gallery_images']);
   // Get the gallery option list in a displayable format.
   $variables['option_list'] = array();
-  foreach ($gallery->options as $option_key => $option_value) {
+  foreach ($variables['gallery_options'] as $option_key => $option_value) {
     $variables['option_list'][] = $option_key . '=' . $option_value;
   }
   // Get the library info in a displayable format.
@@ -112,7 +108,6 @@ function juicebox_preprocess_juicebox_debug_markup(&$variables) {
  * @ingroup themeable
  */
 function theme_juicebox_debug_markup(&$variables) {
-  $gallery = $variables['gallery'];
   $settings = $variables['settings'];
   $output = '';
   $custom_classes = '';
@@ -122,12 +117,12 @@ function theme_juicebox_debug_markup(&$variables) {
   // Display a structured list of each debug detail.
   $output .= '<div class="juicebox-parent' . $custom_classes . '">' . "\n";
   // Add toggle links.
-  $output .= theme('juicebox_toggle_markup', array('gallery' => $gallery, 'settings' => $settings, 'debug' => TRUE));
+  $output .= theme('juicebox_toggle_embed_debug_markup', array('gallery_id' => $variables['gallery_id'], 'settings' => $settings, 'debug' => TRUE));
   $output .= '<div class="juicebox-container juicebox-placeholder juicebox-debug-info">' . "\n";
   $output .= '<p>' . t('Showing debugging information in place of gallery.') . '</p>';
   $output .= '<dl>';
   $output .= '<dt>' . t('Gallery ID') . '</dt>';
-  $output .= '<dd>' . $gallery->id . '</dd>';
+  $output .= '<dd>' . $variables['gallery_id'] . '</dd>';
   $output .= '<dt>' . t('XML URL') . '</dt>';
   $output .= '<dd>' . $variables['xml_link'] . '</dd>';
   $output .= '<dt>' . t('Juicebox Javascript Library') . '</dt>';
@@ -150,19 +145,18 @@ function theme_juicebox_debug_markup(&$variables) {
  *
  * @ingroup themeable
  */
-function juicebox_preprocess_juicebox_toggle_markup(&$variables) {
-  $gallery = $variables['gallery'];
+function juicebox_preprocess_juicebox_toggle_embed_debug_markup(&$variables) {
   $settings = $variables['settings'];
   // Build the links needed for the toggles based on which view is active.
   $query = drupal_get_query_parameters();
   if (!empty($variables['debug'])) {
     unset($query['jb-debug']);
-    $variables['gallery_link'] = l(t('gallery'), current_path(), array('query' => $query, 'fragment' => $gallery->id));
+    $variables['gallery_link'] = l(t('gallery'), current_path(), array('query' => $query, 'fragment' => $variables['gallery_id']));
     $variables['info_link'] = t('debug info');
   }
   else {
     $query['jb-debug'] = 1;
-    $variables['info_link'] = l(t('debug info'), current_path(), array('query' => $query, 'fragment' => 'debug-' . $gallery->id));
+    $variables['info_link'] = l(t('debug info'), current_path(), array('query' => $query, 'fragment' => 'debug-' . $variables['gallery_id']));
     $variables['gallery_link'] = t('gallery');
   }
 }
@@ -177,12 +171,11 @@ function juicebox_preprocess_juicebox_toggle_markup(&$variables) {
  *
  * @ingroup themeable
  */
-function theme_juicebox_toggle_markup(&$variables) {
-  $gallery = $variables['gallery'];
+function theme_juicebox_toggle_embed_debug_markup(&$variables) {
   $settings = $variables['settings'];
   $output = '';
   if (!empty($settings['show_debug_links'])) {
-    $output .= '<div id="debug-' . $gallery->id . '">' . $variables['gallery_link'] . ' | ' . $variables['info_link'] . '</div>';
+    $output .= '<div id="debug-' . $variables['gallery_id'] . '">' . $variables['gallery_link'] . ' | ' . $variables['info_link'] . '</div>';
   }
   return $output;
 }

@@ -9,10 +9,10 @@
 
 /**
  * Allow modules to alter the Juicebox gallery object used to build gallery
- * embed code and and XML.
+ * embed code and and XML before rendering.
  *
  * @param object $juicebox
- *   A Juicebox connector object that contains the gallery ($juicebox->gallery)
+ *   A Juicebox gallery object that contains the gallery ($juicebox->gallery)
  *   which is going to be rendered. The full object is available for context but
  *   by this point the only alterations that will have any effect are those
  *   applied to $juicebox->gallery.
@@ -22,7 +22,8 @@
  */
 function hook_juicebox_gallery_alter($juicebox, $data) {
   // See if this is a gallery sourced from a view.
-  if ($juicebox->type === 'view') {
+  $id_args = $juicebox->getIdArgs();
+  if ($id_args[0] == 'view') {
     $view = $data;
     // Assume we have a view called "galleries" and a page called "page_1" that
     // structures galleries based on a taxonomy term contextual filter. We want
@@ -34,7 +35,7 @@ function hook_juicebox_gallery_alter($juicebox, $data) {
       if (!empty($view->args)) {
         $term = taxonomy_term_load($view->args[0]);
         if (!empty($term->description)) {
-          $juicebox->gallery->addOption('gallerydescription', strip_tags($term->description));
+          $juicebox->addOption('gallerydescription', strip_tags($term->description));
         }
       }
     }
@@ -44,43 +45,53 @@ function hook_juicebox_gallery_alter($juicebox, $data) {
 
 /**
  * Allow modules to alter the classes that are instantiated when a Juicebox
- * connector is created (pseudo plugin behavior).
+ * gallery is created.
  *
  * @param array $classes
  *   An associative array containing the class names that will be instantiated:
- *   - connector_plugin: The Juicebox connector plugin (based on the abstract
- *     base class JuiceboxConnector). This contains the building blocks for
- *     structuring Drupal data into a Juicebox gallery.
  *   - gallery: A gallery object dependency (implementing
  *     JuiceboxGalleryInterface) that's used to create the script and markup
  *     outputs of a Juicebox gallery.
- * @param array $xml_path_args
- *   An indexed array of XML path arguments that describe this gallery (and
- *   make up its XML URL). This information uniquely identifies the gallery and
- *   contains all the descriptive data needed to (re)build it. Typically the
- *   first arg on this array contains the 'type' identifier.
- * @param array $context
- *   Additional context variables for reference:
- *   - data: Loaded Drupal data that the gallery can be built from. Typically
- *     NULL when instantiating a gallery during an XML request.
- *   - library: Juicebox javascript library data as provided through Libraries
- *     API.
+ *   - juicebox: A Juicebox gallery wrapper (implementing
+ *     JuiceboxGalleryWrapperInterface) that will be used to wrap the gallery
+ *     object with Drupal-specific logic and structures.
+ * @param array $library
+ *   Juicebox javascript library data as provided through Libraries API.
  *
  * @see juicebox()
  */
-function hook_juicebox_classes_alter(&$classes, $xml_path_args, $context) {
-  // Completely swap-out the connector used to build field-based galleries.
-  if ($xml_path_args[0] == 'field') {
-    $classes['connector_plugin'] = 'MyBetterCustomFieldConnector';
-  }
-  // Add a new connector to create a Juicebox display formatter for some kind
-  // of Drupal element not already supported by this module.
-  if ($xml_path_args[0] == 'juicy_drupal_widget') {
-    $classes['connector_plugin'] = 'JuiceboxConnectorJuicyWidget';
-  }
+function hook_juicebox_classes_alter(&$classes, $library) {
+  // Provide custom (global) overrides to a Juicebox library.
+  $classes['juicebox'] = 'MyJuiceboxGalleryWrapper';
   // Swap out the gallery dependency object because some future Juicebox
-  // javascript library has a different interface.
-  if (!empty($context['library']['version']) && $context['library']['version'] == 'Pro 12.3') {
+  // javascript library requires different embed or XML output.
+  if (!empty($library['version']) && $library['version'] == 'Pro 12.3') {
     $classes['gallery'] = 'FutureJuiceboxGallery';
+  }
+}
+
+
+/**
+ * Allow modules to alter the class used for a Juicebox XML loader.
+ *
+ * Any Drupal formatter that creates Juicebox embed code must also provide a
+ * way for the associated Juicebox XML to be generated. This is typically
+ * handled via a seperate request that can be routed and managed any way you
+ * like (such as a dedicated Drupal menu item). If you want to use the existing
+ * "juicebox/xml/%" menu item for this, you can specifiy a custom XML loader
+ * class (implementing JuiceboxXmlInterface) and then "register" it with this
+ * hook.
+ *
+ * @param string $class
+ *   The Juicebox XML loader class that should be instantiated given the passed
+ *   URL args.
+ * @param array $args
+ *   The args that appear after /juicebox/xml in the path.
+ *
+ * @see juicebox_page_xml()
+ */
+function hook_juicebox_xml_class(&$xml_loader_class, $args) {
+  if (!empty($args[0]) && $args[0] == 'mywidget') {
+    $xml_loader_class = 'JuiceboxXmlMyWidget';
   }
 }

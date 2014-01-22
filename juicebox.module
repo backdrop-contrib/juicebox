@@ -8,6 +8,12 @@
  */
 
 
+// Move the field-based logic (field hooks and related) into another file
+// purely for DX. This file still has to be globally included as field
+// hooks don't work as expected if formally defined in hook_hook_info().
+require_once __DIR__ . '/juicebox.field.inc';
+
+
 /**
  * Implements hook_menu().
  */
@@ -15,7 +21,7 @@ function juicebox_menu() {
   // Add menu item that produces the "config.xml" data that is linked to a
   // specific gallery.
   $items['juicebox/xml/%'] = array(
-    'title' => 'Juicebox XML from view',
+    'title' => 'Juicebox XML',
     'description' => 'Deliver configuration XML for a Juicebox gallery.',
     'page callback' => 'juicebox_page_xml',
     'page arguments' => array(2),
@@ -44,19 +50,19 @@ function juicebox_theme() {
   return array(
     // Theme hook to generate embed markup for a Juicebox gallery.
     'juicebox_embed_markup' => array(
-      'variables' => array('gallery' => NULL, 'settings' => array()),
+      'variables' => array('gallery_id' => NULL, 'gallery_images' => array(), 'gallery_options' => array(), 'settings' => array()),
       'path' => drupal_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
     ),
     // Theme hook to generate info/debug information for a Juicebox gallery.
     'juicebox_debug_markup' => array(
-      'variables' => array('gallery' => NULL, 'xml' => array(), 'settings' => array()),
+      'variables' => array('gallery_id' => NULL, 'gallery_images' => array(), 'gallery_options' => array(), 'settings' => array(), 'xml' => array()),
       'path' => drupal_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
     ),
     // Theme hook to generate toggle links between gallery and debug info.
-    'juicebox_toggle_markup' => array(
-      'variables' => array('gallery' => NULL, 'settings' => array(), 'debug' => FALSE),
+    'juicebox_toggle_embed_debug_markup' => array(
+      'variables' => array('gallery_id' => NULL, 'settings' => array(), 'debug' => FALSE),
       'path' => drupal_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
     ),
@@ -111,7 +117,7 @@ function juicebox_views_plugins() {
   $plugins['style']['juicebox'] = array(
     'title' => t('Juicebox Gallery'),
     'help' => t('Display rows as a Juicebox Gallery.'),
-    'handler' => 'JuiceboxViewsStylePlugin',
+    'handler' => 'JuiceboxFormatterViewsStyle',
     'path' => $path . '/plugins',
     'uses row plugin' => FALSE,
     'uses fields' => TRUE,
@@ -146,65 +152,33 @@ function juicebox_image_default_styles() {
 
 
 /**
- * Instantiate a Juicebox connector object along with its dependencies.
+ * Instantiate a Juicebox object along with its dependencies.
  *
- * @param array $xml_path_args
- *   An indexed array of XML path arguments that describe this gallery (and
- *   make up its XML URL). This information uniquely identifies the gallery and
- *   contains all the descriptive data needed to (re)build it.
- * @param mixed $data
- *   (Optional) Loaded Drupal data that the gallery can be built from. When
- *   the embed code is being generated for a Drupal display formatter this data
- *   will typically be available already. However when building the XML this
- *   can be passed as NULL, and we will need to load it ourselves (based on the
- *   XML args) after the objects are instantiated.
- * @return object
+ * @return JuiceboxGalleryWrapperInterface
  *   A new Juicebox plugin object that contains an empty Juicebox gallery
  *   object.
  */
-function juicebox($xml_path_args, $data = NULL) {
-  // The XML args may be passed as a full set of path args. If so we can
-  // drop some args that are only used for menu routing.
-  if ($xml_path_args[0] == 'juicebox' && $xml_path_args[1] == 'xml') {
-    $xml_path_args = array_slice($xml_path_args, 2);
-  }
-  // Calculate the gallery ID.
-  $id = '';
-  foreach ($xml_path_args as $arg) {
-    $id .= $arg . '--';
-  }
-  // Make sure no special characters slipped through inside individual args.
-  $id = trim(preg_replace('/[^0-9a-zA-Z-]/', '-', $id), '- ');
-  // The type should match the first argument.
-  $type = $xml_path_args[0];
+function juicebox() {
   // Get the library data. We do this early (before instantiating) as the lib
   // details should be allowed to impact which classes are used.
   $library = juicebox_library_detect();
-  // Calculate the connector classes that are supported directly by this module.
-  $classes = array('connector_plugin' => '', 'gallery' => 'JuiceboxGallery');
-  switch ($type) {
-    case 'field':
-      $classes['connector_plugin'] = 'JuiceboxConnectorField';
-      break;
-    case 'view':
-      $classes['connector_plugin'] = 'JuiceboxConnectorViewsStyle';
-      break;
-  }
-  // Allow other modules to alter the classes that will be used.
-  $context = array('data' => $data, 'library' => $library);
-  drupal_alter('juicebox_classes', $classes, $xml_path_args, $context);
-  if (class_exists($classes['connector_plugin']) && class_exists($classes['gallery'])) {
-    // Instantiate the Juicebox gallery object.
-    $gallery = new $classes['gallery']($id);
-    // Instantiate the Juicebox connector object.
-    $juicebox = new $classes['connector_plugin']($xml_path_args, $data, $gallery, $library);
-    if (is_object($juicebox)) {
-      return $juicebox;
+  // Calculate the classes that need to be instantiated.
+  $classes = array('gallery' => 'JuiceboxGallery', 'juicebox' => 'JuiceboxGalleryDrupal');
+  // Allow the classes to be altered.
+  drupal_alter('juicebox_classes', $classes, $library);
+  if (class_exists($classes['gallery']) && class_exists($classes['juicebox'])) {
+    // Instantiate the Juicebox gallery objects.
+    $gallery = new $classes['gallery']();
+    if (in_array('JuiceboxGalleryInterface', class_implements($gallery))) {
+      $juicebox = new $classes['juicebox']($gallery, $library);
+      if (in_array('JuiceboxGalleryDrupalInterface', class_implements($juicebox))) {
+        return $juicebox;
+      }
     }
   }
   // If we get here it means that something went wrong and the object could not
   // be created.
-  throw new Exception(t('Cound not instantiate Juicebox gallery of type @type.', array('@type' => $type)));
+  throw new Exception(t('Cound not instantiate Juicebox gallery'));
 }
 
 
@@ -276,26 +250,40 @@ function juicebox_library_detect($force_local = FALSE, $reset = FALSE) {
  */
 function juicebox_page_xml() {
   $args = func_get_args();
+  // The XML loader that we use will depend on the formatter type. This type
+  // value should be visible in the URL. For formatters supported directly by
+  // this module we use the first arg to map to a XML loader class.
+  // @todo: consider using some form of formal plugin manager here.
+  $xml_loader_class = '';
+  $map = array('field' => 'JuiceboxXmlField', 'viewsstyle' => 'JuiceboxXmlViewsStyle');
+  if (!empty($map[$args[0]])) {
+    $xml_loader_class = $map[$args[0]];
+  }
+  // Allow other modules to alter, or provide a definition for, the class that
+  // should be used.
+  drupal_alter('juicebox_xml_class', $xml_loader_class, $args);
+  if (!class_exists($xml_loader_class) || !in_array('JuiceboxXmlInterface', class_implements($xml_loader_class))) {
+    return MENU_NOT_FOUND;
+  }
+  // Try to build the XML using the selected XML loader.
   try {
-    $juicebox = juicebox($args, NULL);
-    $juicebox->load();
-    if (!$juicebox->access()) {
+    $jb_xml = new $xml_loader_class($args);
+    if (!$jb_xml->access()) {
       return MENU_ACCESS_DENIED;
     }
-    // Build the Juicebox gallery data.
-    $juicebox->build();
-    $xml = $juicebox->gallery->getXML();
+    // Get the XML.
+    $xml = $jb_xml->getXml();
   }
   catch (Exception $e) {
     $message = 'Exception building Juicebox XML: !message in %function (line %line of %file).';
     watchdog_exception('juicebox', $e, $message);
     return MENU_NOT_FOUND;
   }
+  // Set headers.
   drupal_add_http_header('Content-Type', 'text/xml');
   // Bypass all themeing but still return (don't die) so that
   // drupal_page_footer() is called.
   print($xml);
-  return NULL;
 }
 
 
@@ -398,204 +386,4 @@ function juicebox_form_pre_render_fieldsets($form) {
     }
   }
   return $form;
-}
-
-
-/**
- * Implements hook_field_formatter_info().
- *
- * Add juicebox_formatter formatter.
- */
-function juicebox_field_formatter_info() {
-  // Get the base settings.
-  $base_settings = JuiceboxConnector::confBaseOptions();
-  $formatters = array(
-    'juicebox_formatter' => array(
-      'label' => t('Juicebox Gallery'),
-      'description' => t('Style groups of images or files as a Juicebox gallery.'),
-      'field types' => array('image', 'file'),
-      'settings' => array_merge($base_settings, array(
-        'image_style' => '',
-        'thumb_style' => 'juicebox_square_thumbnail',
-        'caption_source' => 'alt',
-        'title_source' => 'title',
-      )),
-    ),
-  );
-  return $formatters;
-}
-
-
-/**
- * Implements hook_field_formatter_settings_form().
- */
-function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
-  // If this formatter is being used outside the context of a normal field
-  // display (e.g., within individual view rows, panels, as a file entity
-  // display, etc.) we display a message to discourage and prevent it's use.
-  // This is due to the fact that we don't have a reliable way to build the XML
-  // for these cases.
-  // @todo Consider a "whitelisting" approach instead of "blacklisting".
-  $juicebox_formatter_notice = '';
-  if (!empty($instance['bundle']) && $instance['bundle'] == 'ctools') {
-    $juicebox_formatter_notice = t('<strong>NOTICE: The Juicebox field formatter is not fully supported within individual view rows (and other ctools contexts)</strong>. Using this setting is not recommended. For views support please use the Juicebox display style plugin.');
-  }
-  if (!empty($instance['entity_type']) && $instance['entity_type'] == 'file') {
-    $juicebox_formatter_notice = t('<strong>NOTICE: The Juicebox field formatter is not fully supported when rendering individual file entities</strong>. Using this setting is not recommended. For file support please apply the Juicebox field formatter to a <em>field</em> of type file.');
-  }
-  if (!empty($juicebox_formatter_notice)) {
-    return array('juicebox_formatter_notice' => array(
-      '#prefix' => '<p>',
-      '#markup' => $juicebox_formatter_notice,
-      '#suffix' => '</p>',
-    ));
-  }
-  $form = array();
-  // Get available title and caption sources.
-  $text_sources = JuiceboxConnectorField::confGetTextSources($instance);
-  // Get available image style presets
-  $presets = image_style_options(FALSE);
-  $settings = $instance['display'][$view_mode]['settings'];
-  // Get the common form elements.
-  $form = JuiceboxConnectorField::confBaseForm($form, $settings);
-  // Add the field-formatter-specific elements.
-  $form['image_style'] = array(
-    '#type' => 'select',
-    '#title' => t('Main Image Style'),
-    '#default_value' => $settings['image_style'],
-    '#description' => t('The style formatter for the main image.'),
-    '#options' => $presets,
-    '#empty_option' => t('None (original image)'),
-  );
-  $form['thumb_style'] = array(
-    '#type' => 'select',
-    '#title' => t('Thumbnail Style'),
-    '#default_value' => $settings['thumb_style'],
-    '#description' => t('The style formatter for the thumbnail.'),
-    '#options' => $presets,
-    '#empty_option' => t('None (original image)'),
-  );
-  $form['caption_source'] = array(
-    '#type' => 'select',
-    '#title' => t('Caption Source'),
-    '#default_value' => $settings['caption_source'],
-    '#description' => t('The image value that should be used for the caption.'),
-    '#options' => $text_sources,
-    '#empty_option' => t('No caption'),
-  );
-  $form['title_source'] = array(
-    '#type' => 'select',
-    '#title' => t('Title Source'),
-    '#default_value' => $settings['title_source'],
-    '#description' => t('The image value that should be used for the title.'),
-    '#options' => $text_sources,
-    '#empty_option' => t('No title'),
-  );
-  return $form;
-}
-
-
-/**
- * Implements hook_field_formatter_view().
- *
- * This is where the Juicebox embed code is built for the field formatter.
- */
-function juicebox_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
-  $element = array();
-  // If there are no images, don't do anything else.
-  if (empty($items)) {
-    return;
-  }
-  // The gallery shown in preview view will only display field data from the
-  // previously saved version (that is the only version the XML generation
-  // methods will have access to). Display a warning because of this.
-  if (!empty($entity->in_preview)) {
-    drupal_set_message(t('Juicebox galleries may not display correctly in preview mode. Any edits made to gallery data will only be visible after all changes are saved.'), 'warning', FALSE);
-  }
-  $field_name = $instance['field_name'];
-  $entity_type_info = entity_get_info($entity_type);
-  $entity_id = $entity->{$entity_type_info['entity keys']['id']};
-  // We need to get the display name to pass as part of our XML path. Though
-  // we have access to the actaul $display array, it does not look like we
-  // have access to the actaul display NAME in this scope. We do have access to
-  // a list of ALL displays in $instanace though, so iterate though them to
-  // find a match to the settings in $display.
-  $display_name = 'default';
-  foreach ($instance['display'] as $display_key => $display_data) {
-    if ($display['settings'] == $display_data['settings']) {
-      $display_name = $display_key;
-    }
-  }
-  $settings = $instance['display'][$display_name]['settings'];
-  // Generate xml path details.
-  $xml_path = 'juicebox/xml/field/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . $display_name;
-  $xml_args = explode('/', $xml_path);
-  // Instantiate and build the Juicebox gallery.
-  try {
-    $data = array('items' => $items, 'settings' => $display['settings']);
-    $juicebox = juicebox($xml_args, $data);
-    // For some reason core does not test field access until AFTER this hook.
-    // Because of this we run our own (duplicate) field access test here to
-    // prevent unneeded logic from running if the output will be hidden. Note
-    // that by this point we know that entity access is already granted.
-    $juicebox->entityAccess = TRUE;
-    if ($juicebox->access()) {
-      // Build the gallery.
-      $juicebox->build();
-      $element[0] = array('#markup' => $juicebox->renderEmbed($xml_path, $settings));
-    }
-  }
-  catch (Exception $e) {
-    $message = 'Exception building Juicebox embed code for field: !message in %function (line %line of %file).';
-    watchdog_exception('juicebox', $e, $message);
-  }
-  return $element;
-}
-
-
-/**
- * Implements hook_field_formatter_settings_summary().
- */
-function juicebox_field_formatter_settings_summary($field, $instance, $view_mode) {
-  $display = $instance['display'][$view_mode];
-  $settings = $display['settings'];
-  $settings_display = array();
-  // Image style setting.
-  if (!empty($settings['image_style'])) {
-    $style = $settings['image_style'];
-  }
-  else {
-    $style = t('Original Image');
-  }
-  $settings_display[] = t("Image style: @style", array('@style' => $style));
-  // Thumb style setting.
-  if (!empty($settings['thumb_style'])) {
-    $style = $settings['thumb_style'];
-  }
-  else {
-    $style = t('Original Image');
-  }
-  $settings_display[] = t("Thumbnail style: @style", array('@style' => $style));
-  // Define display options for caption and title source.
-  $text_sources = JuiceboxConnectorField::confGetTextSources($instance);
-  // Caption source setting.
-  if (!empty($text_sources[$settings['caption_source']])) {
-    $source = $text_sources[$settings['caption_source']];
-  }
-  else {
-    $source = t('None');
-  }
-  $settings_display[] = t("Caption source: @source", array('@source' => $source));
-  // Title source setting.
-  if (!empty($text_sources[$settings['title_source']])) {
-    $source = $text_sources[$settings['title_source']];
-  }
-  else {
-    $source = t('None');
-  }
-  $settings_display[] = t("Title source: @source", array('@source' => $source));
-  // Add-in a note about the additional fieldsets.
-  $settings_display[] = t("Additional Juicebox library configuration options may also be set.");
-  $summary = implode('<br />', $settings_display);
-  return $summary;
 }

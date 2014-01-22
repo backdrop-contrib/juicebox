@@ -5,16 +5,13 @@ core = 7.x
 dependencies[] = image
 dependencies[] = libraries (>1.0)
 
-; General Files
-files[] = juicebox.module
-
 ; Local Class and Plugin Files
-files[] = includes/JuiceboxGallery.inc
 files[] = includes/JuiceboxGalleryInterface.inc
-files[] = includes/JuiceboxConnector.inc
-files[] = plugins/JuiceboxConnectorField.inc
-files[] = plugins/JuiceboxConnectorViewsStyle.inc
-files[] = plugins/JuiceboxViewsStylePlugin.inc
-
-; Theme Files
-files[] = themes/juicebox.theme.inc
+files[] = includes/JuiceboxGallery.inc
+files[] = includes/JuiceboxGalleryDecorator.inc
+files[] = includes/JuiceboxGalleryDrupalInterface.inc
+files[] = includes/JuiceboxGalleryDrupal.inc
+files[] = plugins/JuiceboxXmlInterface.inc
+files[] = plugins/JuiceboxXmlField.inc
+files[] = plugins/JuiceboxXmlViewsStyle.inc
+files[] = plugins/JuiceboxFormatterViewsStyle.inc

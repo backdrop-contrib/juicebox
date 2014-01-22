@@ -3,20 +3,127 @@
 
 /**
  * @file
- * Interface definition for the JuiceboxGallery class.
+ * Interface definition for a Juicebox gallery.
  */
 
 
 /**
- * Interface definition for the Juicebox gallery class.
+ * Interface definition for a Juicebox gallery.
  */
 interface JuiceboxGalleryInterface {
 
+  /**
+   * Setter method for the gallery ID (in case it was not passed in
+   * constructor).
+   *
+   * @param string $value
+   *   The gallery id value to set.
+   * @param boolean $reset
+   *   Whether-or-not to reset the current value if it is already set.
+   * @return boolean
+   *   Returns TRUE on successful update and FALSE if update not performed.
+   */
+  public function setId($value, $reset = TRUE);
+
+  /**
+   * Getter method for the gallery ID.
+   *
+   * @return string
+   *   Returns the id value set for the gallery.
+   */
+  public function getId();
+
+  /**
+   * Add a new image to the gallery.
+   *
+   * @param array $src_data
+   *   Associative array containing all the source data for a gallery image,
+   *   including the:
+   *   - image_url: URL to the full image to display.
+   *   - thumb_url: URL to the thumbnail to display for the image.
+   *   - link_url: The Juicebox "link URL" value for the image.
+   *   - link_target: The browser target value to use when following a link URL.
+   * @param string $title
+   *   The title markup to display for the image.
+   * @param string $caption
+   *   The caption markup to display for the image.
+   * @param boolean $filter
+   *   Whether-or-not to filter the $title and $caption values for syntactic
+   *   compatibility with Juicebox.
+   * @return boolean
+   *   Returns TRUE on successful addition and FALSE on failure.
+   */
   public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE);
+
+  /**
+   * Getter method for the gallery images.
+   *
+   * @return array
+   *   Returns an array of images added to the gallery.
+   */
+  public function getImages();
+
+  /**
+   * Add a new Juicebox configuration option to the gallery.
+   *
+   * @param string $option_name
+   *   The option name/key to add.
+   * @param string $option_value
+   *   The option value to add.
+   * @param boolean $override
+   *   Whether-or-not to override any values that already exist in the set
+   *   options for the passed name/key.
+   * @return boolean
+   *   Returns TRUE on successful addition and FALSE on failure.
+   */
   public function addOption($option_name, $option_value, $override = TRUE);
-  public function getXml();
-  public function getEmbed($custom_classes = '');
-  public function getJavascript($xml_path);
+
+  /**
+   * Getter method for the gallery options.
+   *
+   * @return array
+   *   Returns an array of options set on the gallery.
+   */
+  public function getOptions();
+
+  /**
+   * Get a gallery checksum.
+   *
+   * @return string
+   *   An md5 hash of the image and option data that can be used to validate
+   *   the uniqueness of this gallery's data and settings.
+   */
   public function getChecksum();
+
+  /**
+   * Get the XML for a Juicebox gallery once images and options have been
+   * added.
+   *
+   * @return string
+   *   Structured Juicebox XML describing a gallery. Note that no header data
+   *   is set or returned here.
+   */
+  public function renderXml();
+
+  /**
+   * Get the embed code for a Juicebox gallery once images and options have been
+   * added.
+   *
+   * @return string
+   *   Embed code markup describing a gallery.
+   */
+  public function renderEmbed();
+
+  /**
+   * Get the javascript code for a Juicebox gallery once images and options have
+   * been added.
+   *
+   * @param string $xml_path
+   *   The path to the Juicebox XML for this gallery.
+   * @return string
+   *   Javascript code describing a gallery. Note that <script> tags are
+   *   excluded.
+   */
+  public function renderJavascript($xml_path);
 
 }

@@ -3,190 +3,109 @@
 
 /**
  * @file
- * This is a base connector containing the building blocks for structuring
- * Drupal data into a Juicebox gallery. This can be extended into specifc
- * plugins to handle different Drupal constructs (fields, views, etc.).
+ * Class to extend a JuiceboxGalleryDecorator object with Drupal-specific logic
+ * and structures.
  */
 
 
 /**
- * Base abstract class for a Juicebox connector plugin.
+ * Class to extend a JuiceboxGalleryDecorator object with Drupal-specific logic
+ * and structures.
  */
-abstract class JuiceboxConnector {
+class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements JuiceboxGalleryDrupalInterface {
 
-  /**
-   * Base properies of structured data to manage the loading/handling of
-   * Drupal info that will be processed into a gallery.
-   */
-  public $xmlPathArgs = array();
-  public $type;
-  // Library API information is stored for reference.
-  public $library;
-  // The raw Drupal data that will be built into a gallery is stored in mixed
-  // format depending on the connector type.
+  // Base injected properties.
+  protected $library = array();
+  // Properties set only upon initializing into a specific gallery.
+  protected $idArgs = array();
+  protected $settings = array();
+  protected $initialized = FALSE;
   protected $data;
-  // The gallery object is injected and serves as a direct interface to
-  // Juicebox once Drupal data is loaded.
-  public $gallery;
-  // We maintain a static cache of "built" $gallery data objects, keyed by
-  // gallery ID.
-  static protected $builtGalleries = array();
 
   /**
-   * Constructor
+   * Constructor.
    *
-   * @param array $xml_path_args
-   *   An indexed array of XML path arguments that describe this gallery (and
-   *   make up its XML URL). This information uniquely identifies the gallery
-   *   and contains all the descriptive data needed to (re)build it.
-   * @param mixed $data
-   *   (Optional) Loaded Drupal data that the gallery can be built from. When
-   *   the embed code is being generated for a Drupal display formatter this
-   *   data will typically be available already. However when building the XML
-   *   this will be NULL, and we will need to be load it ourselves (based on the
-   *   XML args) later.
-   * @param object $gallery
-   *   An empty gallery object, implementing JuiceboxGalleryInterface, that can
-   *   be built into a Juicebox gallery.
+   * @param JuiceboxGalleryInterface $juicebox
+   *   A plain-PHP Juicebox gallery object.
    * @param array $library
-   *   An associative array of the juicebox library information as structured by
-   *   the libraries API.
+   *   An associative array of Library data as made available by the Libraries
+   *   API.
    */
-  function __construct(&$xml_path_args, $data = NULL, JuiceboxGalleryInterface $gallery, $library) {
-    // Set data if we have it. If not we will need to get it later with the
-    // load() method.
-    if ($data) {
-      $this->data = $data;
-    }
-    // Make sure that we have additional args to describe the Drupal data.
-    if (empty($xml_path_args)) {
-      throw new Exception(t('Cannot instantiate Juicebox gallery due to insufficient XML path args.'));
-    }
-    // Store the empty gallery object and some reference info.
+  public function __construct(JuiceboxGalleryInterface $gallery, $library) {
     $this->gallery = $gallery;
     $this->library = $library;
-    $this->type = $xml_path_args[0];
-    $this->xmlPathArgs = $xml_path_args;
   }
 
   /**
-   * Load the Drupal data needed to build the gallery.
-   *
-   * This method should fully populate the $data propery.
+   * {@inheritdoc}
    */
-  abstract function load();
-
-  /**
-   * Check access to the Drupal data that will be used to build the gallery.
-   *
-   * @return boolean
-   *   Return TRUE if access is allowed for the current user and FALSE if not.
-   *   Can also return NULL if access cannot be determined.
-   */
-  abstract function access();
-
-  /**
-   * Build the gallery based on loaded Drupal data specific to this connector.
-   *
-   * This method should fully populate the $gallery object propery.
-   */
-  abstract protected function buildGallery();
-
-  /**
-   * Build the gallery.
-   *
-   * This is essentially a wrapper for buildGallery() that ensures some common
-   * pre/post-build tasks are done.
-   *
-   * @param boolean $reset
-   *   Whether-or-not to bypass, and reset, any statically cached gallery data.
-   */
-  function build($reset = FALSE) {
-    // We maintain a static cache of built gallery data for efficiency. For
-    // example, there may be cases where the load() method triggers a series
-    // of formatter functions that also build the gallery data. Becuase build()
-    // is often called right after load() (e.g., during an XML request) this can
-    // prevent the build logic from running redundantly.
-    if (!empty(self::$builtGalleries[$this->gallery->id]) && !$reset) {
-      $this->gallery = self::$builtGalleries[$this->gallery->id];
+  public function init($id_args, $settings = array(), $data = NULL) {
+    // Set path for reference.
+    $this->idArgs = $id_args;
+    $this->settings = $settings;
+    $this->data = $data;
+    // Calculate and set the gallery ID.
+    $id = '';
+    foreach ($id_args as $arg) {
+      $id .= $arg . '--';
     }
-    else {
-      // Build the gallery based on specific plugin logic.
-      $this->buildGallery();
-      // Also attempt to translate interface strings.
-      if (variable_get('juicebox_translate_interface', FALSE)) {
-        $base_string = variable_get('juicebox_translate_base_languagelist', '');
-        if (!empty($base_string)) {
-          $this->gallery->addOption('languagelist', check_plain(t($base_string)), FALSE);
-        }
-      }
-      // Allow other modules to alter the built gallery data before it's
-      // rendered. Note that the $data property is protected but we want to
-      // expose it here for context.
-      drupal_alter('juicebox_gallery', $this, $this->data);
-      self::$builtGalleries[$this->gallery->id] = $this->gallery;
+    // Make sure no special characters slipped through inside individual args.
+    $id = trim(preg_replace('/[^0-9a-zA-Z-]/', '-', $id), '- ');
+    $this->setId($id);
+    $this->initialized = TRUE;
+  }
+
+
+  /**
+   * {@inheritdoc}
+   */
+  public function isInitialized() {
+    if ($this->initialized) {
+      return TRUE;
     }
+    return FALSE;
   }
 
   /**
-   * Helper to extract Juicebox gallery options from common Drupal display
-   * settings, and add them to the gallery.
-   *
-   * Some common Juicebox configuration options are set via a GUI and others
-   * are set as manual strings. This method fetches all of these values from
-   * drupal settings data and merges them into the gallery. Note that this only
-   * accounts for common settings.
-   *
-   * @param array $settings
-   *   An associative array of common Drupal settings for a gallery.
+   * {@inheritdoc}
    */
-  function setOptions($settings) {
-    // Get the string options set via the GUI.
-    foreach (array('jlib_galleryWidth', 'jlib_galleryHeight', 'jlib_backgroundColor', 'jlib_textColor', 'jlib_thumbFrameColor') as $name) {
-      if (isset($settings[$name])) {
-        $name_real = str_replace('jlib_', '', $name);
-        $this->gallery->addOption(drupal_strtolower($name_real), trim(check_plain($settings[$name])));
-      }
-    }
-    // Get the bool options set via the GUI.
-    foreach (array('jlib_showOpenButton', 'jlib_showExpandButton', 'jlib_showThumbsButton', 'jlib_useThumbDots', 'jlib_useFullscreenExpand') as $name) {
-      if (isset($settings[$name])) {
-        $name_real = str_replace('jlib_', '', $name);
-        $this->gallery->addOption(drupal_strtolower($name_real), (!empty($settings[$name]) ? 'TRUE' : 'FALSE'));
-      }
-    }
-    // Merge-in the manually assigned options making sure they take priority
-    // over any conflicting GUI options.
-    $manual_options = explode("\n", $settings['manual_config']);
-    foreach ($manual_options as $option) {
-      $option = trim($option);
-      if (!empty($option)) {
-        // Each manual option has only been validated (on input) to be in the
-        // form optionName="optionValue". Now we need split and sanitize the
-        // values.
-        $matches = array();
-        preg_match('/^([A-Za-z0-9]+?)="([^"]+?)"$/u', $option, $matches);
-        list($full_match, $name, $value) = $matches;
-        $name = drupal_strtolower($name);
-        $this->gallery->addOption(drupal_strtolower($name), check_plain($value));
-      }
-    }
+  public function getIdArgs() {
+    return $this->idArgs;
   }
 
   /**
-   * Render the embed code for a Juicebox gallery using the Drupal theme system.
-   *
-   * @param string $xml_path
-   *   The path to the gallery's XML.
-   * @param array $settings
-   *   An associative array of the common Drupal settings for a gallery.
-   * @return string
-   *   Themed markup for the Juicebox embed code.
+   * {@inheritdoc}
    */
-  function renderEmbed($xml_path, $settings) {
+  public function getSettings() {
+    return $this->settings;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function runCommonBuild() {
+    // Add all gallery options directly from the settings.
+    $this->setGalleryOptions();
+    // Also attempt to translate interface strings.
+    if (variable_get('juicebox_translate_interface', FALSE)) {
+      $base_string = variable_get('juicebox_translate_base_languagelist', '');
+      if (!empty($base_string)) {
+        $this->addOption('languagelist', check_plain(t($base_string)), FALSE);
+      }
+    }
+    // Allow other modules to alter the built gallery data before it's
+    // rendered.
+    drupal_alter('juicebox_gallery', $this, $this->data);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function renderEmbed($xml_path = '') {
+    $settings = $this->settings;
     // Capture the current query parameters and a checksum value in the XML.
     $current_query = drupal_get_query_parameters();
-    $xml_query = array_merge(array('checksum' => $this->gallery->getChecksum()), $current_query);
+    $xml_query = array_merge(array('checksum' => $this->getChecksum()), $current_query);
     $xml = array(
       'path' => $xml_path,
       'options' => array('query' => $xml_query),
@@ -196,38 +115,23 @@ abstract class JuiceboxConnector {
     $settings['show_debug_links'] = variable_get('juicebox_show_debug_links', FALSE);
     if ($settings['show_debug_links'] && array_key_exists('jb-debug', $current_query)) {
       drupal_add_css(drupal_get_path('module', 'juicebox') . '/css/placeholder_styles.css');
-      return theme('juicebox_debug_markup', array('gallery' => $this->gallery, 'xml' => $xml, 'settings' => $settings));
+      return theme('juicebox_debug_markup', array('gallery_id' => $this->getId(), 'gallery_images' => $this->getImages(), 'gallery_options' => $this->getOptions(), 'xml' => $xml, 'settings' => $settings));
     }
     else {
       // Load the juicebox javascript library and gallery-specific javascript.
       libraries_load('juicebox');
       $xml_url = url($xml['path'], $xml['options']);
-      drupal_add_js($this->gallery->getJavascript($xml_url), array('type' => 'inline', 'scope' => variable_get('juicebox_js_scope', 'header')));
+      drupal_add_js($this->renderJavascript($xml_url), array('type' => 'inline', 'scope' => variable_get('juicebox_js_scope', 'header')));
       // Theme the embed code.
-      return theme('juicebox_embed_markup', array('gallery' => $this->gallery, 'settings' => $settings));
+      return theme('juicebox_embed_markup', array('gallery_id' => $this->getId(), 'gallery_images' => $this->getImages(), 'gallery_options' => $this->getOptions(), 'settings' => $settings));
     }
   }
 
   /**
-   * Utility to extract image source data in an array structure that can be
-   * added to a Juicebox gallery object.
-   *
-   * @param array $image_item
-   *   An associative array of file field item data for the main image.
-   * @param string $image_style
-   *   The Drupal image style to apply to the main image.
-   * @param array $thumb_item
-   *   An associative array of file field item data for the thumbnail
-   *   image.
-   * @param string $thumb_style
-   *   The Drupal image style to apply to the thumbnail image.
-   * @param array $settings
-   *   Common Drupal settings for a Juicebox gallery.
-   * @return array
-   *   An associative array of image source URLs that's ready to be added
-   *   to a Juicebox gallery.
+   * {@inheritdoc}
    */
-  protected function getImageSrcData($image_item, $image_style, $thumb_item, $thumb_style, $settings) {
+  public function styleImageSrcData($image_item, $image_style, $thumb_item, $thumb_style) {
+    $settings = $this->settings;
     // Make sure that we have proper file field items to work with.
     if (!isset($image_item['fid']) || !isset($thumb_item['fid'])) {
       throw new Exception(t('Invalid image or thumbnail item detected while extracting Juicebox gallery source information.'));
@@ -253,7 +157,7 @@ abstract class JuiceboxConnector {
       $src_data['link_url'] = $image_item['juicebox_styled_src'];
     }
     // Set the link target directly from the gallery settings.
-    $src_data['link_target'] = $settings['linkurl_target'];
+    $src_data['link_target'] = !empty($settings['linkurl_target']) ? $settings['linkurl_target'] : '_blank';
     // Also set a flag for incompatible files.
     $src_data['juicebox_compatible'] = $image_item['juicebox_compatible'];
     return $src_data;
@@ -307,16 +211,54 @@ abstract class JuiceboxConnector {
   }
 
   /**
-   * Get the "base" values of common Drupal settings used to describe a gallery.
-   * This is used for the management of default configuration values.
+   * Utility to extract Juicebox options from the common Drupal display
+   * settings, and add them to the gallery.
    *
-   * Note that this may be called when building Drupal configuration forms that
-   * are managed outside of this object.
-   *
-   * @return array
-   *   An associative array of base/default configuration values.
+   * Some common Juicebox configuration options are set via a GUI and others
+   * are set as manual strings. This method fetches all of these values from
+   * drupal settings data and merges them into the gallery. Note that this only
+   * accounts for common settings.
    */
-  static function confBaseOptions() {
+  protected function setGalleryOptions() {
+    $settings = $this->settings;
+    // Get the string options set via the GUI.
+    foreach (array('jlib_galleryWidth', 'jlib_galleryHeight', 'jlib_backgroundColor', 'jlib_textColor', 'jlib_thumbFrameColor') as $name) {
+      if (isset($settings[$name])) {
+        $name_real = str_replace('jlib_', '', $name);
+        $this->addOption(drupal_strtolower($name_real), trim(check_plain($settings[$name])));
+      }
+    }
+    // Get the bool options set via the GUI.
+    foreach (array('jlib_showOpenButton', 'jlib_showExpandButton', 'jlib_showThumbsButton', 'jlib_useThumbDots', 'jlib_useFullscreenExpand') as $name) {
+      if (isset($settings[$name])) {
+        $name_real = str_replace('jlib_', '', $name);
+        $this->addOption(drupal_strtolower($name_real), (!empty($settings[$name]) ? 'TRUE' : 'FALSE'));
+      }
+    }
+    // Merge-in the manually assigned options making sure they take priority
+    // over any conflicting GUI options.
+    if (!empty($settings['manual_config'])) {
+      $manual_options = explode("\n", $settings['manual_config']);
+      foreach ($manual_options as $option) {
+        $option = trim($option);
+        if (!empty($option)) {
+          // Each manual option has only been validated (on input) to be in the
+          // form optionName="optionValue". Now we need split and sanitize the
+          // values.
+          $matches = array();
+          preg_match('/^([A-Za-z0-9]+?)="([^"]+?)"$/u', $option, $matches);
+          list($full_match, $name, $value) = $matches;
+          $name = drupal_strtolower($name);
+          $this->addOption(drupal_strtolower($name), check_plain($value));
+        }
+      }
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function confBaseOptions() {
     return array(
       'jlib_galleryWidth' => '100%',
       'jlib_galleryHeight' => '100%',
@@ -339,24 +281,11 @@ abstract class JuiceboxConnector {
   }
 
   /**
-   * Get common elements for Juicebox configuration forms.
-   *
-   * Several Juicebox gallery types can share common options and structures.
-   * These are merged into the appropriate forms via a call to this method. Note
-   * that this may be called when building Drupal configuration forms that are
-   * managed outside of this object.
-   *
-   * @param array $form
-   *   The Drupal form array that common elements should be added to.
-   * @param array $settings
-   *   An associative array containing all the current settings for a Juicebox
-   *   gallery (used to set default values).
-   * @return array
-   *   The common form elements merged within a form array.
+   * {@inheritdoc}
    */
-  static function confBaseForm($form, $settings) {
+  public function confBaseForm($form, $settings) {
     // Get locally installed library details.
-    $library = juicebox_library_detect();
+    $library = $this->library;
     $disallowed_conf = array();
     if (!empty($library)) {
       // If we don't have a known version of the Juicebox library, just show a
