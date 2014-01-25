@@ -51,7 +51,12 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
-  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE) {
+  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE, $override_id = NULL) {
+    // If we are anticipating an override, but there is nothing to override,
+    // don't do anything.
+    if (isset($override_id) && empty($this->images[$override_id])) {
+      return FALSE;
+    }
     // Make sure we have sufficient image data to work with.
     if (!isset($src_data['image_url']) || !isset($src_data['thumb_url'])) {
       return FALSE;
@@ -67,12 +72,18 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
       $title = $this->filterMarkup($title);
       $caption = $this->filterMarkup($caption);
     }
-    // Add image to gallery.
-    $this->images[] = array(
+    // Add image to gallery, overriding if necessary.
+    $addition = array(
       'src_data' => $src_data,
       'title' => $title,
       'caption' => $caption,
     );
+    if (isset($override_id)) {
+      $this->images[$override_id] = $addition;
+    }
+    else {
+      $this->images[] = $addition;
+    }
     return TRUE;
   }
 
@@ -86,12 +97,25 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
+  public function removeImage($id) {
+    if (!empty($this->images[$id])) {
+      unset($this->images[$id]);
+      return TRUE;
+    }
+    return FALSE;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function addOption($option_name, $option_value, $override = TRUE) {
-    if (!$override && array_key_exists(strtolower($option_name), $this->options)) {
+    // Always use lowercase keys to allow for future lookups.
+    $option_name = strtolower($option_name);
+    if (!empty($this->options[$option_name]) && !$override) {
       return FALSE;
     }
-    // Add option with lowercase key (allowing for future lookups).
-    $this->options[strtolower($option_name)] = $option_value;
+    // Add option,
+    $this->options[$option_name] = $option_value;
     return TRUE;
   }
 
@@ -100,6 +124,18 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
    */
   public function getOptions() {
     return $this->options;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function removeOption($option_name) {
+    $option_name = strtolower($option_name);
+    if (!empty($this->options[$option_name])) {
+      unset($this->options[$option_name]);
+      return TRUE;
+    }
+    return FALSE;
   }
 
   /**

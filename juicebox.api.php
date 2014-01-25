@@ -9,13 +9,12 @@
 
 /**
  * Allow modules to alter the Juicebox gallery object used to build gallery
- * embed code and and XML before rendering.
+ * embed code and XML before rendering.
  *
  * @param object $juicebox
- *   A Juicebox gallery object that contains the gallery ($juicebox->gallery)
- *   which is going to be rendered. The full object is available for context but
- *   by this point the only alterations that will have any effect are those
- *   applied to $juicebox->gallery.
+ *   A Juicebox gallery object that contains the gallery which is going to be
+ *   rendered. This object can be further manipulated using any methods from
+ *   JuiceboxGalleryDrupalInterface (which includes JuiceboxGalleryInterface).
  * @param mixed $data
  *   The raw Drupal data that was used to build this gallery. Provided for
  *   context.
@@ -23,7 +22,7 @@
 function hook_juicebox_gallery_alter($juicebox, $data) {
   // See if this is a gallery sourced from a view.
   $id_args = $juicebox->getIdArgs();
-  if ($id_args[0] == 'view') {
+  if ($id_args[0] == 'viewsstyle') {
     $view = $data;
     // Assume we have a view called "galleries" and a page called "page_1" that
     // structures galleries based on a taxonomy term contextual filter. We want
@@ -35,6 +34,7 @@ function hook_juicebox_gallery_alter($juicebox, $data) {
       if (!empty($view->args)) {
         $term = taxonomy_term_load($view->args[0]);
         if (!empty($term->description)) {
+          // Add the description to the gallery.
           $juicebox->addOption('gallerydescription', strip_tags($term->description));
         }
       }

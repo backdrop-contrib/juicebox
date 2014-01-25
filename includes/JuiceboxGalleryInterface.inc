@@ -50,18 +50,33 @@ interface JuiceboxGalleryInterface {
    * @param boolean $filter
    *   Whether-or-not to filter the $title and $caption values for syntactic
    *   compatibility with Juicebox.
+   * @param int $override_id
+   *   The id of an existing image, already added to the gallery, to override
+   *   with new data. If NULL the image will simply be added. This id should
+   *   match the index for the image as returned by getImages().
    * @return boolean
    *   Returns TRUE on successful addition and FALSE on failure.
    */
-  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE);
+  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE, $override_id = NULL);
 
   /**
    * Getter method for the gallery images.
    *
    * @return array
-   *   Returns an array of images added to the gallery.
+   *   Returns an array of images currently in the gallery.
    */
   public function getImages();
+
+  /**
+   * Remove an image from the gallery.
+   *
+   * @param int $id
+   *   The id of an existing image that was already added to the gallery. This
+   *   id should match the index for the image as returned by getImages().
+   * @return boolean
+   *   Returns TRUE on successful removal and FALSE on failure.
+   */
+  public function removeImage($id);
 
   /**
    * Add a new Juicebox configuration option to the gallery.
@@ -71,8 +86,8 @@ interface JuiceboxGalleryInterface {
    * @param string $option_value
    *   The option value to add.
    * @param boolean $override
-   *   Whether-or-not to override any values that already exist in the set
-   *   options for the passed name/key.
+   *   Whether-or-not to override any values that already exist for the passed
+   *   name/key.
    * @return boolean
    *   Returns TRUE on successful addition and FALSE on failure.
    */
@@ -85,6 +100,18 @@ interface JuiceboxGalleryInterface {
    *   Returns an array of options set on the gallery.
    */
   public function getOptions();
+
+  /**
+   * Remove an option from the gallery.
+   *
+   * @param string $option_name
+   *   The name of an existing option that was already added to the gallery.
+   *   This name should match the index for the option as returned by
+   *   getOptions().
+   * @return boolean
+   *   Returns TRUE on successful removal and FALSE on failure.
+   */
+  public function removeOption($option_name);
 
   /**
    * Get a gallery checksum.

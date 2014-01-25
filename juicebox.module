@@ -178,7 +178,7 @@ function juicebox() {
   }
   // If we get here it means that something went wrong and the object could not
   // be created.
-  throw new Exception(t('Cound not instantiate Juicebox gallery'));
+  throw new Exception(t('Cound not instantiate Juicebox gallery. Please try clearing the Drupal registry and all caches.'));
 }
 
 
