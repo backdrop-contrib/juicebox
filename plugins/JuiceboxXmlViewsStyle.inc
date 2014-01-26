@@ -56,37 +56,47 @@ class JuiceboxXmlViewsStyle implements JuiceboxXmlInterface {
   }
 
   /**
-   * Load the Drupal data needed to build the gallery.
-   */
-  protected function loadFormatterData() {
-    // Execute the view. This is easiest to do by simply calling the preview
-    // method (as it handles all needed sub-processes).
-    $this->view->preview($this->viewDisplay, $this->viewArgs);
-    // If everything went correctly, our style plugin will contain a Juicebox
-    // object. The state of this object will depend on caching (it will be
-    // empty if views caching bypassed explicit render() methods), but
-    // confirming it exists ensures we are working with a compatible formatter.
-    if (!isset($this->view->style_plugin->juicebox)) {
-      throw new Exception(t('Cannot load the views style data needed for Juicebox XML.'));
-    }
-  }
-
-  /**
    * {@inheritdoc}
    */
   public function getXml() {
-    // (Lazy) Load the data needed to build the gallery.
-    $this->loadFormatterData();
-    // See if if the galley is actually built. The loadFormatterData() method
-    // typically triggers the init and build processes already, but not always
-    // depending on view caching.
-    if (!$this->view->style_plugin->juicebox->isInitialized()) {
-      // We can force the galley to be initialized and built via the formatter's
-      // render method.
+    // Execute the view and build the gallery. This is easiest to do by simply
+    // calling the preview() method (as it handles all needed sub-processes).
+    $this->view->preview($this->viewDisplay, $this->viewArgs);
+    // See if if the galley is actually built. The preview() method above
+    // typically triggers the Juicebox init and build processes, but under
+    // certain caching situations these may be skipped (e.g., if the raw view
+    // html is returned from a cache instead of calling the formatter logic).
+    $juicebox = $this->getJuiceboxFromData($this->view);
+    if (!$juicebox) {
+      // Build the gallery manually via the formatter's render method.
       $this->view->style_plugin->render();
+      // If we still don't have a built gallery something is wrong.
+      $juicebox = $this->getJuiceboxFromData($this->view);
+      if (!$juicebox) {
+        throw new Exception(t('Could not get gallery XML from view because the gallery could not be built.'));
+      }
     }
     // Render the XML.
-    return $this->view->style_plugin->juicebox->renderXml();
+    return $juicebox->renderXml();
+  }
+
+  /**
+   * Helper to get a Juicebox gallery from a view.
+   *
+   * @param array $field
+   *   An view object to extract a gallery object from.
+   * @return boolean
+   *   Returns a Juicebox gallery object if a gallery is both found a built.
+   *   Return NULL if no gallery can be extracted.
+   */
+  protected function getJuiceboxFromData($view) {
+    // Within this context if the gallery has been initialized we know it has
+    // also been built (as both happen together within the formatter's render()
+    // method).
+    if (isset($view->style_plugin->juicebox) && $view->style_plugin->juicebox->isInitialized()) {
+      return $view->style_plugin->juicebox;
+    }
+    return NULL;
   }
 
 }

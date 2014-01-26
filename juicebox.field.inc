@@ -165,9 +165,12 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
  */
 function juicebox_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $element = array();
-  // If there are no images, don't do anything else.
-  if (empty($items)) {
-    return;
+  // If there are no images, don't do anything else. Also, for some reason
+  // field-level access is not checked until AFTER this hook, so we run our own
+  // access check here to ensure no gallery is rendered if the embed code won't
+  // be shown (preventing the javascript from being unnecessarily included).
+  if (empty($items) || !field_access('view', $field, $entity_type, $entity)) {
+    return $element;
   }
   // The gallery shown in preview view will only display field data from the
   // previously saved version (that is the only version the XML generation
@@ -200,8 +203,9 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
     $juicebox->init($xml_args, $display['settings'], $items);
     // Build the gallery.
     juicebox_field_build_gallery($juicebox, $items);
-    // Create render array with the gallery markup.
-    $element[0] = array('#markup' => $juicebox->renderEmbed($xml_path));
+    // Create a render array with the gallery markup. Also include the built
+    // gallery for external reference.
+    $element[0] = array('#markup' => $juicebox->renderEmbed($xml_path), '#juicebox' => $juicebox);
   }
   catch (Exception $e) {
     $message = 'Exception building Juicebox embed code for field: !message in %function (line %line of %file).';

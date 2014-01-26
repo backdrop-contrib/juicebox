@@ -98,61 +98,76 @@ class JuiceboxXmlField implements JuiceboxXmlInterface {
   }
 
   /**
-   * Load the Drupal data needed to build the gallery.
+   * {@inheritdoc}
+   */
+  public function getXml() {
+    // Build the field and gallery. This is easiest to do by simply calling
+    // field_view_field (as it handles all needed sub-processes).
+    $field = field_view_field($this->entityType, $this->entity, $this->fieldName, $this->displayName);
+    // See if if the galley is actually built. field_view_field() typically
+    // triggers the Juicebox init and build processes, and passes-back the
+    // built gallery, but under certain caching situations these may be skipped
+    // (e.g., if the raw field html is returned from a cache instead of calling
+    // the formatter logic).
+    $juicebox = $this->getJuiceboxFromData($field);
+    if (!$juicebox) {
+      // Load the data needed to build the gallery manually.
+      $this->loadFormatterData();
+      // Initalize a new gallery.
+      $juicebox = juicebox();
+      $juicebox->init($this->idArgs, $this->settings, $field['#items']);
+      // Manually build the gallery via the field formatter methods.
+      juicebox_field_build_gallery($juicebox, $field['#items']);
+    }
+    // Render the XML.
+    return $juicebox->renderXml();
+  }
+
+  /**
+   * Helper to get a Juicebox gallery from a field.
    *
-   * This produces the same data that's made available to the formatter plugin
-   * when rendering the HTML.
+   * @param array $field
+   *   An associative field array to extract a gallery object from.
+   * @return boolean
+   *   Returns a Juicebox gallery object if a gallery is both found a built.
+   *   Return NULL if no gallery can be extracted.
+   */
+  protected function getJuiceboxFromData($field) {
+    // Within this context if the gallery has been initialized we know it has
+    // also been built (as both happen together within
+    // juicebox_field_build_gallery()).
+    if (isset($field[0]['#juicebox']) && $field[0]['#juicebox']->isInitialized()) {
+      return $field[0]['#juicebox'];
+    }
+    return NULL;
+  }
+
+  /**
+   * Load the Drupal data that's needed to initialize a field-based Juicebox
+   * gallery from scratch.
    */
   protected function loadFormatterData() {
-    $entity = $this->entity;
     // Get the bundle details.
     $info = entity_get_info($this->entityType);
     if (empty($info['entity keys']['bundle'])) {
       $bundle = $this->entityType;
     }
     else {
-      $bundle = $entity->{$info['entity keys']['bundle']};
+      $bundle = $this->entity->{$info['entity keys']['bundle']};
     }
     // Get the instance and display details.
     $instance = field_info_instance($this->entityType, $this->fieldName, $bundle);
-    if (!empty($instance['display'])) {
-      // Get the settings.
-      $settings = $instance['display']['default']['settings'];
-      if (isset($instance['display'][$this->displayName]['settings'])) {
-        $settings = $instance['display'][$this->displayName]['settings'];
-      }
-      $this->settings = $settings;
-      // Build the field. This should easily trigger all field hooks.
-      $built_field = field_view_field($this->entityType, $entity, $this->fieldName, $instance['display']);
-      if ($built_field['#items']) {
-        $this->items = $built_field['#items'];
-        // We have the field level access details already, so set them for
-        // further reference.
-        $this->fieldAccess = $built_field['#access'];
+    if ($instance) {
+      $display = field_get_display($instance, $this->displayName, $this->entity);
+      if (!empty($display['settings'])) {
+        $this->settings = $display['settings'];
         // We now have the same data available that the formatter plugin would
         // have.
         return;
       }
     }
     // If we got here there was a problem loading the data.
-    throw new Exception(t('There was an exception while loading Drupal data for a field-based Juicebox gallery.'));
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getXml() {
-    // (Lazy) Load the data needed to build the gallery.
-    $this->loadFormatterData();
-    // Initalize the gallery.
-    $juicebox = juicebox();
-    $juicebox->init($this->idArgs, $this->settings, $this->items);
-    // Build the gallery via the field formatter methods. In D7 the field
-    // formatter is NOT a plugin, so we have to make a global function call for
-    // this. This will change in D8.
-    juicebox_field_build_gallery($juicebox, $this->items);
-    // Render the XML.
-    return $juicebox->renderXml();
+    throw new Exception(t('There was problem loading Drupal data for a field-based Juicebox gallery.'));
   }
 
 }
