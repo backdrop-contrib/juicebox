@@ -374,7 +374,6 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
       '#type' => 'checkbox',
       '#title' => t('Show Thumbs Dots'),
       '#description' => t('Whether to replace the thumbnail images with small dots.'),
-      '#default_value' => $settings['jlib_useThumbDots'],
     );
     $form['juicebox_manual_config'] = array(
       '#type' => 'fieldset',

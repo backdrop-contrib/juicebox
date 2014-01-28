@@ -11,7 +11,7 @@
 // Move the field-based logic (field hooks and related) into another file
 // purely for DX. This file still has to be globally included as field
 // hooks don't work as expected if formally defined in hook_hook_info().
-require_once __DIR__ . '/juicebox.field.inc';
+require_once dirname(__FILE__) . '/juicebox.field.inc';
 
 
 /**
