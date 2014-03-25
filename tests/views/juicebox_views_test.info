@@ -1,0 +1,8 @@
+name = Juicebox Views Tests
+description = Provides hook implementations for testing Juicebox views integration.
+core = 7.x
+dependencies[] = juicebox
+dependencies[] = views
+hidden = TRUE
+
+

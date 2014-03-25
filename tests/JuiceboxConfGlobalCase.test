@@ -1,0 +1,62 @@
+<?php
+
+/**
+ * @file
+ * Test case for Juicebox global configuration options.
+ */
+
+/**
+ * Class to define test case for Juicebox global configuration options.
+ */
+class JuiceboxConfGlobalCase extends JuiceboxBaseCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Juicebox global configuration tests',
+      'description' => 'Tests global configuration logic for Juicebox galleries.',
+      'group' => 'Juicebox',
+    );
+  }
+
+  public function setUp() {
+    parent::setUp('juicebox');
+    // Create and login user.
+    $this->webUser = $this->drupalCreateUser(array('access content', 'access administration pages', 'administer site configuration', 'administer content types', 'administer nodes', 'create article content', 'edit any article content', 'delete any article content', 'administer image styles'));
+    $this->drupalLogin($this->webUser);
+    // Prep an article with an image field and activate the Juicebox display
+    // formatter for it.
+    $this->prepArticle();
+    $this->activateJuiceboxFieldFormatter($this->instance);
+    // Add a english translated string for the Juicebox languagelist.
+    variable_set('locale_custom_strings_en', array('' => array('Show Thumbnails|Hide Thumbnails|Expand Gallery|Close Gallery|Open Image in New Window' => 'Translated|Lang|List')));
+  }
+
+  /**
+   * Test global options.
+   *
+   * This methods tests multiple global options at once, but these could later
+   * be broken out into different test methods if needed.
+   */
+  public function testGlobalConfig() {
+    $instance = $this->instance;
+    $node = $this->node;
+    // Enable some optional global settings. We could set each of these easily
+    // with a variable_set(), but it's probably best to test the whole UI.
+    $edit = array(
+      'juicebox_enable_cors' => TRUE,
+      'juicebox_translate_interface' => TRUE,
+      'juicebox_translate_base_languagelist' => 'Show Thumbnails|Hide Thumbnails|Expand Gallery|Close Gallery|Open Image in New Window',
+    );
+    $this->drupalPost('admin/config/media/juicebox', $edit, t('Save configuration'));
+    $this->assertText(t('The configuration options have been saved'), 'Custom global options saved.');
+    // Get resulting XML.
+    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
+    // Check that the languagelist configuration option was both included and
+    // translated in the XML.
+    $this->assertRaw('languagelist="Translated|Lang|List"', 'Translated languagelist value found in XML.');
+    // Check the the XML now returns an 'Access-Control-Allow-Origin' header
+    // for CORS support.
+    $this->assertEqual($this->drupalGetHeader('Access-Control-Allow-Origin'), '*', 'Expected CORS header found.');
+  }
+
+}

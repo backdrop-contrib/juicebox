@@ -1,0 +1,100 @@
+<?php
+
+/**
+ * @file
+ * Test case for integration with File Entity module.
+ */
+
+/**
+ * Class to define test case for integration with File Entity module.
+ */
+class JuiceboxViewsCase extends JuiceboxBaseCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Juicebox Views integration tests',
+      'description' => 'Tests integration with Views module.',
+      'group' => 'Juicebox',
+      'dependencies' => array('views'),
+    );
+  }
+
+  public function setUp() {
+    parent::setUp('juicebox', 'views', 'juicebox_views_test');
+    // Create and login user.
+    $this->webUser = $this->drupalCreateUser(array('access content', 'access administration pages', 'administer site configuration', 'administer content types', 'administer nodes', 'create article content', 'edit any article content', 'delete any article content', 'administer image styles', 'administer views'));
+    $this->drupalLogin($this->webUser);
+    // Prep an article with an image field. All our views will list article
+    // content or file data sourced from it.
+    $this->prepArticle();
+  }
+
+  /**
+   * Test using pre-packaged base Juicebox view.
+   */
+  public function testViews() {
+    // Get the urls to the test image and thumb derivative used by default.
+    $item = reset(field_get_items('node', $this->node, $this->instance['field_name']));
+    $test_image_url = file_create_url($item['uri']);
+    $test_thumb_url = image_style_url('juicebox_square_thumbnail', $item['uri']);
+    // Check for correct embed markup.
+    $this->drupalGet('juicebox-views-test');
+    $this->assertRaw('new juicebox({configUrl:\'/juicebox/xml/viewsstyle/juicebox_views_test/page', 'Embed javascript found.');
+    $this->assertRaw('id="viewsstyle--juicebox-views-test--page"', 'Embed code wrapper found.');
+    $this->assertRaw($test_image_url, 'Test image found in embed code');
+    // Check for correct XML.
+    $this->drupalGet('juicebox/xml/viewsstyle/juicebox_views_test/page');
+    $this->assertRaw('<?xml version="1.0" encoding="UTF-8"?>', 'Valid XML detected.');
+    $this->assertRaw('imageURL="' . $test_image_url, 'Test image found in XML.');
+    $this->assertRaw('thumbURL="' . $test_thumb_url, 'Test thumbnail found in XML.');
+    // The node's title and body are setup as the image title and caption. The
+    // formatting should be maintained in the caption because it's based on
+    // a body field (with default settings to use "filtered html" text format).
+    $this->assertRaw('<title><![CDATA[' . $this->node->title . ']]></title>', 'Image title text found in XML.');
+    $this->assertRaw('<caption><![CDATA[Some body content on node ' . $this->node->nid . ' <strong>with formatting</strong>]]></caption>', 'Image caption text found in XML.');
+  }
+
+  /**
+   * Test using pre-packaged advanced Juicebox view.
+   *
+   * The view tested here is largely the same as the "base" one tested above
+   * but it includes tight access restrictions and caching.
+   */
+  public function testViewsAdvanced() {
+    // Request the view page. This will prime the views cache.
+    $this->drupalGet('juicebox-views-advanced-test');
+    $this->assertRaw('id="viewsstyle--juicebox-views-test--page-1"', 'Embed code wrapper found.');
+    // Now request the XML. This will trigger a cached view so we can test that
+    // the special allocations for views caching kick-in.
+    $this->drupalGet('juicebox/xml/viewsstyle/juicebox_views_test/page_1');
+    $this->assertRaw('<?xml version="1.0" encoding="UTF-8"?>', 'Valid XML detected on cached view.');
+    // Logout and test that XML access is restricted. Note that this test view
+    // is setup to limit view access only to admins.
+    $this->drupalLogout();
+    $this->drupalGet('juicebox/xml/viewsstyle/juicebox_views_test/page_1');
+    $this->assertResponse(403, 'XML access blocked for access-restricted view.');
+  }
+
+  /**
+   * Test using pre-packaged Juicebox view that lists files instead of content.
+   */
+  public function testViewsFile() {
+    // Get the urls to the test image and thumb derivative used by default.
+    $item = reset(field_get_items('node', $this->node, $this->instance['field_name']));
+    $test_image_url = file_create_url($item['uri']);
+    $test_thumb_url = image_style_url('juicebox_square_thumbnail', $item['uri']);
+    // Check for correct embed markup.
+    $this->drupalGet('juicebox-views-file-test');
+    $this->assertRaw('new juicebox({configUrl:\'/juicebox/xml/viewsstyle/juicebox_views_file_test/page', 'Embed javascript found.');
+    $this->assertRaw('id="viewsstyle--juicebox-views-file-test--page"', 'Embed code wrapper found.');
+    $this->assertRaw($test_image_url, 'Test image found in embed code');
+    // Check for correct XML.
+    $this->drupalGet('juicebox/xml/viewsstyle/juicebox_views_file_test/page');
+    $this->assertRaw('<?xml version="1.0" encoding="UTF-8"?>', 'Valid XML detected.');
+    $this->assertRaw('imageURL="' . $test_image_url, 'Test image found in XML.');
+    $this->assertRaw('thumbURL="' . $test_thumb_url, 'Test thumbnail found in XML.');
+    // The node's title field is setup to be the filename.
+    $this->assertRaw('<title><![CDATA[' . $item['filename'] . ']]></title>', 'Image title text found in XML.');
+  }
+
+}
