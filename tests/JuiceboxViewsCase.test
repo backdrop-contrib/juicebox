@@ -33,20 +33,21 @@ class JuiceboxViewsCase extends JuiceboxBaseCase {
    * Test using pre-packaged base Juicebox view.
    */
   public function testViews() {
+    $xml_path = 'juicebox/xml/viewsstyle/juicebox_views_test/page';
     // Get the urls to the test image and thumb derivative used by default.
     $item = reset(field_get_items('node', $this->node, $this->instance['field_name']));
     $test_image_url = file_create_url($item['uri']);
     $test_thumb_url = image_style_url('juicebox_square_thumbnail', $item['uri']);
     // Check for correct embed markup.
     $this->drupalGet('juicebox-views-test');
-    $this->assertRaw('new juicebox({configUrl:\'/juicebox/xml/viewsstyle/juicebox_views_test/page', 'Embed javascript found.');
+    $this->assertRaw("new juicebox({configUrl:'" . url($xml_path), 'Embed javascript found.');
     $this->assertRaw('id="viewsstyle--juicebox-views-test--page"', 'Embed code wrapper found.');
-    $this->assertRaw($test_image_url, 'Test image found in embed code');
+    $this->assertRaw(check_plain($test_image_url), 'Test image found in embed code');
     // Check for correct XML.
-    $this->drupalGet('juicebox/xml/viewsstyle/juicebox_views_test/page');
+    $this->drupalGet($xml_path);
     $this->assertRaw('<?xml version="1.0" encoding="UTF-8"?>', 'Valid XML detected.');
-    $this->assertRaw('imageURL="' . $test_image_url, 'Test image found in XML.');
-    $this->assertRaw('thumbURL="' . $test_thumb_url, 'Test thumbnail found in XML.');
+    $this->assertRaw('imageURL="' . check_plain($test_image_url), 'Test image found in XML.');
+    $this->assertRaw('thumbURL="' . check_plain($test_thumb_url), 'Test thumbnail found in XML.');
     // The node's title and body are setup as the image title and caption. The
     // formatting should be maintained in the caption because it's based on
     // a body field (with default settings to use "filtered html" text format).
@@ -79,20 +80,21 @@ class JuiceboxViewsCase extends JuiceboxBaseCase {
    * Test using pre-packaged Juicebox view that lists files instead of content.
    */
   public function testViewsFile() {
+    $xml_path = 'juicebox/xml/viewsstyle/juicebox_views_file_test/page';
     // Get the urls to the test image and thumb derivative used by default.
     $item = reset(field_get_items('node', $this->node, $this->instance['field_name']));
     $test_image_url = file_create_url($item['uri']);
     $test_thumb_url = image_style_url('juicebox_square_thumbnail', $item['uri']);
     // Check for correct embed markup.
     $this->drupalGet('juicebox-views-file-test');
-    $this->assertRaw('new juicebox({configUrl:\'/juicebox/xml/viewsstyle/juicebox_views_file_test/page', 'Embed javascript found.');
+    $this->assertRaw("new juicebox({configUrl:'" . url($xml_path), 'Embed javascript found.');
     $this->assertRaw('id="viewsstyle--juicebox-views-file-test--page"', 'Embed code wrapper found.');
-    $this->assertRaw($test_image_url, 'Test image found in embed code');
+    $this->assertRaw(check_plain($test_image_url), 'Test image found in embed code');
     // Check for correct XML.
-    $this->drupalGet('juicebox/xml/viewsstyle/juicebox_views_file_test/page');
+    $this->drupalGet($xml_path);
     $this->assertRaw('<?xml version="1.0" encoding="UTF-8"?>', 'Valid XML detected.');
-    $this->assertRaw('imageURL="' . $test_image_url, 'Test image found in XML.');
-    $this->assertRaw('thumbURL="' . $test_thumb_url, 'Test thumbnail found in XML.');
+    $this->assertRaw('imageURL="' . check_plain($test_image_url), 'Test image found in XML.');
+    $this->assertRaw('thumbURL="' . check_plain($test_thumb_url), 'Test thumbnail found in XML.');
     // The node's title field is setup to be the filename.
     $this->assertRaw('<title><![CDATA[' . $item['filename'] . ']]></title>', 'Image title text found in XML.');
   }

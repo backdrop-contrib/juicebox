@@ -185,10 +185,10 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
-  public function renderJavascript($xml_path) {
+  public function renderJavascript($xml_url) {
     $output = '';
     $output .= "new juicebox({";
-    $output .= "configUrl:'" . $xml_path . "',";
+    $output .= "configUrl:'" . $xml_url . "',";
     $output .= "containerId:'" . $this->id . "'";
     // Add options that need to be loaded immediately (before XML is available).
     $load_before_xml = array('gallerywidth', 'galleryheight', 'backgroundcolor', 'themeurl', 'baseurl', 'showpreloader', 'debugmode');

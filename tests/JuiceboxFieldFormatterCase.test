@@ -35,6 +35,7 @@ class JuiceboxFieldFormatterCase extends JuiceboxBaseCase {
   public function testFieldFormatter() {
     $instance = $this->instance;
     $node = $this->node;
+    $xml_path = 'juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default';
     // Get the urls to the test image and thumb derivative used by default. Note
     // that the "large" style will be used for the article's field_image because
     // that's was its formatter was set to before being flipped into a Juicebox
@@ -44,14 +45,14 @@ class JuiceboxFieldFormatterCase extends JuiceboxBaseCase {
     $test_thumb_url = image_style_url('juicebox_square_thumbnail', $item['uri']);
     // Check for correct embed markup.
     $this->drupalGet('node/' . $node->nid);
-    $this->assertRaw('new juicebox({configUrl:\'/juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default', 'Embed javascript found.');
+    $this->assertRaw("new juicebox({configUrl:'" . url($xml_path), 'Embed javascript found.');
     $this->assertRaw('id="field--node--' . $node->nid . '--' . str_replace('_', '-', $instance['field_name']) . '--default"', 'Embed code wrapper found.');
-    $this->assertRaw($test_image_url, 'Test image found in embed code');
+    $this->assertRaw(check_plain($test_image_url), 'Test image found in embed code');
     // Check for correct XML.
-    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
+    $this->drupalGet($xml_path);
     $this->assertRaw('<?xml version="1.0" encoding="UTF-8"?>', 'Valid XML detected.');
-    $this->assertRaw('imageURL="' . $test_image_url, 'Test image found in XML.');
-    $this->assertRaw('thumbURL="' . $test_thumb_url, 'Test thumbnail found in XML.');
+    $this->assertRaw('imageURL="' . check_plain($test_image_url), 'Test image found in XML.');
+    $this->assertRaw('thumbURL="' . check_plain($test_thumb_url), 'Test thumbnail found in XML.');
   }
 
   /**
@@ -77,11 +78,11 @@ class JuiceboxFieldFormatterCase extends JuiceboxBaseCase {
     $test_formatted_thumb_url = image_style_url('thumbnail', $item['uri']);
     // Check for correct embed markup.
     $this->drupalGet('node/' . $node->nid);
-    $this->assertRaw($test_formatted_image_url, 'Test styled image found in embed code');
+    $this->assertRaw(check_plain($test_formatted_image_url), 'Test styled image found in embed code');
     // Check for correct XML.
     $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
-    $this->assertRaw('imageURL="' . $test_formatted_image_url, 'Test styled image found in XML.');
-    $this->assertRaw('thumbURL="' . $test_formatted_thumb_url, 'Test styled thumbnail found in XML.');
+    $this->assertRaw('imageURL="' . check_plain($test_formatted_image_url), 'Test styled image found in XML.');
+    $this->assertRaw('thumbURL="' . check_plain($test_formatted_thumb_url), 'Test styled thumbnail found in XML.');
     // Note the intended title and caption text does not contain any block-level
     // tags as long as the global title and caption output filter is working.
     // So this acts as a test for that feature as well.

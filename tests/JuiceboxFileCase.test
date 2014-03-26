@@ -35,20 +35,21 @@ class JuiceboxFileCase extends JuiceboxBaseCase {
     // Create a new node with an image attached.
     $test_image = current($this->drupalGetTestFiles('image'));
     $node = $this->createNodeWithImage($instance, $test_image);
+    $xml_path = 'juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default';
     // Get raw file data expected in the node.
     $item = reset(field_get_items('node', $node, $instance['field_name']));
     $test_image_url = file_create_url($item['uri']);
     $test_thumb_url = image_style_url('juicebox_square_thumbnail', $item['uri']);
     // Check for correct embed markup.
     $this->drupalGet('node/' . $node->nid);
-    $this->assertRaw('new juicebox({configUrl:\'/juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default', 'Embed javascript found.');
+    $this->assertRaw("new juicebox({configUrl:'" . url($xml_path), 'Embed javascript found.');
     $this->assertRaw('id="field--node--' . $node->nid . '--' . str_replace('_', '-', $instance['field_name']) . '--default"', 'Embed code wrapper found.');
-    $this->assertRaw($test_image_url, 'Test image found in embed code');
+    $this->assertRaw(check_plain($test_image_url), 'Test image found in embed code');
     // Check for correct XML.
-    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
+    $this->drupalGet($xml_path);
     $this->assertRaw('<?xml version="1.0" encoding="UTF-8"?>', 'Valid XML detected.');
-    $this->assertRaw('imageURL="' . $test_image_url, 'Test image found in XML.');
-    $this->assertRaw('thumbURL="' . $test_thumb_url, 'Test thumbnail found in XML.');
+    $this->assertRaw('imageURL="' . check_plain($test_image_url), 'Test image found in XML.');
+    $this->assertRaw('thumbURL="' . check_plain($test_thumb_url), 'Test thumbnail found in XML.');
     $this->assertRaw('<juicebox gallerywidth="100%" galleryheight="100%" backgroundcolor="#222222" textcolor="rgba(255,255,255,1)" thumbframecolor="rgba(255,255,255,.5)" showopenbutton="TRUE" showexpandbutton="TRUE" showthumbsbutton="TRUE" usethumbdots="FALSE" usefullscreenexpand="FALSE">', 'Expected default configuration options set in XML.');
   }
 

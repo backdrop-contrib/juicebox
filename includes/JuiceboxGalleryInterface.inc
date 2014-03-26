@@ -145,12 +145,12 @@ interface JuiceboxGalleryInterface {
    * Get the javascript code for a Juicebox gallery once images and options have
    * been added.
    *
-   * @param string $xml_path
-   *   The path to the Juicebox XML for this gallery.
+   * @param string $xml_url
+   *   The URL to the Juicebox XML for this gallery.
    * @return string
    *   Javascript code describing a gallery. Note that <script> tags are
    *   excluded.
    */
-  public function renderJavascript($xml_path);
+  public function renderJavascript($xml_url);
 
 }

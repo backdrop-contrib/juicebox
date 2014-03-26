@@ -97,7 +97,7 @@ class JuiceboxConfCase extends JuiceboxBaseCase {
     // Get the urls to the main image with and without "large" styling.
     $item = reset(field_get_items('node', $node, $instance['field_name']));
     $test_image_url = file_create_url($item['uri']);
-    $test_image_url_formatted = image_style_url('large', $item['uri']);
+    $test_image_url_formatted = image_style_url('medium', $item['uri']);
     // Check control case without custom configuration.
     $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
     $this->assertRaw('linkTarget="_blank"', 'Default linkTarget setting found.');
@@ -105,7 +105,7 @@ class JuiceboxConfCase extends JuiceboxBaseCase {
     // Set new advanced options.
     $this->drupalPostAJAX('admin/structure/types/manage/' . $instance['bundle'] . '/display', array(), $instance['field_name'] . '_formatter_settings_edit');
     $edit = array(
-      'fields[' . $instance['field_name'] . '][settings_edit_form][settings][image_style]' => 'large',
+      'fields[' . $instance['field_name'] . '][settings_edit_form][settings][image_style]' => 'medium',
       'fields[' . $instance['field_name'] . '][settings_edit_form][settings][linkurl_source]' => 'image_styled',
       'fields[' . $instance['field_name'] . '][settings_edit_form][settings][linkurl_target]' => '_self',
       'fields[' . $instance['field_name'] . '][settings_edit_form][settings][custom_parent_classes]' => 'my-custom-wrapper',
@@ -115,7 +115,7 @@ class JuiceboxConfCase extends JuiceboxBaseCase {
     // Check case with custom configuration.
     $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
     $this->assertRaw('linkTarget="_self"', 'Updated linkTarget setting found in XML.');
-    $this->assertRaw('linkURL="' . $test_image_url_formatted, 'Test unstyled image found in XML');
+    $this->assertRaw('linkURL="' . check_plain($test_image_url_formatted), 'Test unstyled image found in XML');
     // Also check for custom class in embed code.
     $this->drupalGet('node/' . $node->nid);
     $this->assertRaw('class="juicebox-parent my-custom-wrapper"', 'Custom class found in embed code.');
