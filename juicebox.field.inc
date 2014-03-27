@@ -32,8 +32,8 @@ function juicebox_field_formatter_info() {
       'settings' => array_merge($base_settings, array(
         'image_style' => '',
         'thumb_style' => 'juicebox_square_thumbnail',
-        'caption_source' => 'alt',
-        'title_source' => 'title',
+        'caption_source' => '',
+        'title_source' => '',
       )),
     ),
   );
@@ -299,9 +299,6 @@ function _juicebox_field_get_text($item, $source) {
  * Utility to fetch the title and caption source options for field-based
  * galleries (addresses File Entity and Media module support).
  *
- * Note that this may be called when building Drupal configuration forms that
- * are managed outside of this object.
- *
  * @param array $instance
  *   An associative array containing the Drupal field instance information for
  *   a Juicebox field.
@@ -315,27 +312,23 @@ function _juicebox_field_get_text($item, $source) {
 function _juicebox_field_text_sources($instance) {
   // The filename should always be an available option.
   $text_source_options['filename'] = t('File - Filename (processed by fallback text format)');
-  if (!empty($instance['widget']['module'])) {
-    // If this is a standard image field, using the image widget, we can use
-    // core image "alt" and "title" values if they are active.
-    if ($instance['widget']['module'] == 'image') {
-      if (!empty($instance['settings']['alt_field'])) {
-        $text_source_options['alt'] = t('Image - Alt text (processed by fallback text format)');
-      }
-      if (!empty($instance['settings']['title_field'])) {
-        $text_source_options['title'] = t('Image - Title text (processed by fallback text format)');
-      }
-      // If image field caption is installed and enabled on this image field
-      // we can also use it.
-      if (module_exists('image_field_caption') && !empty($instance['settings']['image_field_caption'])) {
-        $text_source_options['image_field_caption'] = t('Image - Image field caption');
-      }
-    }
-    // If this is a standard file field, using the file widget, we can use the
-    // core file "description" value if it is active.
-    if ($instance['widget']['module'] == 'file' && !empty($instance['settings']['description_field'])) {
-      $text_source_options['description'] = t('File - Description text (processed by fallback text format)');
-    }
+  // If this is a standard image field we can use the core image "alt" and
+  // "title" values if they are active.
+  if (!empty($instance['settings']['alt_field'])) {
+    $text_source_options['alt'] = t('Image - Alt text (processed by fallback text format)');
+  }
+  if (!empty($instance['settings']['title_field'])) {
+    $text_source_options['title'] = t('Image - Title text (processed by fallback text format)');
+  }
+  // If image field caption is installed and enabled on an image field we can
+  // also use it.
+  if (!empty($instance['settings']['image_field_caption']) && module_exists('image_field_caption')) {
+    $text_source_options['image_field_caption'] = t('Image - Image field caption');
+  }
+  // If this is a standard file field we can use the core file "description"
+  // value if it is active.
+  if (!empty($instance['settings']['description_field'])) {
+    $text_source_options['description'] = t('File - Description text (processed by fallback text format)');
   }
   // If file entity is installed we can use fields attached to the "image"
   // file entity.
