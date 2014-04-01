@@ -39,10 +39,10 @@ class JuiceboxConfCase extends JuiceboxBaseCase {
     // Check control case without custom configuration.
     $this->drupalGet('node/' . $node->nid);
     $this->assertRaw("gallerywidth:'100%',galleryheight:'100%',backgroundcolor:'#222222'", 'Expected default configuration options set in embed javascript.');
-    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
+    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full');
     $this->assertRaw('<juicebox gallerywidth="100%" galleryheight="100%" backgroundcolor="#222222" textcolor="rgba(255,255,255,1)" thumbframecolor="rgba(255,255,255,.5)" showopenbutton="TRUE" showexpandbutton="TRUE" showthumbsbutton="TRUE" usethumbdots="FALSE" usefullscreenexpand="FALSE">', 'Expected default configuration options set in XML.');
     // Alter settings to contain custom values.
-    $this->drupalPostAJAX('admin/structure/types/manage/' . $instance['bundle'] . '/display', array(), $instance['field_name'] . '_formatter_settings_edit');
+    $this->drupalPostAJAX('admin/structure/types/manage/' . $instance['bundle'] . '/display', array(), $instance['field_name'] . '_formatter_settings_edit', NULL, array(), array(), 'field-ui-display-overview-form');
     $edit = array(
       'fields[' . $instance['field_name'] . '][settings_edit_form][settings][jlib_galleryWidth]' => '50%',
       'fields[' . $instance['field_name'] . '][settings_edit_form][settings][jlib_galleryHeight]' => '200px',
@@ -61,7 +61,7 @@ class JuiceboxConfCase extends JuiceboxBaseCase {
     $this->drupalGet('node/' . $node->nid);
     $this->assertRaw("gallerywidth:'50%',galleryheight:'200px',backgroundcolor:'red'", 'Expected custom Lite configuration options set in embed javascript.');
     // Check for correct XML.
-    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
+    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full');
     $this->assertRaw('<juicebox gallerywidth="50%" galleryheight="200px" backgroundcolor="red" textcolor="green" thumbframecolor="blue" showopenbutton="FALSE" showexpandbutton="FALSE" showthumbsbutton="FALSE" usethumbdots="TRUE" usefullscreenexpand="TRUE">', 'Expected custom Lite configuration options set in XML.');
   }
 
@@ -73,7 +73,7 @@ class JuiceboxConfCase extends JuiceboxBaseCase {
     $node = $this->node;
     // Set new manual options and also add a manual customization that's
     // intended to override a custom Lite option.
-    $this->drupalPostAJAX('admin/structure/types/manage/' . $instance['bundle'] . '/display', array(), $instance['field_name'] . '_formatter_settings_edit');
+    $this->drupalPostAJAX('admin/structure/types/manage/' . $instance['bundle'] . '/display', array(), $instance['field_name'] . '_formatter_settings_edit', NULL, array(), array(), 'field-ui-display-overview-form');
     $edit = array(
       'fields[' . $instance['field_name'] . '][settings_edit_form][settings][jlib_showExpandButton]' => FALSE,
       'fields[' . $instance['field_name'] . '][settings_edit_form][settings][manual_config]' => "sHoWoPeNbUtToN=\"FALSE\"\nshowexpandbutton=\"TRUE\"\ngallerywidth=\"50%\"\nmyCustomSetting=\"boomsauce\"",
@@ -84,7 +84,7 @@ class JuiceboxConfCase extends JuiceboxBaseCase {
     $this->drupalGet('node/' . $node->nid);
     $this->assertRaw("gallerywidth:'50%',galleryheight:'100%',backgroundcolor:'#222222'", 'Expected custom configuration options set in embed javascript.');
     // Check for correct XML.
-    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
+    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full');
     $this->assertRaw('<juicebox gallerywidth="50%" galleryheight="100%" backgroundcolor="#222222" textcolor="rgba(255,255,255,1)" thumbframecolor="rgba(255,255,255,.5)" showopenbutton="FALSE" showexpandbutton="TRUE" showthumbsbutton="TRUE" usethumbdots="FALSE" usefullscreenexpand="FALSE" mycustomsetting="boomsauce">', 'Expected custom Pro configuration options set in XML.');
   }
 
@@ -99,11 +99,11 @@ class JuiceboxConfCase extends JuiceboxBaseCase {
     $test_image_url = file_create_url($item['uri']);
     $test_image_url_formatted = image_style_url('medium', $item['uri']);
     // Check control case without custom configuration.
-    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
+    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full');
     $this->assertRaw('linkTarget="_blank"', 'Default linkTarget setting found.');
     $this->assertRaw('linkURL="' . $test_image_url, 'Test unstyled image found in XML');
     // Set new advanced options.
-    $this->drupalPostAJAX('admin/structure/types/manage/' . $instance['bundle'] . '/display', array(), $instance['field_name'] . '_formatter_settings_edit');
+    $this->drupalPostAJAX('admin/structure/types/manage/' . $instance['bundle'] . '/display', array(), $instance['field_name'] . '_formatter_settings_edit', NULL, array(), array(), 'field-ui-display-overview-form');
     $edit = array(
       'fields[' . $instance['field_name'] . '][settings_edit_form][settings][image_style]' => 'medium',
       'fields[' . $instance['field_name'] . '][settings_edit_form][settings][linkurl_source]' => 'image_styled',
@@ -113,7 +113,7 @@ class JuiceboxConfCase extends JuiceboxBaseCase {
     $this->drupalPost(NULL, $edit, t('Save'));
     $this->assertText(t('Your settings have been saved.'), 'Gallery configuration changes saved.');
     // Check case with custom configuration.
-    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
+    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full');
     $this->assertRaw('linkTarget="_self"', 'Updated linkTarget setting found in XML.');
     $this->assertRaw('linkURL="' . check_plain($test_image_url_formatted), 'Test unstyled image found in XML');
     // Also check for custom class in embed code.

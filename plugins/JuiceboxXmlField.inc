@@ -159,7 +159,7 @@ class JuiceboxXmlField implements JuiceboxXmlInterface {
     $instance = field_info_instance($this->entityType, $this->fieldName, $bundle);
     if ($instance) {
       $display = field_get_display($instance, $this->displayName, $this->entity);
-      if (!empty($display['settings'])) {
+      if (isset($display['type']) && $display['type'] == 'juicebox_formatter') {
         $this->settings = $display['settings'];
         // We now have the same data available that the formatter plugin would
         // have.

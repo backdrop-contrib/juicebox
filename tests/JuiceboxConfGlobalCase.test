@@ -50,7 +50,7 @@ class JuiceboxConfGlobalCase extends JuiceboxBaseCase {
     $this->drupalPost('admin/config/media/juicebox', $edit, t('Save configuration'));
     $this->assertText(t('The configuration options have been saved'), 'Custom global options saved.');
     // Get resulting XML.
-    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
+    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full');
     // Check that the languagelist configuration option was both included and
     // translated in the XML.
     $this->assertRaw('languagelist="Translated|Lang|List"', 'Translated languagelist value found in XML.');

@@ -16,7 +16,7 @@ files[] = plugins/JuiceboxXmlField.inc
 files[] = plugins/JuiceboxXmlViewsStyle.inc
 files[] = plugins/JuiceboxFormatterViewsStyle.inc
 
-; Tests
+; Tests Files
 files[] = tests/JuiceboxBaseCase.test
 files[] = tests/JuiceboxFieldFormatterCase.test
 files[] = tests/JuiceboxFileCase.test
@@ -24,3 +24,7 @@ files[] = tests/JuiceboxFileEntityCase.test
 files[] = tests/JuiceboxConfCase.test
 files[] = tests/JuiceboxConfGlobalCase.test
 files[] = tests/JuiceboxViewsCase.test
+
+; Test Dependencies
+test_dependencies[] = views
+test_dependencies[] = file_entity

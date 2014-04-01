@@ -186,7 +186,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
       // Build the gallery.
       $this->buildGallery();
       // Render the embed code.
-      $element = array('#markup' => $this->juicebox->renderEmbed($xml_path));
+      $element = array('gallery' => $this->juicebox->getEmbed($xml_path));
     }
     catch (Exception $e) {
       $message = 'Exception building Juicebox embed code for view: !message in %function (line %line of %file).';

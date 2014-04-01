@@ -9,6 +9,25 @@
 
 
 /**
+ * Implements hook_field_display_alter().
+ *
+ * Unlike most hook implementations in this file this one is "global" (it's not
+ * invoked only for this formatter).
+ */
+function juicebox_field_display_alter(&$display, $context) {
+  // If this display is related to a Juicebox formatter we add some additional
+  // metadata that the formatter can use. Most notably we add the actual
+  // view mode name that this display relates to. Normally formatters don't need
+  // to know this contextual info (and should not change their behavior based
+  // on anything other than the raw configured display settings), but the
+  // Juicebox case is unique.
+  if (isset($display['type']) && $display['type'] == 'juicebox_formatter') {
+    $display['juicebox_vm'] = $context['view_mode'];
+  }
+}
+
+
+/**
  * Implements hook_field_formatter_info().
  *
  * Add juicebox_formatter formatter.
@@ -165,11 +184,8 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
  */
 function juicebox_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $element = array();
-  // If there are no images, don't do anything else. Also, for some reason
-  // field-level access is not checked until AFTER this hook, so we run our own
-  // access check here to ensure no gallery is rendered if the embed code won't
-  // be shown (preventing the javascript from being unnecessarily included).
-  if (empty($items) || !field_access('view', $field, $entity_type, $entity)) {
+  // If there are no images, don't do anything else.
+  if (empty($items)) {
     return $element;
   }
   // The gallery shown in preview view will only display field data from the
@@ -181,17 +197,9 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   $field_name = $instance['field_name'];
   $entity_type_info = entity_get_info($entity_type);
   $entity_id = $entity->{$entity_type_info['entity keys']['id']};
-  // We need to get the display name to pass as part of our XML path. Though
-  // we have access to the actaul $display array, it does not look like we
-  // have access to the actaul display NAME in this scope. We do have access to
-  // a list of ALL displays in $instanace though, so iterate though them to
-  // find a match to the settings in $display.
-  $display_name = 'default';
-  foreach ($instance['display'] as $display_key => $display_data) {
-    if ($display['settings'] == $display_data['settings']) {
-      $display_name = $display_key;
-    }
-  }
+  // Get the display name (view mode) from our custom display variable. This was
+  // set for us in juicebox_field_display_alter().
+  $display_name = $display['juicebox_vm'];
   // Generate xml path details.
   $xml_id = 'field/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . $display_name;
   $xml_args = explode('/', $xml_id);
@@ -205,7 +213,10 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
     juicebox_field_build_gallery($juicebox, $items);
     // Create a render array with the gallery markup. Also include the built
     // gallery for external reference.
-    $element[0] = array('#markup' => $juicebox->renderEmbed($xml_path), '#juicebox' => $juicebox);
+    $element[0] = array(
+      'gallery' => $juicebox->getEmbed($xml_path),
+      '#juicebox' => $juicebox
+    );
   }
   catch (Exception $e) {
     $message = 'Exception building Juicebox embed code for field: !message in %function (line %line of %file).';

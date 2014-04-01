@@ -54,7 +54,7 @@ class JuiceboxFileEntityCase extends JuiceboxBaseCase {
     $this->assertText(t('@type @title has been updated.', array('@type' => 'Image', '@title' => entity_label('file', (object) $item))), 'Custom file field alt and title text saved.');
     // Alter field formatter specific settings so that we use the file entity
     // title and alt fields for the image caption and title.
-    $this->drupalPostAJAX('admin/structure/types/manage/' . $instance['bundle'] . '/display', array(), $instance['field_name'] . '_formatter_settings_edit');
+    $this->drupalPostAJAX('admin/structure/types/manage/' . $instance['bundle'] . '/display', array(), $instance['field_name'] . '_formatter_settings_edit', NULL, array(), array(), 'field-ui-display-overview-form');
     $edit = array(
       'fields[' . $instance['field_name'] . '][settings_edit_form][settings][caption_source]' => 'field_file_image_alt_text',
       'fields[' . $instance['field_name'] . '][settings_edit_form][settings][title_source]' => 'field_file_image_title_text',
@@ -64,7 +64,7 @@ class JuiceboxFileEntityCase extends JuiceboxBaseCase {
     // Check for correct XML. Note that the formatting should be maintained in
     // the caption we enabled text formatting for the alt field provided by
     // the image file entity.
-    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
+    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full');
     $this->assertRaw('<title><![CDATA[Some title text for alt field on file ' . $fid . ']]></title>', 'Image entity title text found in XML');
     $this->assertRaw('<caption><![CDATA[Some alt text for alt field on file ' . $fid . ' <strong>with formatting</strong>]]></caption>', 'Image entity caption text found in XML');
   }

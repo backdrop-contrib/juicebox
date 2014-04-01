@@ -4,5 +4,3 @@ core = 7.x
 dependencies[] = juicebox
 dependencies[] = views
 hidden = TRUE
-
-

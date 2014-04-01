@@ -101,8 +101,10 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
   /**
    * {@inheritdoc}
    */
-  public function renderEmbed($xml_path = '') {
+  public function getEmbed($xml_path = '') {
     $settings = $this->settings;
+    // Grab the global "debug" setting and merge it with the local settings.
+    $settings['show_debug_links'] = variable_get('juicebox_show_debug_links', FALSE);
     // Capture the current query parameters and a checksum value in the XML.
     $current_query = drupal_get_query_parameters();
     $xml_query = array_merge(array('checksum' => $this->getChecksum()), $current_query);
@@ -110,21 +112,34 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
       'path' => $xml_path,
       'options' => array('query' => $xml_query),
     );
+    // The returned render array will contain some common values no matter what
+    // output we produce (normal and debug).
+    $output = array(
+      '#gallery_id' => $this->getId(),
+      '#gallery_images' => $this->getImages(),
+      '#gallery_options' => $this->getOptions(),
+      '#xml' => $xml,
+      '#settings' => $settings,
+    );
     // If debugging links are allowed and "jb-debug" is active in the query we
     // display debug info in place of the actual gallery.
-    $settings['show_debug_links'] = variable_get('juicebox_show_debug_links', FALSE);
     if ($settings['show_debug_links'] && array_key_exists('jb-debug', $current_query)) {
-      drupal_add_css(drupal_get_path('module', 'juicebox') . '/css/placeholder_styles.css');
-      return theme('juicebox_debug_markup', array('gallery_id' => $this->getId(), 'gallery_images' => $this->getImages(), 'gallery_options' => $this->getOptions(), 'xml' => $xml, 'settings' => $settings));
+      $output['#theme'] = 'juicebox_debug_markup';
+      $output['#attached']['css'] = array(drupal_get_path('module', 'juicebox') . '/css/placeholder_styles.css');
     }
+    // Otherwise we are just displaying the normal gallery.
     else {
-      // Load the juicebox javascript library and gallery-specific javascript.
-      libraries_load('juicebox');
+      $output['#theme'] = 'juicebox_embed_markup';
       $xml_url = url($xml['path'], $xml['options']);
-      drupal_add_js($this->renderJavascript($xml_url), array('type' => 'inline', 'scope' => variable_get('juicebox_js_scope', 'header')));
-      // Theme the embed code.
-      return theme('juicebox_embed_markup', array('gallery_id' => $this->getId(), 'gallery_images' => $this->getImages(), 'gallery_options' => $this->getOptions(), 'settings' => $settings));
+      $output['#attached']['libraries_load'][] = array('juicebox');
+      $output['#attached']['js'][] = array(
+        'data' => $this->renderJavascript($xml_url),
+        'type' => 'inline',
+        'scope' => variable_get('juicebox_js_scope', 'header'),
+        'weight' => 10, // load below main library
+      );
     }
+    return $output;
   }
 
   /**

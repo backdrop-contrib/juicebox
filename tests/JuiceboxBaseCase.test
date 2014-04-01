@@ -99,7 +99,7 @@ class JuiceboxBaseCase extends DrupalWebTestCase {
    */
   protected function createNodeWithImage($instance, $image) {
     $edit = array(
-      'title' => $this->randomName(),
+      'title' => 'Test Juicebox Gallery Node',
       'files[' . $instance['field_name'] . '_' . LANGUAGE_NONE . '_0]' => drupal_realpath($image->uri),
     );
     $this->drupalPost('node/add/' . $instance['bundle'], $edit, t('Save'));

@@ -35,7 +35,7 @@ class JuiceboxFileCase extends JuiceboxBaseCase {
     // Create a new node with an image attached.
     $test_image = current($this->drupalGetTestFiles('image'));
     $node = $this->createNodeWithImage($instance, $test_image);
-    $xml_path = 'juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default';
+    $xml_path = 'juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full';
     // Get raw file data expected in the node.
     $item = reset(field_get_items('node', $node, $instance['field_name']));
     $test_image_url = file_create_url($item['uri']);
@@ -43,7 +43,7 @@ class JuiceboxFileCase extends JuiceboxBaseCase {
     // Check for correct embed markup.
     $this->drupalGet('node/' . $node->nid);
     $this->assertRaw("new juicebox({configUrl:'" . url($xml_path), 'Embed javascript found.');
-    $this->assertRaw('id="field--node--' . $node->nid . '--' . str_replace('_', '-', $instance['field_name']) . '--default"', 'Embed code wrapper found.');
+    $this->assertRaw('id="field--node--' . $node->nid . '--' . str_replace('_', '-', $instance['field_name']) . '--full"', 'Embed code wrapper found.');
     $this->assertRaw(check_plain($test_image_url), 'Test image found in embed code');
     // Check for correct XML.
     $this->drupalGet($xml_path);
@@ -64,19 +64,19 @@ class JuiceboxFileCase extends JuiceboxBaseCase {
     $test_image = current($this->drupalGetTestFiles('text'));
     $node = $this->createNodeWithImage($instance, $test_image);
     // Check the XML.
-    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
+    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full');
     // With the default settings we expect an "application-octet-stream.png"
     // value for both the image and the thumbnail.
     $this->assertPattern('|imageURL=.*application-octet-stream.png.*thumbURL=.*application-octet-stream.png|', 'Non-image mimetype placeholder found for image and thumbnail.');
     // Change the file handling option to "skip".
-    $this->drupalPostAJAX('admin/structure/types/manage/' . $instance['bundle'] . '/display', array(), $instance['field_name'] . '_formatter_settings_edit');
+    $this->drupalPostAJAX('admin/structure/types/manage/' . $instance['bundle'] . '/display', array(), $instance['field_name'] . '_formatter_settings_edit', NULL, array(), array(), 'field-ui-display-overview-form');
     $edit = array(
       'fields[' . $instance['field_name'] . '][settings_edit_form][settings][incompatible_file_action]' => 'skip',
     );
     $this->drupalPost(NULL, $edit, t('Save'));
     $this->assertText(t('Your settings have been saved.'), 'Gallery configuration changes saved.');
     // Re-check the XML. This time no image should appear at all.
-    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/default');
+    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full');
     $this->assertRaw('<?xml version="1.0" encoding="UTF-8"?>', 'Valid XML detected.');
     $this->assertNoRaw('<image', 'Non-image items was skipped.');
     // @todo, Check other incompatible_file_action combinations.

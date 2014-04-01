@@ -89,6 +89,24 @@ interface JuiceboxGalleryDrupalInterface extends JuiceboxGalleryInterface {
   public function styleImageSrcData($image_item, $image_style, $thumb_item, $thumb_style);
 
   /**
+   * Get a render array of the embed code for a Juicebox gallery after images
+   * and options have been added.
+   *
+   * Note that this is different from JuiceboxGalleryInterface:renderEmbed() in
+   * that it handles ALL considerations for embedding. This includes the
+   * addition of the appropriate js and css which would otherwise need to be
+   * done independent of renderEmbed(). It also uses the Drupal theme system as
+   * opposed to just returning direct markup. Within Drupal this method should
+   * always be used instead of renderEmbed().
+   *
+   * @param string $xml_path
+   *   The path to the Juicebox XML for this gallery.
+   * @return array
+   *   Drupal render array for the embed code that describes a gallery.
+   */
+  public function getEmbed($xml_path = '');
+
+  /**
    * Get the "base" values of common Drupal settings used to describe a gallery.
    * This is used for the management of default configuration values.
    *
