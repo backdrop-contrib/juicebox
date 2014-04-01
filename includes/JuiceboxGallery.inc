@@ -51,10 +51,10 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
-  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE, $override_id = NULL) {
+  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE, $override_id = NULL, $offset = NULL) {
     // If we are anticipating an override, but there is nothing to override,
-    // don't do anything.
-    if (isset($override_id) && empty($this->images[$override_id])) {
+    // don't do anything. Also, override_id and offset are mutually exclusive.
+    if (isset($override_id) && (empty($this->images[$override_id]) || isset($offset))) {
       return FALSE;
     }
     // Make sure we have sufficient image data to work with.
@@ -80,6 +80,9 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
     );
     if (isset($override_id)) {
       $this->images[$override_id] = $addition;
+    }
+    elseif (isset($offset)) {
+      array_splice($this->images, $offset, 0, array($addition));
     }
     else {
       $this->images[] = $addition;

@@ -48,16 +48,23 @@ interface JuiceboxGalleryInterface {
    * @param string $caption
    *   The caption markup to display for the image.
    * @param boolean $filter
-   *   Whether-or-not to filter the $title and $caption values for syntactic
-   *   compatibility with Juicebox.
+   *   Optional. Whether-or-not to filter the $title and $caption values for
+   *   syntactic compatibility with Juicebox.
    * @param int $override_id
-   *   The id of an existing image, already added to the gallery, to override
-   *   with new data. If NULL the image will simply be added. This id should
-   *   match the index for the image as returned by getImages().
+   *   Optional. The id of an existing image, already added to the gallery, to
+   *   override with new data. If NULL the image will simply be added. This id
+   *   should match the index for the image as returned by getImages(). Not
+   *   compatible with $offset.
+   * @param int $offset
+   *   Optional. If offset is positive then the image is inserted at that offset
+   *   from the beginning of the existing image list. If offset is negative then
+   *   the image is inserted that far from the end of the image list. Not
+   *   compatible with $override_id.
+   *
    * @return boolean
    *   Returns TRUE on successful addition and FALSE on failure.
    */
-  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE, $override_id = NULL);
+  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE, $override_id = NULL, $offset = NULL);
 
   /**
    * Getter method for the gallery images.

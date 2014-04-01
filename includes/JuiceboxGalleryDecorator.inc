@@ -49,10 +49,10 @@ abstract class JuiceboxGalleryDecorator implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
-  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE, $override_id = NULL) {
+  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE, $override_id = NULL, $offset = NULL) {
     // We should always get the filter setting from global variables.
     $filter = variable_get('juicebox_apply_markup_filter', TRUE);
-    return $this->gallery->addImage($src_data, $title, $caption, $filter, $override_id);
+    return $this->gallery->addImage($src_data, $title, $caption, $filter, $override_id, $offset);
   }
 
   /**
