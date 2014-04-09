@@ -301,11 +301,11 @@ function _juicebox_field_get_text($item, $source) {
     }
     // If an image field caption value is specified we need to format the raw
     // caption value.
-    elseif ($source == 'image_field_caption' && !empty($item['image_field_caption']['value'])) {
+    elseif ($source == 'image_field_caption' && isset($item['image_field_caption']['value'])) {
       $format = empty($item['image_field_caption']['format']) ? filter_fallback_format() : $item['image_field_caption']['format'];
       $text = check_markup($item['image_field_caption']['value'], $format);
     }
-    else {
+    elseif (is_string($item[$source])) {
       $text = check_markup($item[$source]);
     }
   }
