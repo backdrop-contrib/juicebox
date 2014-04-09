@@ -60,7 +60,6 @@ interface JuiceboxGalleryInterface {
    *   from the beginning of the existing image list. If offset is negative then
    *   the image is inserted that far from the end of the image list. Not
    *   compatible with $override_id.
-   *
    * @return boolean
    *   Returns TRUE on successful addition and FALSE on failure.
    */

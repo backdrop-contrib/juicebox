@@ -101,10 +101,13 @@ interface JuiceboxGalleryDrupalInterface extends JuiceboxGalleryInterface {
    *
    * @param string $xml_path
    *   The path to the Juicebox XML for this gallery.
+   * @param boolean $add_js
+   *   Whether-or-not to add the Juicebox library and gallery-specific
+   *   javascript.
    * @return array
    *   Drupal render array for the embed code that describes a gallery.
    */
-  public function getEmbed($xml_path = '');
+  public function getEmbed($xml_path = '', $add_js = TRUE);
 
   /**
    * Get the "base" values of common Drupal settings used to describe a gallery.

@@ -23,6 +23,13 @@ function juicebox_field_display_alter(&$display, $context) {
   // Juicebox case is unique.
   if (isset($display['type']) && $display['type'] == 'juicebox_formatter') {
     $display['juicebox_vm'] = $context['view_mode'];
+    // Also, if this is a search_result display we need to flag the fact that
+    // it's incompatible with the Juicebox javascript. Adding the Juicebox
+    // javascript to a search result output will lead to errors. See issue
+    // #2217791. Other incompatible view modes could be added here if needed.
+    if ($context['view_mode'] == 'search_result') {
+      $display['juicebox_vm_incompatible'] = TRUE;
+    }
   }
 }
 
@@ -214,7 +221,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
     // Create a render array with the gallery markup. Also include the built
     // gallery for external reference.
     $element[0] = array(
-      'gallery' => $juicebox->getEmbed($xml_path),
+      'gallery' => $juicebox->getEmbed($xml_path, empty($display['juicebox_vm_incompatible'])),
       '#juicebox' => $juicebox
     );
   }

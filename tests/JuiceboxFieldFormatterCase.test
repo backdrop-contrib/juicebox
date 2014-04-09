@@ -88,6 +88,16 @@ class JuiceboxFieldFormatterCase extends JuiceboxBaseCase {
     // So this acts as a test for that feature as well.
     $this->assertRaw('<title><![CDATA[Some title text for field ' . $instance['field_name'] . ' on node ' . $node->nid . ']]></title>', 'Image title text found in XML');
     $this->assertRaw('<caption><![CDATA[Some alt text for field ' . $instance['field_name'] . ' on node ' . $node->nid . ' &lt;strong&gt;with formatting&lt;/strong&gt;]]></caption>', 'Image caption text found in XML');
+    // Now that we have title and caption data set, also ensure this text can
+    // be found in search results. First we update the search index by marking
+    // our test node as dirty and running cron.
+    $this->drupalPost('node/' . $node->nid . '/edit', NULL, t('Save'));
+    $this->cronRun();
+    $this->drupalPost('search', array('keys' => '"Some title text"'), t('Search'));
+    $this->assertText('Test Juicebox Gallery Node', 'Juicebox node found in search for title text.');
+    // The Juicebox javascript should have been excluded from the search results
+    // page.
+    $this->assertNoRaw('new juicebox({configUrl', 'Juicebox XML not included on search result page.');
   }
 
   /**

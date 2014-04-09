@@ -101,7 +101,7 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
   /**
    * {@inheritdoc}
    */
-  public function getEmbed($xml_path = '') {
+  public function getEmbed($xml_path = '', $add_js = TRUE) {
     $settings = $this->settings;
     // Grab the global "debug" setting and merge it with the local settings.
     $settings['show_debug_links'] = variable_get('juicebox_show_debug_links', FALSE);
@@ -130,14 +130,16 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
     // Otherwise we are just displaying the normal gallery.
     else {
       $output['#theme'] = 'juicebox_embed_markup';
-      $xml_url = url($xml['path'], $xml['options']);
-      $output['#attached']['libraries_load'][] = array('juicebox');
-      $output['#attached']['js'][] = array(
-        'data' => $this->renderJavascript($xml_url),
-        'type' => 'inline',
-        'scope' => variable_get('juicebox_js_scope', 'header'),
-        'weight' => 10, // load below main library
-      );
+      if ($add_js) {
+        $xml_url = url($xml['path'], $xml['options']);
+        $output['#attached']['libraries_load'][] = array('juicebox');
+        $output['#attached']['js'][] = array(
+          'data' => $this->renderJavascript($xml_url),
+          'type' => 'inline',
+          'scope' => variable_get('juicebox_js_scope', 'header'),
+          'weight' => 10, // load below main library
+        );
+      }
     }
     return $output;
   }
