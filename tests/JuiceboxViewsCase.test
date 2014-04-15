@@ -22,7 +22,7 @@ class JuiceboxViewsCase extends JuiceboxBaseCase {
   public function setUp() {
     parent::setUp('juicebox', 'views', 'juicebox_views_test');
     // Create and login user.
-    $this->webUser = $this->drupalCreateUser(array('access content', 'access administration pages', 'administer site configuration', 'administer content types', 'administer nodes', 'create article content', 'edit any article content', 'delete any article content', 'administer image styles', 'administer views'));
+    $this->webUser = $this->drupalCreateUser(array('access content', 'access administration pages', 'administer site configuration', 'administer content types', 'administer nodes', 'create article content', 'edit any article content', 'delete any article content', 'administer image styles', 'administer views', 'access contextual links'));
     $this->drupalLogin($this->webUser);
     // Prep an article with an image field. All our views will list article
     // content or file data sourced from it.
@@ -42,6 +42,7 @@ class JuiceboxViewsCase extends JuiceboxBaseCase {
     $this->drupalGet('juicebox-views-test');
     $this->assertRaw("new juicebox({configUrl:'" . url($xml_path), 'Embed javascript found.');
     $this->assertRaw('id="viewsstyle--juicebox-views-test--page"', 'Embed code wrapper found.');
+    $this->assertRaw('<li class="gallery_config', 'Example contextual link for gallery configuration found.');
     $this->assertRaw(check_plain($test_image_url), 'Test image found in embed code');
     // Check for correct XML.
     $this->drupalGet($xml_path);

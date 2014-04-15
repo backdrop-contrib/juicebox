@@ -101,10 +101,7 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
   /**
    * {@inheritdoc}
    */
-  public function getEmbed($xml_path = '', $add_js = TRUE) {
-    $settings = $this->settings;
-    // Grab the global "debug" setting and merge it with the local settings.
-    $settings['show_debug_links'] = variable_get('juicebox_show_debug_links', FALSE);
+  public function buildEmbed($xml_path = '', $add_js = TRUE, $context = array()) {
     // Capture the current query parameters and a checksum value in the XML.
     $current_query = drupal_get_query_parameters();
     $xml_query = array_merge(array('checksum' => $this->getChecksum()), $current_query);
@@ -115,17 +112,18 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
     // The returned render array will contain some common values no matter what
     // output we produce (normal and debug).
     $output = array(
+      '#c_links' => $this->buildContextualLinks($xml_path, $context),
       '#gallery_id' => $this->getId(),
       '#gallery_images' => $this->getImages(),
       '#gallery_options' => $this->getOptions(),
       '#xml' => $xml,
-      '#settings' => $settings,
+      '#settings' => $this->settings,
     );
-    // If debugging links are allowed and "jb-debug" is active in the query we
-    // display debug info in place of the actual gallery.
-    if ($settings['show_debug_links'] && array_key_exists('jb-debug', $current_query)) {
+    // If "jb-debug" is active in the query we display debug info in place of
+    // the actual gallery.
+    if (array_key_exists('jb-debug', $current_query) && $this->accessDebugDisplay()) {
       $output['#theme'] = 'juicebox_debug_markup';
-      $output['#attached']['css'] = array(drupal_get_path('module', 'juicebox') . '/css/placeholder_styles.css');
+      $output['#attached']['css'] = array(drupal_get_path('module', 'juicebox') . '/css/admin_styles.css');
     }
     // Otherwise we are just displaying the normal gallery.
     else {
@@ -225,6 +223,79 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
       $item['juicebox_styled_src'] = $item['juicebox_unstyled_src'];
     }
     return $item;
+  }
+
+  /**
+   * Utility to build a render array of contextual links that can be used to
+   * administer a gallery.
+   *
+   * @param string $xml_path
+   *   The path to the Juicebox XML for this gallery.
+   * @param array $context
+   *   Optional contextual information that may be used in the links:
+   *   - conf_path: A Drupal path within the admin interface where the gallery
+   *     can be configured.
+   * @return array
+   *   Drupal render array for the contextual links.
+   *
+   * @see JuiceboxGalleryDrupalInterface::buildGallery()
+   */
+  protected function buildContextualLinks($xml_path = '', $context = array()) {
+    $c_links = array();
+    if (module_exists('contextual') && user_access('access contextual links')) {
+      $links = array();
+      // Add link to the gallery-specific configuration if we have it.
+      if (!empty($context['conf_path']) && drupal_valid_path($context['conf_path'])) {
+        $links['gallery_config'] = array('title' => t('Configure this Juicebox gallery'), 'href' => $context['conf_path'], 'query' => drupal_get_destination());
+      }
+      // Add a link to the global Juicebox options.
+      if (drupal_valid_path('admin/config/media/juicebox')) {
+        $links['global_config'] = array('title' => t('Configure global Juicebox options'), 'href' => 'admin/config/media/juicebox', 'query' => drupal_get_destination());
+      }
+      // Add a direct link to the XML.
+      $links['xml'] = array('title' => t('View gallery XML'), 'href' => $xml_path);
+      // Add link to toggle debug view.
+      if ($this->accessDebugDisplay()) {
+        $query = drupal_get_query_parameters();
+        if (empty($query['jb-debug'])) {
+          $query['jb-debug'] = 1;
+          $title = t('Toggle debug info on');
+        }
+        else {
+          unset($query['jb-debug']);
+          $title = t('Toggle debug info off');
+        }
+        $links['toggle_debug'] = array('title' => $title, 'href' => current_path(), 'query' => $query, 'fragment' => $this->getId());
+      }
+      // If we have links, build a render array for the contextual links.
+      if ($links) {
+        // Add the contextual-links-region wrapper to the Juicebox parent.
+        $this->settings['custom_parent_classes'] = trim($this->settings['custom_parent_classes'] . ' contextual-links-region');
+        $c_links = array(
+          '#prefix' => '<div class="contextual-links-wrapper">',
+          '#suffix' => '</div>',
+          '#theme' => 'links__contextual',
+          '#links' => $links,
+          '#attributes' => array('class' => array('contextual-links')),
+          '#attached' => array(
+            'library' => array(array('contextual', 'contextual-links')),
+            'css' => array(drupal_get_path('module', 'juicebox') . '/css/admin_styles.css'),
+          ),
+        );
+      }
+    }
+    return $c_links;
+  }
+
+  /**
+   * Check if the current user should have access to the "debug" output for a
+   * Juicebox gallery.
+   *
+   * The debug info does not contain any sensitive information but we still want
+   * to provide a reasonable limitation regarding who can trigger it.
+   */
+  protected function accessDebugDisplay() {
+    return user_access('access administration pages');
   }
 
   /**

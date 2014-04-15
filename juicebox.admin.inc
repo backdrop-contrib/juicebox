@@ -31,12 +31,6 @@ function juicebox_admin_settings() {
     '#default_value' => variable_get('juicebox_apply_markup_filter', TRUE),
     '#description' => t('This option helps ensure title/caption output is syntactically compatible with the Juicebox javascript library by removing block-level tags.'),
   );
-  $form['juicebox_show_debug_links'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Show links to debug info'),
-    '#default_value' => variable_get('juicebox_show_debug_links', FALSE),
-    '#description' => t('Show links above each gallery to toggle the display of gallery debugging information.'),
-  );
   $form['juicebox_enable_cors'] = array(
     '#type' => 'checkbox',
     '#title' => t('Allow galleries to be embedded remotely (CORS support)'),

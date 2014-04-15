@@ -179,6 +179,9 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
     }
     $xml_args = explode('/', $xml_id);
     $xml_path = 'juicebox/xml/' . $xml_id;
+    // Calculate the path to edit the view (used for admin contextual links).
+    $context = array();
+    $context['conf_path'] = 'admin/structure/views/view/' . $view->name . '/edit/' . $view->current_display;
     // Try to build the Juicebox gallery.
     try {
       // Initialize the gallery.
@@ -186,7 +189,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
       // Build the gallery.
       $this->buildGallery();
       // Render the embed code.
-      $element = array('gallery' => $this->juicebox->getEmbed($xml_path));
+      $element = array('gallery' => $this->juicebox->buildEmbed($xml_path, TRUE, $context));
     }
     catch (Exception $e) {
       $message = 'Exception building Juicebox embed code for view: !message in %function (line %line of %file).';

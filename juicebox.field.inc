@@ -211,6 +211,14 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   $xml_id = 'field/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . $display_name;
   $xml_args = explode('/', $xml_id);
   $xml_path = 'juicebox/xml/' . $xml_id;
+  // If this is a field on a node, we can calculate the path to edit the field
+  // (used for admin contextual links).
+  $context = array();
+  if ($entity_type == 'node') {
+    $vm_settings = field_view_mode_settings($entity_type, $instance['bundle']);
+    $display_name_conf = !empty($vm_settings[$display_name]['custom_settings']) ? $display_name : 'default';
+    $context['conf_path'] = 'admin/structure/types/manage/' .  $instance['bundle'] . '/display/' . $display_name_conf;
+  }
   // Try building the gallery and its XML.
   try {
     // Initialize the gallery.
@@ -221,7 +229,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
     // Create a render array with the gallery markup. Also include the built
     // gallery for external reference.
     $element[0] = array(
-      'gallery' => $juicebox->getEmbed($xml_path, empty($display['juicebox_vm_incompatible'])),
+      'gallery' => $juicebox->buildEmbed($xml_path, empty($display['juicebox_vm_incompatible']), $context),
       '#juicebox' => $juicebox
     );
   }

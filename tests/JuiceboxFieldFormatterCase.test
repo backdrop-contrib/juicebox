@@ -21,7 +21,7 @@ class JuiceboxFieldFormatterCase extends JuiceboxBaseCase {
   public function setUp() {
     parent::setUp('juicebox');
     // Create and login user.
-    $this->webUser = $this->drupalCreateUser(array('access content', 'access administration pages', 'administer site configuration', 'administer content types', 'administer nodes', 'create article content', 'edit any article content', 'delete any article content', 'administer image styles', 'search content'));
+    $this->webUser = $this->drupalCreateUser(array('access content', 'access administration pages', 'administer site configuration', 'administer content types', 'administer nodes', 'create article content', 'edit any article content', 'delete any article content', 'administer image styles', 'search content', 'access contextual links'));
     $this->drupalLogin($this->webUser);
     // Prep an article with an image field and activate the Juicebox display
     // formatter for it.
@@ -47,6 +47,7 @@ class JuiceboxFieldFormatterCase extends JuiceboxBaseCase {
     $this->drupalGet('node/' . $node->nid);
     $this->assertRaw("new juicebox({configUrl:'" . url($xml_path), 'Embed javascript found.');
     $this->assertRaw('id="field--node--' . $node->nid . '--' . str_replace('_', '-', $instance['field_name']) . '--full"', 'Embed code wrapper found.');
+    $this->assertRaw('<li class="gallery_config', 'Example contextual link for gallery configuration found.');
     $this->assertRaw(check_plain($test_image_url), 'Test image found in embed code');
     // Check for correct XML.
     $this->drupalGet($xml_path);

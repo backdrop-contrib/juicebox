@@ -50,19 +50,13 @@ function juicebox_theme() {
   return array(
     // Theme hook to generate embed markup for a Juicebox gallery.
     'juicebox_embed_markup' => array(
-      'variables' => array('gallery_id' => NULL, 'gallery_images' => array(), 'gallery_options' => array(), 'settings' => array()),
+      'variables' => array('gallery_id' => NULL, 'gallery_images' => array(), 'gallery_options' => array(), 'settings' => array(), 'c_links' => array()),
       'path' => drupal_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
     ),
     // Theme hook to generate info/debug information for a Juicebox gallery.
     'juicebox_debug_markup' => array(
-      'variables' => array('gallery_id' => NULL, 'gallery_images' => array(), 'gallery_options' => array(), 'settings' => array(), 'xml' => array()),
-      'path' => drupal_get_path('module', 'juicebox') . '/themes',
-      'file' => 'juicebox.theme.inc',
-    ),
-    // Theme hook to generate toggle links between gallery and debug info.
-    'juicebox_toggle_embed_debug_markup' => array(
-      'variables' => array('gallery_id' => NULL, 'settings' => array(), 'debug' => FALSE),
+      'variables' => array('gallery_id' => NULL, 'gallery_images' => array(), 'gallery_options' => array(), 'settings' => array(), 'xml' => array(), 'c_links' => array()),
       'path' => drupal_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
     ),
