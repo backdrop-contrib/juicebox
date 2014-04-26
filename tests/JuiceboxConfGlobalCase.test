@@ -32,7 +32,7 @@ class JuiceboxConfGlobalCase extends JuiceboxBaseCase {
   }
 
   /**
-   * Test global options.
+   * Test general global options.
    *
    * This methods tests multiple global options at once, but these could later
    * be broken out into different test methods if needed.
@@ -57,6 +57,39 @@ class JuiceboxConfGlobalCase extends JuiceboxBaseCase {
     // Check the the XML now returns an 'Access-Control-Allow-Origin' header
     // for CORS support.
     $this->assertEqual($this->drupalGetHeader('Access-Control-Allow-Origin'), '*', 'Expected CORS header found.');
+  }
+
+  /**
+   * Test multi-size integration.
+   */
+  public function testGlobalMultisize() {
+    $instance = $this->instance;
+    $node = $this->node;
+    // Customize one of our global multi-size settings from the default for a
+    // true end-to-end test.
+    $edit = array(
+      'juicebox_multisize_large' => 'large',
+    );
+    $this->drupalPost('admin/config/media/juicebox', $edit, t('Save configuration'));
+    $this->assertText(t('The configuration options have been saved'), 'Custom global options saved.');
+    // Alter field formatter specific settings to use multi-size style.
+    $this->drupalPostAJAX('admin/structure/types/manage/' . $instance['bundle'] . '/display', array(), $instance['field_name'] . '_formatter_settings_edit', NULL, array(), array(), 'field-ui-display-overview-form');
+    $edit = array(
+      'fields[' . $instance['field_name'] . '][settings_edit_form][settings][image_style]' => 'juicebox_multisize',
+    );
+    $this->drupalPost(NULL, $edit, t('Save'));
+    $this->assertText(t('Your settings have been saved.'), 'Gallery configuration changes saved.');
+    // Calculate the multi-size styles that should be found in the XML.
+    $item = reset(field_get_items('node', $node, $instance['field_name']));
+    $formatted_image_small = image_style_url('juicebox_small', $item['uri']);
+    $formatted_image_medium = image_style_url('juicebox_medium', $item['uri']);
+    $formatted_image_large = image_style_url('large', $item['uri']);
+    // Get resulting XML.
+    $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full');
+    // Check that the expected images are found in the XML.
+    $this->assertRaw('smallImageURL="' . check_plain($formatted_image_small), 'Test small image found in XML.');
+    $this->assertRaw('imageURL="' . check_plain($formatted_image_medium), 'Test medium image found in XML.');
+    $this->assertRaw('largeImageURL="' . check_plain($formatted_image_large), 'Test large image found in XML.');
   }
 
 }

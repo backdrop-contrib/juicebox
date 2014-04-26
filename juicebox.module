@@ -125,12 +125,42 @@ function juicebox_views_plugins() {
 
 /**
  * Implements hook_image_default_styles().
- *
- * Add a default thumbnail style that will fit (without stretching or scaling)
- * within the stock Juicebox thumbnail space.
  */
 function juicebox_image_default_styles() {
   $styles = array();
+  // Add suggested styles for multi-size support.
+  $styles['juicebox_small'] = array(
+    'label' => 'Juicebox small (800x800)',
+    'effects' => array(
+      array(
+        'name' => 'image_scale',
+        'data' => array('width' => 800, 'height' => 800, 'upscale' => FALSE),
+        'weight' => 0,
+      ),
+    ),
+  );
+  $styles['juicebox_medium'] = array(
+    'label' => 'Juicebox medium (1024x1024)',
+    'effects' => array(
+      array(
+        'name' => 'image_scale',
+        'data' => array('width' => 1024, 'height' => 1024, 'upscale' => FALSE),
+        'weight' => 0,
+      ),
+    ),
+  );
+  $styles['juicebox_large'] = array(
+    'label' => 'Juicebox large (2048x2048)',
+    'effects' => array(
+      array(
+        'name' => 'image_scale',
+        'data' => array('width' => 2048, 'height' => 2048, 'upscale' => FALSE),
+        'weight' => 0,
+      ),
+    ),
+  );
+  // Add a default thumbnail style that will fit (without stretching or scaling)
+  // within the stock Juicebox thumbnail space.
   $styles['juicebox_square_thumbnail'] = array(
     'label' => 'Juicebox square thumbnail (85x85)',
     'effects' => array(
@@ -325,9 +355,13 @@ function juicebox_library_post_detect(&$library) {
     if (!empty($matches[0])) {
       $version_number = $matches[0];
     }
-    // Some options are not available as LITE options before v1.3.
+    // Some options are not available as LITE options < v1.3.
     if (!$pro && version_compare($version_number, '1.3', '<')) {
       $disallowed_conf = array_merge($disallowed_conf, array('jlib_textColor', 'jlib_thumbFrameColor', 'jlib_useFullscreenExpand', 'jlib_useThumbDots'));
+    }
+    // Multisize features are only available in PRO >= v1.4
+    if (!$pro || version_compare($version_number, '1.4', '<')) {
+      $disallowed_conf = array_merge($disallowed_conf, array('juicebox_multisize_image_style'));
     }
   }
   $library['pro'] = $pro;

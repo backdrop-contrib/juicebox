@@ -115,7 +115,7 @@ class JuiceboxConfCase extends JuiceboxBaseCase {
     // Check case with custom configuration.
     $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full');
     $this->assertRaw('linkTarget="_self"', 'Updated linkTarget setting found in XML.');
-    $this->assertRaw('linkURL="' . check_plain($test_image_url_formatted), 'Test unstyled image found in XML');
+    $this->assertRaw('linkURL="' . check_plain($test_image_url_formatted), 'Test styled image found in XML for linkURL.');
     // Also check for custom class in embed code.
     $this->drupalGet('node/' . $node->nid);
     $this->assertRaw('class="juicebox-parent my-custom-wrapper"', 'Custom class found in embed code.');

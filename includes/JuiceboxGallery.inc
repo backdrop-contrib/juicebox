@@ -162,10 +162,18 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
     }
     foreach ($this->images as $image) {
       $juicebox_image = $juicebox->appendChild($dom->createElement('image'));
+      // Standard source data should always be available.
       $juicebox_image->setAttribute('imageURL', $image['src_data']['image_url']);
       $juicebox_image->setAttribute('thumbURL', $image['src_data']['thumb_url']);
       $juicebox_image->setAttribute('linkURL', $image['src_data']['link_url']);
       $juicebox_image->setAttribute('linkTarget', $image['src_data']['link_target']);
+      // Multi-size source data may only be available in certain configurations.
+      if (!empty($image['src_data']['image_url_small'])) {
+        $juicebox_image->setAttribute('smallImageURL', $image['src_data']['image_url_small']);
+      }
+      if (!empty($image['src_data']['image_url_large'])) {
+        $juicebox_image->setAttribute('largeImageURL', $image['src_data']['image_url_large']);
+      }
       $juicebox_image_title = $juicebox_image->appendChild($dom->createElement('title'));
       $juicebox_image_title->appendChild($dom->createCDATASection($image['title']));
       $juicebox_image_caption = $juicebox_image->appendChild($dom->createElement('caption'));

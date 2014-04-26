@@ -139,4 +139,21 @@ interface JuiceboxGalleryDrupalInterface extends JuiceboxGalleryInterface {
    */
   public function confBaseForm($form, $settings);
 
+  /**
+   * Get the image style preset options that should be available in
+   * configuration style picklists.
+   *
+   * This is in may ways just a wrapper for image_style_options() that allows
+   * the addition of specical options that only Juicebox understands (e.g.
+   * "multi-size").
+   *
+   * @param boolean $allow_multisize
+   *   Whether-or-not to allow the addition of a PRO "multi-size" option. This
+   *   is only included if this option is TRUE and the currently detected
+   *   library is compatible with multi-size features.
+   * @return array
+   *   An associative array of style presets.
+   */
+  public function confBaseStylePresets($allow_multisize = TRUE);
+
 }

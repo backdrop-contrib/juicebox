@@ -36,7 +36,7 @@ class JuiceboxViewsCase extends JuiceboxBaseCase {
     $xml_path = 'juicebox/xml/viewsstyle/juicebox_views_test/page';
     // Get the urls to the test image and thumb derivative used by default.
     $item = reset(field_get_items('node', $this->node, $this->instance['field_name']));
-    $test_image_url = file_create_url($item['uri']);
+    $test_image_url = image_style_url('juicebox_medium', $item['uri']);
     $test_thumb_url = image_style_url('juicebox_square_thumbnail', $item['uri']);
     // Check for correct embed markup.
     $this->drupalGet('juicebox-views-test');
@@ -84,7 +84,7 @@ class JuiceboxViewsCase extends JuiceboxBaseCase {
     $xml_path = 'juicebox/xml/viewsstyle/juicebox_views_file_test/page';
     // Get the urls to the test image and thumb derivative used by default.
     $item = reset(field_get_items('node', $this->node, $this->instance['field_name']));
-    $test_image_url = file_create_url($item['uri']);
+    $test_image_url = image_style_url('juicebox_medium', $item['uri']);
     $test_thumb_url = image_style_url('juicebox_square_thumbnail', $item['uri']);
     // Check for correct embed markup.
     $this->drupalGet('juicebox-views-file-test');

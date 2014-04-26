@@ -15,7 +15,7 @@
 class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements JuiceboxGalleryDrupalInterface {
 
   // Base injected properties.
-  protected $library = array();
+  public $library = array();
   // Properties set only upon initializing into a specific gallery.
   protected $idArgs = array();
   protected $settings = array();
@@ -25,7 +25,7 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
   /**
    * Constructor.
    *
-   * @param JuiceboxGalleryInterface $juicebox
+   * @param JuiceboxGalleryInterface $gallery
    *   A plain-PHP Juicebox gallery object.
    * @param array $library
    *   An associative array of Library data as made available by the Libraries
@@ -154,22 +154,20 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
     $check_incompatible = (!empty($settings['incompatible_file_action']));
     $src_data = array();
     // Style the main item.
-    $image_item = $this->styleImage($image_item, $image_style, $check_incompatible);
-    // Set image data.
-    $src_data['image_url'] = $image_item['juicebox_styled_src'];
-    // Set thumb data.
-    $src_data['thumb_url'] = '';
+    $this->styleImage($image_item, $image_style, $check_incompatible);
+    $src_data = $image_item['juicebox_src_data'];
+    // Style the thumb.
     if (!$image_item['juicebox_compatible'] && $image_item['fid'] == $thumb_item['fid']) {
-      $src_data['thumb_url'] = $image_item['juicebox_styled_src'];
+      $src_data['thumb_url'] = $src_data['image_url'];
     }
     else {
-      $thumb_item = $this->styleImage($thumb_item, $thumb_style, $check_incompatible);
-      $src_data['thumb_url'] = $thumb_item['juicebox_styled_src'];
+      $this->styleImage($thumb_item, $thumb_style, $check_incompatible);
+      $src_data['thumb_url'] = $thumb_item['juicebox_src_data']['image_url'];
     }
     // Check if the linkURL should be customized based on settings.
     $src_data['link_url'] = $image_item['juicebox_unstyled_src'];
     if ($image_item['juicebox_compatible'] && !empty($settings['linkurl_source']) && $settings['linkurl_source'] == 'image_styled') {
-      $src_data['link_url'] = $image_item['juicebox_styled_src'];
+      $src_data['link_url'] = $src_data['image_url'];
     }
     // Set the link target directly from the gallery settings.
     $src_data['link_target'] = !empty($settings['linkurl_target']) ? $settings['linkurl_target'] : '_blank';
@@ -187,16 +185,15 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
    * type. Otherwise the item is styled normally with the passed image style.
    *
    * @param array $item
-   *   An associative array of file field item data.
+   *   An associative array of file field item data to append Juicebox styled
+   *   image data to.
    * @param string $style
    *   The Drupal image style to apply to the item.
    * @param boolean $check_compatible
    *   Whether-or-not to detect if the item is compatible with Juicebox, and if
    *   so, substitute a mimetype icon for its output.
-   * @return array
-   *   The file item with style data appended to the array.
    */
-  protected function styleImage($item, $style, $check_compatible = TRUE) {
+  protected function styleImage(&$item, $style, $check_compatible = TRUE) {
     $item['juicebox_compatible'] = TRUE;
     $item['juicebox_styled_src'] = '';
     // Set the normal, unstyled, url for reference.
@@ -209,20 +206,33 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
       $icon_dir = drupal_get_path('module', 'juicebox') . '/images/mimetypes';
       $icon_path = file_icon_path((object) $item, $icon_dir);
       if ($icon_path) {
-        $item['juicebox_styled_src'] = file_create_url($icon_path);
+        $item['juicebox_src_data']['image_url'] = file_create_url($icon_path);
       }
       else {
-        $item['juicebox_styled_src'] = file_create_url($icon_dir . '/image-x-generic.png');
+        $item['juicebox_src_data']['image_url'] = file_create_url($icon_dir . '/image-x-generic.png');
       }
     }
     // If the item is compatible, style it.
-    elseif (!empty($style)) {
-      $item['juicebox_styled_src'] = image_style_url($style, $item['uri']);
-    }
     else {
-      $item['juicebox_styled_src'] = $item['juicebox_unstyled_src'];
+      $sizes = array('image_url' => $style);
+      // The "juicebox_multisize" style is special, and actually consists of 3
+      // individual styles configured globally.
+      if ($style == 'juicebox_multisize') {
+        $sizes = array(
+          'image_url_small' => variable_get('juicebox_multisize_small', 'juicebox_small'),
+          'image_url' => variable_get('juicebox_multisize_medium', 'juicebox_medium'),
+          'image_url_large' => variable_get('juicebox_multisize_large', 'juicebox_large'),
+        );
+      }
+      foreach ($sizes as $size => $style_each) {
+        if (!empty($style_each)) {
+          $item['juicebox_src_data'][$size] = image_style_url($style_each, $item['uri']);
+        }
+        else {
+          $item['juicebox_src_data'][$size] = $item['juicebox_unstyled_src'];
+        }
+      }
     }
-    return $item;
   }
 
   /**
@@ -528,6 +538,19 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
     // correctly into fieldsets just before display.
     $form['#pre_render'] = array('juicebox_form_pre_render_fieldsets');
     return $form;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function confBaseStylePresets($allow_multisize = TRUE) {
+    // Get available image style presets.
+    $presets = image_style_options(FALSE);
+    // If multisize is allowed, include it with the normal styles.
+    if ($allow_multisize && !in_array('juicebox_multisize_image_style', $this->library['disallowed_conf'])) {
+      $presets = array('juicebox_multisize' => t('Juicebox PRO multi-size (adaptive)')) + $presets;
+    }
+    return $presets;
   }
 
 }

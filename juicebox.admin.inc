@@ -16,7 +16,7 @@ function juicebox_admin_settings() {
   $library = juicebox_library_detect(TRUE, TRUE);
   $version = !empty($library['version']) ? $library['version'] : t('Unknown');
   $form['juicebox_admin_intro'] = array(
-    '#markup' => t("These are global options for Juicebox administration and debugging purposes. Note that most Juicebox configuration options are set within each gallery's unique configuration form and not applied on a global scope like the values here. Please be sure to clear your site's caches via the !performance settings after making any changes here.", array('!performance' => l(t('performance'), 'admin/config/development/performance'))),
+    '#markup' => t("This page lists global options for Juicebox administration and gallery management. Note that most Juicebox configuration options are set within each gallery's unique configuration form and not applied on a global scope like these. Please be sure to clear your site's caches via the !performance settings after making any changes here.", array('!performance' => l(t('performance'), 'admin/config/development/performance'))),
   );
   $form['juicebox_js_scope'] = array(
     '#type' => 'select',
@@ -40,7 +40,7 @@ function juicebox_admin_settings() {
   $form['juicebox_multilingual'] = array(
     '#type' => 'fieldset',
     '#title' => t('Multilingual options'),
-    '#collapsible' => FALSE,
+    '#collapsible' => TRUE,
     '#collapsed' => FALSE,
   );
   $form['juicebox_multilingual']['juicebox_translate_interface'] = array(
@@ -73,5 +73,44 @@ function juicebox_admin_settings() {
       ),
     ),
   );
+  $multisize_disallowed = in_array('juicebox_multisize_image_style', $library['disallowed_conf']);
+  $multisize_description = '<p>' . t('Some versions of the Juicebox javascript library support "multi-size" (adaptive) image delivery. Individual galleries configured to use the <strong>Juicebox PRO multi-size (adaptive)</strong> image style allow for three different source derivatives to be defined per image, each of which can be configured below. The Juicebox javascript library will then choose between these depedning on the active screen mode (e.g. viewport size) of each user. See the Juicebox javascript library documentation for more information.') . '</p>';
+  if ($multisize_disallowed) {
+    $multisize_description .= '<p><strong>' . t('Your currently detected Juicebox version (@version) is not compatible with multi-size features, so the options below have been disabled.', array('@version' => $version)) . '</strong></p>';
+  }
+  $form['juicebox_multisize'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Juicebox PRO multi-size style configuration'),
+    '#description' => $multisize_description,
+    '#collapsible' => TRUE,
+    '#collapsed' => $multisize_disallowed,
+  );
+  // Get available image style presets
+  $presets = image_style_options(FALSE);
+  $form['juicebox_multisize']['juicebox_multisize_small'] = array(
+    '#title' => t('Small mode image style'),
+    '#default_value' => variable_get('juicebox_multisize_small', 'juicebox_small'),
+    '#description' => t('The style formatter to use in small screen mode (e.g., non-retina mobile devices).'),
+  );
+  $form['juicebox_multisize']['juicebox_multisize_medium'] = array(
+    '#title' => t('Medium mode image style'),
+    '#default_value' => variable_get('juicebox_multisize_medium', 'juicebox_medium'),
+    '#description' => t('The style formatter to use in medium screen mode (e.g., desktops and retina mobile devices).'),
+  );
+  $form['juicebox_multisize']['juicebox_multisize_large'] = array(
+    '#title' => t('Large mode image style'),
+    '#default_value' => variable_get('juicebox_multisize_large', 'juicebox_large'),
+    '#description' => t('The style formatter to use in large screen mode (e.g. expanded view and retina laptops).'),
+  );
+  foreach ($form['juicebox_multisize'] as &$options) {
+    if (is_array($options)) {
+      $options += array(
+        '#type' => 'select',
+        '#options' => $presets,
+        '#empty_option' => t('None (original image)'),
+        '#disabled' => $multisize_disallowed,
+      );
+    }
+  }
   return system_settings_form($form);
 }

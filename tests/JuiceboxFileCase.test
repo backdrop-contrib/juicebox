@@ -38,7 +38,7 @@ class JuiceboxFileCase extends JuiceboxBaseCase {
     $xml_path = 'juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full';
     // Get raw file data expected in the node.
     $item = reset(field_get_items('node', $node, $instance['field_name']));
-    $test_image_url = file_create_url($item['uri']);
+    $test_image_url = image_style_url('juicebox_medium', $item['uri']);
     $test_thumb_url = image_style_url('juicebox_square_thumbnail', $item['uri']);
     // Check for correct embed markup.
     $this->drupalGet('node/' . $node->nid);

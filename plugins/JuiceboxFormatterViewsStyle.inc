@@ -34,13 +34,16 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
     $options = parent::option_definition();
     // Get the base settings.
     $base_settings = $this->juicebox->confBaseOptions();
+    $library = $this->juicebox->library;
     // Structure the base settings in the "default" format that views wants.
     foreach ($base_settings as $setting => $value) {
       $base_settings_default[$setting] = array('default' => $value);
     }
     $options = array_merge($base_settings_default, array(
       'image_field' => array('default' => ''),
-      'image_field_style' => array('default' => ''),
+      // If the library supports multi-size we can default to that for the main
+      // image, otherwise use the "medium" style.
+      'image_field_style' => array('default' => (!empty($library['version']) && !in_array('juicebox_multisize_image_style', $library['disallowed_conf'])) ? 'juicebox_multisize' : 'juicebox_medium'),
       'thumb_field' => array('default' => ''),
       'thumb_field_style' => array('default' => 'juicebox_square_thumbnail'),
       'title_field' => array('default' => ''),
@@ -62,8 +65,6 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
     if (empty($options['field_options_images'])) {
       $missing_field_warning = t('<strong>You must add a field of type image, file or file ID to your view before this value can be set.</strong><br/>');
     }
-    // Get available image style presets
-    $presets = image_style_options(FALSE);
     // Add the view-specific elements.
     $form['image_field'] = array(
       '#type' => 'select',
@@ -86,7 +87,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
       '#title' => t('Image Field Style'),
       '#default_value' => $settings['image_field_style'],
       '#description' => t('The style formatter for the image. Any formatting settings configured on the field itself will be ignored and this style setting will always be used.'),
-      '#options' => $presets,
+      '#options' => $this->juicebox->confBaseStylePresets(),
       '#empty_option' => t('None (original image)'),
     );
     $form['thumb_field_style'] = array(
@@ -94,7 +95,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
       '#title' => t('Thumbnail Field Style'),
       '#default_value' => $settings['thumb_field_style'],
       '#description' => t('The style formatter for the thumbnail. Any formatting settings configured on the field itself will be ignored and this style setting will always be used.'),
-      '#options' => $presets,
+      '#options' => $this->juicebox->confBaseStylePresets(FALSE),
       '#empty_option' => t('None (original image)'),
     );
     $form['title_field'] = array(

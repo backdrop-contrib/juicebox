@@ -37,13 +37,16 @@ function juicebox_field_display_alter(&$display, $context) {
 /**
  * Implements hook_field_formatter_info().
  *
- * Add juicebox_formatter formatter.
+ * Add juicebox_formatter formatter. Note that this hook is only fired on cache
+ * updates to set defaults.
  */
 function juicebox_field_formatter_info() {
   // Get the base settings. This function may be called while clearing caches
   // so let's be extra careful about catching any errors gracefully.
   try {
-    $base_settings = juicebox()->confBaseOptions();
+    $juicebox = juicebox();
+    $base_settings = $juicebox->confBaseOptions();
+    $library = $juicebox->library;
   }
   catch (Exception $e) {
     $message = 'Exception fetching base configuration options for Juicebox field formatter: !message in %function (line %line of %file).';
@@ -56,7 +59,9 @@ function juicebox_field_formatter_info() {
       'description' => t('Style groups of images or files as a Juicebox gallery.'),
       'field types' => array('image', 'file'),
       'settings' => array_merge($base_settings, array(
-        'image_style' => '',
+        // If the library supports multi-size we can default to that for the
+        // main image, otherwise use the "medium" style.
+        'image_style' => (!empty($library['version']) && !in_array('juicebox_multisize_image_style', $library['disallowed_conf'])) ? 'juicebox_multisize' : 'juicebox_medium',
         'thumb_style' => 'juicebox_square_thumbnail',
         'caption_source' => '',
         'title_source' => '',
@@ -71,6 +76,8 @@ function juicebox_field_formatter_info() {
  * Implements hook_field_formatter_settings_form().
  */
 function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  // We need a Juicbox object to fetch some common configuration details.
+  $juicebox = juicebox();
   // If this formatter is being used outside the context of a normal field
   // display (e.g., within individual view rows, panels, as a file entity
   // display, etc.) we display a message to discourage and prevent it's use.
@@ -95,7 +102,6 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
   // Get available title and caption sources.
   $text_sources = _juicebox_field_text_sources($instance);
   // Get available image style presets
-  $presets = image_style_options(FALSE);
   $settings = $instance['display'][$view_mode]['settings'];
   // Add the field-formatter-specific elements.
   $form['image_style'] = array(
@@ -103,7 +109,7 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#title' => t('Main Image Style'),
     '#default_value' => $settings['image_style'],
     '#description' => t('The style formatter for the main image.'),
-    '#options' => $presets,
+    '#options' => $juicebox->confBaseStylePresets(),
     '#empty_option' => t('None (original image)'),
   );
   $form['thumb_style'] = array(
@@ -111,7 +117,7 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#title' => t('Thumbnail Style'),
     '#default_value' => $settings['thumb_style'],
     '#description' => t('The style formatter for the thumbnail.'),
-    '#options' => $presets,
+    '#options' => $juicebox->confBaseStylePresets(FALSE),
     '#empty_option' => t('None (original image)'),
   );
   $form['caption_source'] = array(
@@ -131,7 +137,7 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
     '#empty_option' => t('No title'),
   );
   // Add common Juicebox form options.
-  $form = juicebox()->confBaseForm($form, $settings);
+  $form = $juicebox->confBaseForm($form, $settings);
   return $form;
 }
 
@@ -143,7 +149,7 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
   // Get available image style presets
-  $presets = image_style_options(FALSE);
+  $presets = juicebox()->confBaseStylePresets();
   $settings_display = array();
   // Image style setting.
   if (!empty($settings['image_style']) && isset($presets[$settings['image_style']])) {
