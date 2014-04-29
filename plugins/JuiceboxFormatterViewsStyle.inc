@@ -24,7 +24,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
     // Add Juicebox gallery property to the object.
     // @todo: Perhaps some form of dependecy injection should be considered here
     // instead.
-    $this->juicebox = juicebox();
+    $this->juicebox = juicebox('viewsstyle');
   }
 
   /**
@@ -63,7 +63,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
     $options = $this->confGetFieldSources();
     $missing_field_warning = '';
     if (empty($options['field_options_images'])) {
-      $missing_field_warning = t('<strong>You must add a field of type image, file or file ID to your view before this value can be set.</strong><br/>');
+      $missing_field_warning = t('<strong>You must add a field of type image, file or file ID to your view display before this value can be set.</strong><br/>');
     }
     // Add the view-specific elements.
     $form['image_field'] = array(
@@ -73,6 +73,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
       '#description' => t('The field source to use for each image in the gallery. Must be an image field, file field or a file ID.'),
       '#suffix' => $missing_field_warning,
       '#options' => $options['field_options_images'],
+      '#empty_option' => t('- Select -'),
     );
     $form['thumb_field'] = array(
       '#type' => 'select',
@@ -81,6 +82,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
       '#description' => t('The field source to use for each thumbnail in the gallery. Must be an image field, file field or a file ID. Typically you will choose the same value that was set in the "Image Source" option above.'),
       '#suffix' => $missing_field_warning,
       '#options' => $options['field_options_images'],
+      '#empty_option' => t('- Select -'),
     );
     $form['image_field_style'] = array(
       '#type' => 'select',
@@ -151,8 +153,12 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
     // this validate method can run on pages where the user can't actaully touch
     // the Juicebox-specific plugin settings (such as
     // admin/structure/views/add).
-    if (empty($this->options['image_field'])) {
-      drupal_set_message(t("To ensure a fully functional Juicebox gallery please remember to add at least one field of type Image, File or File ID to your Juicebox view display and configure the Juicebox Gallery format settings."), 'warning', FALSE);
+    if (empty($this->options['image_field']) || empty($this->options['thumb_field'])) {
+      drupal_set_message(t("To ensure a fully functional Juicebox gallery please remember to add at least one field of type Image, File or File ID to your Juicebox view display, and to configure all Juicebox Gallery format settings. Once you have completed these steps, re-save your view to remove this warning."), 'warning', FALSE);
+    }
+    // Set warning about depreciated "Base file ID" source option if it's used.
+    if ($this->options['image_field'] == 'file_base' || $this->options['thumb_field'] == 'file_base') {
+      drupal_set_message(t('A Juicebox gallery used in your view is configured with an obsolete source setting of "Base file ID". Please add a File ID field to the related display and choose that instead for your image or thumb source within the Juicebox Gallery format settings. Once you have completed these steps, re-save your view to remove this warning.'), 'warning', FALSE);
     }
     return $errors;
   }
@@ -346,10 +352,16 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
       'field_options' => array(),
     );
     $field_handlers = $view->display_handler->display->handler->get_handlers('field');
-    // If we have a "file" based view we can use the base ids from the view as
-    // fids, so add a "base" option to the image source list.
+    // If we have a "file" based view we MIGHT be able to use the base row ids
+    // from the view as fids. This only appears to work when some modules, like
+    // File Entity, are installed which ensure the fid is listed for each row.
+    // Because this option cannot be used universally it is OBSOLETE as of
+    // 7.x-2.x-beta6. So we list "file_base" in the "field_options_images_type"
+    // array, but NOT in the "field_options_images" array. This should ensure we
+    // don't break galleries that already use this option, but remove it from
+    // the source picklists going forward.
     if (!empty($view->base_table) && $view->base_table == 'file_managed') {
-      $options['field_options_images']['file_base'] = t('Base file ID');
+      // $options['field_options_images']['file_base'] = t('Base file ID');
       $options['field_options_images_type']['file_base'] = 'file_base';
     }
     // Get the label for each field.

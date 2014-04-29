@@ -10,6 +10,9 @@
  */
 class JuiceboxViewsCase extends JuiceboxBaseCase {
 
+  /**
+   * Define test case info.
+   */
   public static function getInfo() {
     return array(
       'name' => 'Juicebox Views integration tests',
@@ -19,6 +22,9 @@ class JuiceboxViewsCase extends JuiceboxBaseCase {
     );
   }
 
+  /**
+   * Define setup tasks.
+   */
   public function setUp() {
     parent::setUp('juicebox', 'views', 'juicebox_views_test');
     // Create and login user.

@@ -46,6 +46,23 @@ function juicebox_requirements($phase) {
 
 
 /**
+ * Implements hook_uninstall().
+ */
+function juicebox_uninstall() {
+  // Remove global Juicebox variables.
+  variable_del('juicebox_js_scope');
+  variable_del('juicebox_apply_markup_filter');
+  variable_del('juicebox_enable_cors');
+  variable_del('juicebox_translate_interface');
+  variable_del('juicebox_translate_base_languagelist');
+  variable_del('juicebox_show_debug_links');
+  variable_del('juicebox_multisize_small');
+  variable_del('juicebox_multisize_medium');
+  variable_del('juicebox_multisize_large');
+}
+
+
+/**
  * Update registry and cache details to ensure that Juicebox galleries made with
  * beta versions of the module are compatible with post-beta versions.
  */
@@ -72,6 +89,16 @@ function juicebox_update_7101() {
  * Update registry and cache details to accomodate new OOP codebase.
  */
 function juicebox_update_7200() {
+  // Empty update to force a rebuild of the cache/registry. We have changed
+  // many structures which require clean caches.
+}
+
+
+/**
+ * Update registry and cache details to accomodate refactored class names and
+ * test additions.
+ */
+function juicebox_update_7201() {
   // Empty update to force a rebuild of the cache/registry. We have changed
   // many structures which require clean caches.
 }

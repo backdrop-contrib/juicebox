@@ -5,6 +5,9 @@
  * Common helper methods for Juicebox module tests.
  */
 
+/**
+ * Common helper class for Juicebox module tests.
+ */
 class JuiceboxBaseCase extends DrupalWebTestCase {
 
   // Common variables.
@@ -45,7 +48,7 @@ class JuiceboxBaseCase extends DrupalWebTestCase {
   protected function initFieldInstance($content_type_name, $field_name, $field_type, $widget_type) {
     // Add a field of type image to the core article type.
     $field_name_friendly = $this->randomName(20);
-    $edit = array (
+    $edit = array(
       'fields[_add_new_field][label]' => $field_name_friendly,
       'fields[_add_new_field][field_name]' => $field_name,
       'fields[_add_new_field][type]' => $field_type,
@@ -81,7 +84,7 @@ class JuiceboxBaseCase extends DrupalWebTestCase {
    */
   protected function activateJuiceboxFieldFormatter($instance) {
     $this->drupalGet('admin/structure/types/manage/' . $instance['bundle'] . '/display');
-    $edit = array (
+    $edit = array(
       'fields[' . $instance['field_name'] . '][type]' => 'juicebox_formatter',
     );
     $this->drupalPost(NULL, $edit, t('Save'));
@@ -121,7 +124,7 @@ class JuiceboxBaseCase extends DrupalWebTestCase {
       if ($instance['widget']['type'] == 'file_generic') {
         $edit[$instance['field_name'] . '[' . LANGUAGE_NONE . '][0][description]'] = 'Some description text for field ' . $instance['field_name'] . ' on node ' . $nid . ' <strong>with formatting</strong>';
       }
-      $this->drupalPost('node/'. $nid . '/edit', $edit, t('Save'));
+      $this->drupalPost('node/' . $nid . '/edit', $edit, t('Save'));
       $node = node_load($nid);
       $item = reset(field_get_items('node', $node, $instance['field_name']));
       $this->assertTrue($item, 'Node with image content created');

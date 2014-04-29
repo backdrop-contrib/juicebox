@@ -11,6 +11,9 @@
  */
 class JuiceboxConfCase extends JuiceboxBaseCase {
 
+  /**
+   * Define test case info.
+   */
   public static function getInfo() {
     return array(
       'name' => 'Juicebox gallery configuration tests',
@@ -19,6 +22,9 @@ class JuiceboxConfCase extends JuiceboxBaseCase {
     );
   }
 
+  /**
+   * Define setup tasks.
+   */
   public function setUp() {
     parent::setUp('juicebox');
     // Create and login user.

@@ -10,6 +10,9 @@
  */
 class JuiceboxFileCase extends JuiceboxBaseCase {
 
+  /**
+   * Define test case info.
+   */
   public static function getInfo() {
     return array(
       'name' => 'Juicebox file handling tests',
@@ -18,6 +21,9 @@ class JuiceboxFileCase extends JuiceboxBaseCase {
     );
   }
 
+  /**
+   * Define setup tasks.
+   */
   public function setUp() {
     parent::setUp('juicebox');
     // Create and login user.

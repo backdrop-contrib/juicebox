@@ -10,6 +10,9 @@
  */
 class JuiceboxFileEntityCase extends JuiceboxBaseCase {
 
+  /**
+   * Define test case info.
+   */
   public static function getInfo() {
     return array(
       'name' => 'Juicebox File Entity integration tests',
@@ -19,6 +22,9 @@ class JuiceboxFileEntityCase extends JuiceboxBaseCase {
     );
   }
 
+  /**
+   * Define setup tasks.
+   */
   public function setUp() {
     parent::setUp('juicebox', 'file_entity');
     // Create and login user.
@@ -50,7 +56,7 @@ class JuiceboxFileEntityCase extends JuiceboxBaseCase {
       'field_file_image_title_text[' . LANGUAGE_NONE . '][0][value]' => 'Some title text for alt field on file ' . $fid,
       'field_file_image_alt_text[' . LANGUAGE_NONE . '][0][value]' => 'Some alt text for alt field on file ' . $fid . ' <strong>with formatting</strong>',
     );
-    $this->drupalPost('file/'. $fid . '/edit', $edit, t('Save'));
+    $this->drupalPost('file/' . $fid . '/edit', $edit, t('Save'));
     $this->assertText(t('@type @title has been updated.', array('@type' => 'Image', '@title' => entity_label('file', (object) $item))), 'Custom file field alt and title text saved.');
     // Alter field formatter specific settings so that we use the file entity
     // title and alt fields for the image caption and title.

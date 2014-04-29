@@ -44,7 +44,7 @@ function juicebox_field_formatter_info() {
   // Get the base settings. This function may be called while clearing caches
   // so let's be extra careful about catching any errors gracefully.
   try {
-    $juicebox = juicebox();
+    $juicebox = juicebox('field');
     $base_settings = $juicebox->confBaseOptions();
     $library = $juicebox->library;
   }
@@ -77,7 +77,7 @@ function juicebox_field_formatter_info() {
  */
 function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
   // We need a Juicbox object to fetch some common configuration details.
-  $juicebox = juicebox();
+  $juicebox = juicebox('field');
   // If this formatter is being used outside the context of a normal field
   // display (e.g., within individual view rows, panels, as a file entity
   // display, etc.) we display a message to discourage and prevent it's use.
@@ -149,7 +149,7 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
   // Get available image style presets
-  $presets = juicebox()->confBaseStylePresets();
+  $presets = juicebox('field')->confBaseStylePresets();
   $settings_display = array();
   // Image style setting.
   if (!empty($settings['image_style']) && isset($presets[$settings['image_style']])) {
@@ -223,12 +223,12 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   if ($entity_type == 'node') {
     $vm_settings = field_view_mode_settings($entity_type, $instance['bundle']);
     $display_name_conf = !empty($vm_settings[$display_name]['custom_settings']) ? $display_name : 'default';
-    $context['conf_path'] = 'admin/structure/types/manage/' .  $instance['bundle'] . '/display/' . $display_name_conf;
+    $context['conf_path'] = 'admin/structure/types/manage/' . $instance['bundle'] . '/display/' . $display_name_conf;
   }
   // Try building the gallery and its XML.
   try {
     // Initialize the gallery.
-    $juicebox = juicebox();
+    $juicebox = juicebox('field');
     $juicebox->init($xml_args, $display['settings'], $items);
     // Build the gallery.
     juicebox_field_build_gallery($juicebox, $items);

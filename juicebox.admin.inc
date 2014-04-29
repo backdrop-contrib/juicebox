@@ -74,7 +74,7 @@ function juicebox_admin_settings() {
     ),
   );
   $multisize_disallowed = in_array('juicebox_multisize_image_style', $library['disallowed_conf']);
-  $multisize_description = '<p>' . t('Some versions of the Juicebox javascript library support "multi-size" (adaptive) image delivery. Individual galleries configured to use the <strong>Juicebox PRO multi-size (adaptive)</strong> image style allow for three different source derivatives to be defined per image, each of which can be configured below. The Juicebox javascript library will then choose between these depedning on the active screen mode (e.g. viewport size) of each user. See the Juicebox javascript library documentation for more information.') . '</p>';
+  $multisize_description = '<p>' . t('Some versions of the Juicebox javascript library support "multi-size" (adaptive) image delivery. Individual galleries configured to use the <strong>Juicebox PRO multi-size (adaptive)</strong> image style allow for three different source derivatives to be defined per image, each of which can be configured below. The Juicebox javascript library will then choose between these depending on the active screen mode (i.e. viewport size) of each user. See the Juicebox javascript library documentation for more information.') . '</p>';
   if ($multisize_disallowed) {
     $multisize_description .= '<p><strong>' . t('Your currently detected Juicebox version (@version) is not compatible with multi-size features, so the options below have been disabled.', array('@version' => $version)) . '</strong></p>';
   }
@@ -100,7 +100,7 @@ function juicebox_admin_settings() {
   $form['juicebox_multisize']['juicebox_multisize_large'] = array(
     '#title' => t('Large mode image style'),
     '#default_value' => variable_get('juicebox_multisize_large', 'juicebox_large'),
-    '#description' => t('The style formatter to use in large screen mode (e.g. expanded view and retina laptops).'),
+    '#description' => t('The style formatter to use in large screen mode (e.g., expanded view and retina laptops).'),
   );
   foreach ($form['juicebox_multisize'] as &$options) {
     if (is_array($options)) {

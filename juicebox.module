@@ -176,20 +176,32 @@ function juicebox_image_default_styles() {
 
 
 /**
- * Instantiate a Juicebox object along with its dependencies.
+ * Factory to instantiate a Juicebox object along with its dependencies.
  *
+ * The object returned will be uninitialized and will not represent a specific
+ * gallery until the init() method is called. This allows this function, and the
+ * object produced, to also be used in configuration management (building conf
+ * form structures, etc.).
+ *
+ * The specific classes and dependencies used can be modified via
+ * hook_juicebox_classes_alter().
+ *
+ * @param string $type
+ *   A "type" declaration of the Drupal structure that this Juicebox object will
+ *   be used with (e.g., "field" or "viewsstyle"). This value may be used
+ *   within hook_juicebox_classes_alter() as a factor in deciding what classes
+ *   to use.
  * @return JuiceboxGalleryWrapperInterface
- *   A new Juicebox plugin object that contains an empty Juicebox gallery
- *   object.
+ *   A new uninitialized Juicebox object.
  */
-function juicebox() {
+function juicebox($type = '') {
   // Get the library data. We do this early (before instantiating) as the lib
   // details should be allowed to impact which classes are used.
   $library = juicebox_library_detect();
   // Calculate the classes that need to be instantiated.
   $classes = array('gallery' => 'JuiceboxGallery', 'juicebox' => 'JuiceboxGalleryDrupal');
   // Allow the classes to be altered.
-  drupal_alter('juicebox_classes', $classes, $library);
+  drupal_alter('juicebox_classes', $classes, $library, $type);
   if (class_exists($classes['gallery']) && class_exists($classes['juicebox'])) {
     // Instantiate the Juicebox gallery objects.
     $gallery = new $classes['gallery']();
