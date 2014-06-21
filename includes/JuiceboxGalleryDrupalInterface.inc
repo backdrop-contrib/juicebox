@@ -80,6 +80,10 @@ interface JuiceboxGalleryDrupalInterface extends JuiceboxGalleryInterface {
    *   An associative array of image source URLs that's ready to be added
    *   to a Juicebox gallery, including:
    *   - image_url: URL to the full image to display.
+   *   - image_url_small: URL to the full image to display in small screen mode.
+   *     Only included if $image_style = juicebox_multisize.
+   *   - image_url_large: URL to the full image to display in large screen mode.
+   *     Only included if $image_style = juicebox_multisize.
    *   - thumb_url: URL to the thumbnail to display for the image.
    *   - link_url: The Juicebox "link URL" value for the image.
    *   - link_target: The browser target value to use when following a link URL.

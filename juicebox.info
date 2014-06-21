@@ -4,6 +4,7 @@ package = Media
 core = 7.x
 dependencies[] = image
 dependencies[] = libraries (>1.0)
+configure = admin/config/media/juicebox
 
 ; Local Class and Plugin Files
 files[] = includes/JuiceboxGalleryInterface.inc

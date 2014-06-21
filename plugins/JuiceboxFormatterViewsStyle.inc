@@ -327,9 +327,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
    * Utility to determine which view fields can be used for image data.
    *
    * This method will extract a list of fields that can be used as "sources"
-   * for a Juicebox gallery along with other useful field information. Note that
-   * this may be called when building Drupal configuration forms that are
-   * managed outside of this object.
+   * for a Juicebox gallery along with other useful field information.
    *
    * @return array
    *   An associative array containing a breakdown of field data that can be
@@ -366,8 +364,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
     }
     // Get the label for each field.
     foreach ($field_handlers as $field => $handler) {
-      $label = $handler->label();
-      $name = $label ? $label : $handler->ui_name();
+      $name = $handler->ui_name();
       // Separate image fields from non-image fields. For image fields we can
       // work with fids and fields of type image or file.
       if (isset($handler->field) && $handler->field == 'fid') {
