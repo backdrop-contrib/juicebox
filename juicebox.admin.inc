@@ -35,7 +35,7 @@ function juicebox_admin_settings() {
     '#type' => 'checkbox',
     '#title' => t('Allow galleries to be embedded remotely (CORS support)'),
     '#default_value' => variable_get('juicebox_enable_cors', FALSE),
-    '#description' => t('Enable cross-origin resource sharing (CORS) for all generated Juicebox XML. This will allow all origins/domains to use Juicebox XML requested from this site for embedding purposes.'),
+    '#description' => t('Enable cross-origin resource sharing (CORS) for all generated Juicebox XML. This will allow all origins/domains to use any Juicebox XML requested from this site for embedding purposes (adds a <em>Access-Control-Allow-Origin: *</em> header to all Juicebox XML responses).'),
   );
   $form['juicebox_multilingual'] = array(
     '#type' => 'fieldset',
