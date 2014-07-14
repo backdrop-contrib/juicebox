@@ -11,7 +11,7 @@
 // Move the field-based logic (field hooks and related) into another file
 // purely for DX. This file still has to be globally included as field
 // hooks don't work as expected if formally defined in hook_hook_info().
-require_once dirname(__FILE__) . '/juicebox.field.inc';
+require_once dirname(__FILE__) . '/includes/juicebox.field.inc';
 
 
 /**
@@ -34,7 +34,7 @@ function juicebox_menu() {
   $items['admin/config/media/juicebox'] = array(
     'title' => 'Juicebox',
     'description' => 'Adjust global Juicebox settings.',
-    'file' => 'juicebox.admin.inc',
+    'file' => 'includes/juicebox.admin.inc',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('juicebox_admin_settings'),
     'access arguments' => array('administer site configuration'),
@@ -176,6 +176,17 @@ function juicebox_image_default_styles() {
 
 
 /**
+ * Implements hook_file_formatter_info_alter().
+ */
+function juicebox_file_formatter_info_alter(&$info) {
+  // Using a Juicebox field formatter on a complete file entity display does
+  // not make any sense, and is not supported. The line below removes that
+  // formatter option alltogether.
+  unset($info['file_field_juicebox_formatter']);
+}
+
+
+/**
  * Factory to instantiate a Juicebox object along with its dependencies.
  *
  * The object returned will be uninitialized and will not represent a specific
@@ -186,22 +197,17 @@ function juicebox_image_default_styles() {
  * The specific classes and dependencies used can be modified via
  * hook_juicebox_classes_alter().
  *
- * @param string $type
- *   A "type" declaration of the Drupal structure that this Juicebox object will
- *   be used with (e.g., "field" or "viewsstyle"). This value may be used
- *   within hook_juicebox_classes_alter() as a factor in deciding what classes
- *   to use.
  * @return JuiceboxGalleryWrapperInterface
  *   A new uninitialized Juicebox object.
  */
-function juicebox($type = '') {
+function juicebox() {
   // Get the library data. We do this early (before instantiating) as the lib
   // details should be allowed to impact which classes are used.
   $library = juicebox_library_detect();
   // Calculate the classes that need to be instantiated.
   $classes = array('gallery' => 'JuiceboxGallery', 'juicebox' => 'JuiceboxGalleryDrupal');
   // Allow the classes to be altered.
-  drupal_alter('juicebox_classes', $classes, $library, $type);
+  drupal_alter('juicebox_classes', $classes, $library);
   if (class_exists($classes['gallery']) && class_exists($classes['juicebox'])) {
     // Instantiate the Juicebox gallery objects.
     $gallery = new $classes['gallery']();

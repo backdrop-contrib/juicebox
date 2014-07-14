@@ -44,7 +44,7 @@ function juicebox_field_formatter_info() {
   // Get the base settings. This function may be called while clearing caches
   // so let's be extra careful about catching any errors gracefully.
   try {
-    $juicebox = juicebox('field');
+    $juicebox = juicebox();
     $base_settings = $juicebox->confBaseOptions();
     $library = $juicebox->library;
   }
@@ -77,28 +77,19 @@ function juicebox_field_formatter_info() {
  */
 function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
   // We need a Juicbox object to fetch some common configuration details.
-  $juicebox = juicebox('field');
-  // If this formatter is being used outside the context of a normal field
-  // display (e.g., within individual view rows, panels, as a file entity
-  // display, etc.) we display a message to discourage and prevent it's use.
-  // This is due to the fact that we don't have a reliable way to build the XML
-  // for these cases.
-  // @todo Consider a "whitelisting" approach instead of "blacklisting".
-  $juicebox_formatter_notice = '';
-  if (!empty($instance['bundle']) && $instance['bundle'] == 'ctools') {
-    $juicebox_formatter_notice = t('<strong>NOTICE: The Juicebox field formatter is not fully supported within individual view rows (and other ctools contexts)</strong>. Using this setting is not recommended. For views support please use the Juicebox display style plugin.');
-  }
-  if (!empty($instance['entity_type']) && $instance['entity_type'] == 'file') {
-    $juicebox_formatter_notice = t('<strong>NOTICE: The Juicebox field formatter is not fully supported when rendering individual file entities</strong>. Using this setting is not recommended. For file support please apply the Juicebox field formatter to a <em>field</em> of type file.');
-  }
-  if (!empty($juicebox_formatter_notice)) {
-    return array('juicebox_formatter_notice' => array(
-      '#prefix' => '<p>',
-      '#markup' => $juicebox_formatter_notice,
-      '#suffix' => '</p>',
-    ));
-  }
+  $juicebox = juicebox();
   $form = array();
+  // Detect if this is a "pseudo" instance such that the field's context is
+  // managed by something other than the core Field API (e.g., a fake ctools
+  // instance used for a panel or a view row). In this case it's not very
+  // likely that things will work, so we put up a big notice.
+  if (!isset($instance['id'])) {
+    $form['instance_warning'] = array(
+      '#prefix' => '<div class="messages warning">',
+      '#markup' => t('<strong>WARNING:</strong> You appear to be using the Juicebox field formatter with a field instance that is not directly attached to an entity. This configuration is not officially supported and will likely not work as expected.'),
+      '#suffix' => '</div>',
+    );
+  }
   // Get available title and caption sources.
   $text_sources = _juicebox_field_text_sources($instance);
   // Get available image style presets
@@ -149,7 +140,7 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
   // Get available image style presets
-  $presets = juicebox('field')->confBaseStylePresets();
+  $presets = juicebox()->confBaseStylePresets();
   $settings_display = array();
   // Image style setting.
   if (!empty($settings['image_style']) && isset($presets[$settings['image_style']])) {
@@ -212,7 +203,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   $entity_id = $entity->{$entity_type_info['entity keys']['id']};
   // Get the display name (view mode) from our custom display variable. This was
   // set for us in juicebox_field_display_alter().
-  $display_name = $display['juicebox_vm'];
+  $display_name = isset($display['juicebox_vm']) ? $display['juicebox_vm'] : 'unknown';
   // Generate xml path details.
   $xml_id = 'field/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . $display_name;
   $xml_args = explode('/', $xml_id);
@@ -220,7 +211,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   // If this is a field on a node, we can calculate the path to edit the field
   // (used for admin contextual links).
   $context = array();
-  if ($entity_type == 'node') {
+  if ($entity_type == 'node' && !empty($display['juicebox_vm'])) {
     $vm_settings = field_view_mode_settings($entity_type, $instance['bundle']);
     $display_name_conf = !empty($vm_settings[$display_name]['custom_settings']) ? $display_name : 'default';
     $context['conf_path'] = 'admin/structure/types/manage/' . $instance['bundle'] . '/display/' . $display_name_conf;
@@ -228,7 +219,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   // Try building the gallery and its XML.
   try {
     // Initialize the gallery.
-    $juicebox = juicebox('field');
+    $juicebox = juicebox();
     $juicebox->init($xml_args, $display['settings'], $items);
     // Build the gallery.
     juicebox_field_build_gallery($juicebox, $items);
@@ -286,6 +277,66 @@ function juicebox_field_build_gallery(JuiceboxGalleryDrupalInterface $juicebox, 
 
 
 /**
+ * Utility to fetch the title and caption source options for field-based
+ * galleries (addresses File Entity and Media module support).
+ *
+ * @param array $instance
+ *   An associative array containing the Drupal field instance information for
+ *   a Juicebox field.
+ * @return array
+ *   An associative array representing the key => label pairs for each title
+ *   and caption source option. Each key will match a keyed value on the file
+ *   item source array when the gallery is built.
+ *
+ * @see _juicebox_field_get_text()
+ */
+function _juicebox_field_text_sources($instance) {
+  // Check if this is a "pseudo" instance such that the field is managed by
+  // something other than the core Field API (e.g., a fake ctools instance used
+  // for a panel or a view row). In this case the instance data is most likely
+  // fake, and cannot tell us anything about what field options are available.
+  // When this happens we pretend all relevent instance options are active.
+  if (!isset($instance['id'])) {
+    foreach (array('alt_field', 'title_field', 'image_field_caption', 'description_field') as $value) {
+      $instance['settings'][$value] = TRUE;
+    }
+  }
+  // If this is a standard image field we can use the core image "alt" and
+  // "title" values.
+  if (!empty($instance['settings']['alt_field'])) {
+    $text_source_options['alt'] = t('Image - Alt text (processed by fallback text format)');
+  }
+  if (!empty($instance['settings']['title_field'])) {
+    $text_source_options['title'] = t('Image - Title text (processed by fallback text format)');
+  }
+  // If image field caption is installed on an image field we can also use it.
+  if (module_exists('image_field_caption') && !empty($instance['settings']['image_field_caption'])) {
+    $text_source_options['image_field_caption'] = t('Image - Image field caption');
+  }
+  // If this is a standard file field we can use the core file "description"
+  // value.
+  if (!empty($instance['settings']['description_field'])) {
+    $text_source_options['description'] = t('File - Description text (processed by fallback text format)');
+  }
+  // The filename should always be an available option.
+  $text_source_options['filename'] = t('File - Filename (processed by fallback text format)');
+  // If file entity is installed we can use fields attached to the "image"
+  // file entity.
+  if (module_exists('file_entity')) {
+    // Get the fields that are available on the image file type.
+    $image_fields = field_info_instances('file', 'image');
+    foreach ($image_fields as $image_field_name => $image_field) {
+      // Only text-based fields should be options.
+      if (!empty($image_field['widget']['module']) && $image_field['widget']['module'] == 'text') {
+        $text_source_options[$image_field_name] = t('File Entity Image - @label', array('@label' => $image_field['label']));
+      }
+    }
+  }
+  return $text_source_options;
+}
+
+
+/**
  * Utility to get sanitized text directly from a file field item.
  *
  * This method will attempt to extract text, in a format safe for display,
@@ -324,55 +375,4 @@ function _juicebox_field_get_text($item, $source) {
     }
   }
   return $text;
-}
-
-
-/**
- * Utility to fetch the title and caption source options for field-based
- * galleries (addresses File Entity and Media module support).
- *
- * @param array $instance
- *   An associative array containing the Drupal field instance information for
- *   a Juicebox field.
- * @return array
- *   An associative array representing the key => label pairs for each title
- *   and caption source option. Each key will match a keyed value on the file
- *   item source array when the gallery is built.
- *
- * @see _juicebox_field_get_text()
- */
-function _juicebox_field_text_sources($instance) {
-  // The filename should always be an available option.
-  $text_source_options['filename'] = t('File - Filename (processed by fallback text format)');
-  // If this is a standard image field we can use the core image "alt" and
-  // "title" values if they are active.
-  if (!empty($instance['settings']['alt_field'])) {
-    $text_source_options['alt'] = t('Image - Alt text (processed by fallback text format)');
-  }
-  if (!empty($instance['settings']['title_field'])) {
-    $text_source_options['title'] = t('Image - Title text (processed by fallback text format)');
-  }
-  // If image field caption is installed and enabled on an image field we can
-  // also use it.
-  if (!empty($instance['settings']['image_field_caption']) && module_exists('image_field_caption')) {
-    $text_source_options['image_field_caption'] = t('Image - Image field caption');
-  }
-  // If this is a standard file field we can use the core file "description"
-  // value if it is active.
-  if (!empty($instance['settings']['description_field'])) {
-    $text_source_options['description'] = t('File - Description text (processed by fallback text format)');
-  }
-  // If file entity is installed we can use fields attached to the "image"
-  // file entity.
-  if (module_exists('file_entity')) {
-    // Get the fields that are available on the image file type.
-    $image_fields = field_info_instances('file', 'image');
-    foreach ($image_fields as $image_field_name => $image_field) {
-      // Only text-based fields should be options.
-      if (!empty($image_field['widget']['module']) && $image_field['widget']['module'] == 'text') {
-        $text_source_options[$image_field_name] = t('File Entity Image - @label', array('@label' => $image_field['label']));
-      }
-    }
-  }
-  return $text_source_options;
 }

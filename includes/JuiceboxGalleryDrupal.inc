@@ -145,6 +145,15 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
   /**
    * {@inheritdoc}
    */
+  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE, $override_id = NULL, $offset = NULL) {
+    // We should always get the filter setting from global variables.
+    $filter = $this->settings['apply_markup_filter'];
+    return $this->gallery->addImage($src_data, $title, $caption, $filter, $override_id, $offset);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function styleImageSrcData($image_item, $image_style, $thumb_item, $thumb_style) {
     $settings = $this->settings;
     // Make sure that we have proper file field items to work with.

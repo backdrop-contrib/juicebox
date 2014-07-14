@@ -24,7 +24,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
     // Add Juicebox gallery property to the object.
     // @todo: Perhaps some form of dependecy injection should be considered here
     // instead.
-    $this->juicebox = juicebox('viewsstyle');
+    $this->juicebox = juicebox();
   }
 
   /**

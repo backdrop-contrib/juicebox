@@ -98,7 +98,7 @@ function hook_juicebox_classes_alter(&$classes, $library, $type) {
  *
  * @see juicebox_page_xml()
  */
-function hook_juicebox_xml_class(&$xml_loader_class, $args) {
+function hook_juicebox_xml_class_alter(&$xml_loader_class, $args) {
   if (!empty($args[0]) && $args[0] == 'mywidget') {
     $xml_loader_class = 'JuiceboxXmlMyWidget';
   }
