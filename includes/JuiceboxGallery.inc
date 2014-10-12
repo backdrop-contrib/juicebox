@@ -93,6 +93,15 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
+  public function updateImage($image_id, $src_data = array(), $title = '', $caption = '', $filter = TRUE) {
+    // Updating can be accomplished with addImage(), so just pass-through the
+    // needed params.
+    return $this->addImage($src_data, $title, $caption, $filter, $image_id);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function getImages() {
     return $this->images;
   }

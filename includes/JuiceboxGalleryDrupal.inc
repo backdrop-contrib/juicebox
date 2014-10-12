@@ -204,7 +204,6 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
    */
   protected function styleImage(&$item, $style, $check_compatible = TRUE) {
     $item['juicebox_compatible'] = TRUE;
-    $item['juicebox_styled_src'] = '';
     // Set the normal, unstyled, url for reference.
     $item['juicebox_unstyled_src'] = file_create_url($item['uri']);
     // Check compatibility if configured and if the library info contains
@@ -265,7 +264,7 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
       $links = array();
       // Add link to the gallery-specific configuration if we have it.
       if (!empty($context['conf_path']) && drupal_valid_path($context['conf_path'])) {
-        $links['gallery_config'] = array('title' => t('Configure this Juicebox gallery'), 'href' => $context['conf_path'], 'query' => drupal_get_destination());
+        $links['gallery_config'] = array('title' => t('Configure galleries of this type'), 'href' => $context['conf_path'], 'query' => drupal_get_destination());
       }
       // Add a link to the global Juicebox options.
       if (drupal_valid_path('admin/config/media/juicebox')) {

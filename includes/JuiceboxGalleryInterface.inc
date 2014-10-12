@@ -66,6 +66,35 @@ interface JuiceboxGalleryInterface {
   public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE, $override_id = NULL, $offset = NULL);
 
   /**
+   * Update an existing image in the gallery. This duplicates the functionality
+   * of addImage() with an $override_id but is included as a separate method for
+   * convienence.
+   *
+   * @param int $image_id
+   *   The id of an existing image, already added to the gallery, to update
+   *   with new data. This id should match the index for the image as returned
+   *   by getImages().
+   * @param array $src_data
+   *   Associative array containing all the source data for a gallery image,
+   *   including the:
+   *   - image_url: URL to the full image to display.
+   *   - thumb_url: URL to the thumbnail to display for the image.
+   *   - link_url: The Juicebox "link URL" value for the image.
+   *   - link_target: The browser target value to use when following a link URL.
+   * @param string $title
+   *   The title markup to display for the image.
+   * @param string $caption
+   *   The caption markup to display for the image.
+   * @param boolean $filter
+   *   Optional. Whether-or-not to filter the $title and $caption values for
+   *   syntactic compatibility with Juicebox.
+   *
+   * @return boolean
+   *   Returns TRUE on successful update and FALSE on failure.
+   */
+  public function updateImage($image_id, $src_data = array(), $title = '', $caption = '', $filter = TRUE);
+
+  /**
    * Getter method for the gallery images.
    *
    * @return array

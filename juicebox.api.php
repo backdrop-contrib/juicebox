@@ -58,19 +58,12 @@ function hook_juicebox_gallery_alter($juicebox, $data) {
  * @param array $library
  *   Juicebox javascript library data as provided through Libraries API.
  *   Provided for context.
- * @param string $type
- *   A "type" declaration for the Drupal structure that the Juicebox object will
- *   be based on (e.g., "field" or "viewsstyle"). Provided for context.
  *
  * @see juicebox()
  */
-function hook_juicebox_classes_alter(&$classes, $library, $type) {
+function hook_juicebox_classes_alter(&$classes, $library) {
   // Provide custom (global) overrides to a Juicebox library.
   $classes['juicebox'] = 'MyJuiceboxGalleryWrapper';
-  // Provide a custom class to use only for field-based galleries.
-  if ($type == 'field') {
-    $classes['juicebox'] = 'MyCustomJuiceboxFieldGallery';
-  }
   // Swap out the gallery dependency object because some future Juicebox
   // javascript library requires different embed or XML output.
   if (!empty($library['version']) && $library['version'] == 'Pro 12.3') {

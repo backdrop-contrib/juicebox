@@ -56,6 +56,13 @@ abstract class JuiceboxGalleryDecorator implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
+  public function updateImage($image_id, $src_data = array(), $title = '', $caption = '', $filter = TRUE) {
+    return $this->gallery->updateImage($image_id, $src_data, $title, $caption, $filter);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function getImages() {
     return $this->gallery->getImages();
   }
