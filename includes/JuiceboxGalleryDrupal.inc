@@ -136,6 +136,7 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
           'data' => $this->renderJavascript(url($xml['path'], $xml['options'])),
           'type' => 'inline',
           'scope' => variable_get('juicebox_js_scope', 'header'),
+          'defer' => FALSE, // To avoid notice if drupal_get_js() used below
           'weight' => 10, // load below main library
         );
         // Drupal core does not handle inline js additions properly during an
