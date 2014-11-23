@@ -129,14 +129,24 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
     else {
       $output['#theme'] = 'juicebox_embed_markup';
       if ($add_js) {
-        $xml_url = url($xml['path'], $xml['options']);
+        // Add the main library via libraries API.
         $output['#attached']['libraries_load'][] = array('juicebox');
-        $output['#attached']['js'][] = array(
-          'data' => $this->renderJavascript($xml_url),
+        // Then handle the gallery-specific js.
+        $gallery_js = array(
+          'data' => $this->renderJavascript(url($xml['path'], $xml['options'])),
           'type' => 'inline',
           'scope' => variable_get('juicebox_js_scope', 'header'),
           'weight' => 10, // load below main library
         );
+        // Drupal core does not handle inline js additions properly during an
+        // AJAX response. So we need to force the addition of an inline code
+        // block for the gallery-specific js when AJAX is detected.
+        if ($this->isAjax()) {
+          $output['#suffix'] = drupal_get_js(variable_get('juicebox_js_scope', 'header'), array($gallery_js));
+        }
+        else {
+          $output['#attached']['js'][] = $gallery_js;
+        }
       }
     }
     return $output;
@@ -314,6 +324,13 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
    */
   protected function accessDebugDisplay() {
     return user_access('access administration pages');
+  }
+  
+  /**
+   * Check if we are inside an AJAX response.
+   */
+  protected function isAjax() {
+    return (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
   }
 
   /**
