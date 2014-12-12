@@ -182,10 +182,16 @@ interface JuiceboxGalleryInterface {
    *
    * @param string $xml_url
    *   The URL to the Juicebox XML for this gallery.
+   * @param boolean $add_script_tags
+   *   Whether-or-not to add <script> tags to wrap the output.
+   * @param boolean $jquery_defer
+   *   Whether-or-not to defer the execution of the javascript until after the
+   *   DOM is ready using jQuery(document).ready. This can be useful if the
+   *   code will be included inline before the main Juicebox library. Requires
+   *   that the jQuery library is already included.
    * @return string
-   *   Javascript code describing a gallery. Note that <script> tags are
-   *   excluded.
+   *   Javascript code describing a gallery.
    */
-  public function renderJavascript($xml_url);
+  public function renderJavascript($xml_url, $add_script_tags = FALSE, $jquery_defer = FALSE);
 
 }

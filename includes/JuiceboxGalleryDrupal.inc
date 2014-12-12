@@ -112,42 +112,36 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
     // The returned render array will contain some common values no matter what
     // output we produce (normal and debug).
     $output = array(
-      '#c_links' => $this->buildContextualLinks($xml_path, $context),
-      '#gallery_id' => $this->getId(),
-      '#gallery_images' => $this->getImages(),
-      '#gallery_options' => $this->getOptions(),
-      '#xml' => $xml,
-      '#settings' => $this->settings,
+      'gallery' => array(
+        '#c_links' => $this->buildContextualLinks($xml_path, $context),
+        '#gallery_id' => $this->getId(),
+        '#gallery_images' => $this->getImages(),
+        '#gallery_options' => $this->getOptions(),
+        '#xml' => $xml,
+        '#settings' => $this->settings,
+      ),
     );
     // If "jb-debug" is active in the query we display debug info in place of
     // the actual gallery.
     if (array_key_exists('jb-debug', $current_query) && $this->accessDebugDisplay()) {
-      $output['#theme'] = 'juicebox_debug_markup';
-      $output['#attached']['css'] = array(drupal_get_path('module', 'juicebox') . '/css/admin_styles.css');
+      $output['gallery']['#theme'] = 'juicebox_debug_markup';
+      $output['gallery']['#attached']['css'] = array(drupal_get_path('module', 'juicebox') . '/css/admin_styles.css');
     }
     // Otherwise we are just displaying the normal gallery.
     else {
-      $output['#theme'] = 'juicebox_embed_markup';
+      $output['gallery']['#theme'] = 'juicebox_embed_markup';
       if ($add_js) {
         // Add the main library via libraries API.
-        $output['#attached']['libraries_load'][] = array('juicebox');
-        // Then handle the gallery-specific js.
-        $gallery_js = array(
-          'data' => $this->renderJavascript(url($xml['path'], $xml['options'])),
-          'type' => 'inline',
-          'scope' => variable_get('juicebox_js_scope', 'header'),
-          'defer' => FALSE, // To avoid notice if drupal_get_js() used below
-          'weight' => 10, // load below main library
-        );
-        // Drupal core does not handle inline js additions properly during an
-        // AJAX response. So we need to force the addition of an inline code
-        // block for the gallery-specific js when AJAX is detected.
-        if ($this->isAjax()) {
-          $output['#suffix'] = drupal_get_js(variable_get('juicebox_js_scope', 'header'), array($gallery_js));
-        }
-        else {
-          $output['#attached']['js'][] = $gallery_js;
-        }
+        $output['gallery']['#attached']['libraries_load'][] = array('juicebox');
+        // Then handle the gallery-specific js snippet, which is dynamically
+        // calculated for each gallery. Though it's probably possible to do
+        // something with Drupal behaviors and Drupal.settings to make this
+        // work, that really seems like overkill. Instead we just do a simple
+        // inline inclusion. Note that we don't use '#attached' for this as that
+        // can make the aggregation of other scripts less efficient and is not
+        // friendly to AJAX.
+        $defer = variable_get('juicebox_js_scope', 'header') == 'footer' ? TRUE : FALSE;
+        $output['gallery_js_snippet'] = array('#markup' => $this->renderJavascript(url($xml['path'], $xml['options']), TRUE, $defer));
       }
     }
     return $output;
@@ -325,13 +319,6 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
    */
   protected function accessDebugDisplay() {
     return user_access('access administration pages');
-  }
-  
-  /**
-   * Check if we are inside an AJAX response.
-   */
-  protected function isAjax() {
-    return (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
   }
 
   /**

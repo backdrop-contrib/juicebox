@@ -205,9 +205,9 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
-  public function renderJavascript($xml_url) {
-    $output = '';
-    $output .= "new juicebox({";
+  public function renderJavascript($xml_url, $add_script_tags = FALSE, $jquery_defer = FALSE) {
+    // Set the Juicebox-specific code.
+    $output = "new juicebox({";
     $output .= "configUrl:'" . $xml_url . "',";
     $output .= "containerId:'" . $this->id . "'";
     // Add options that need to be loaded immediately (before XML is available).
@@ -219,7 +219,17 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
       }
     }
     $output .= "});";
-    return $output;
+    // Set wrappers.
+    $script_wrap_prefix = $script_wrap_suffix = $inner_wrap_prefix = $inner_wrap_suffix = '';
+    if ($add_script_tags) {
+      $script_wrap_prefix = '<script type="text/javascript">' . "\n<!--//--><![CDATA[//><!--\n";
+      $script_wrap_suffix = "\n//--><!]]>\n" . '</script>';
+    }
+    if ($jquery_defer) {
+      $inner_wrap_prefix = 'jQuery(document).ready(function () {';
+      $inner_wrap_suffix = '});';
+    }
+    return "\n" . $script_wrap_prefix . $inner_wrap_prefix . $output . $inner_wrap_suffix . $script_wrap_suffix . "\n";
   }
 
   /**
