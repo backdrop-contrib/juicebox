@@ -32,11 +32,22 @@ function juicebox_requirements($phase) {
       $requirements['juicebox']['description'] = $library['error message'];
       $requirements['juicebox']['severity'] = REQUIREMENT_ERROR;
     }
+    // Add notice about incompatibility with devel_themer.
     if (module_exists('devel_themer')) {
       $requirements['juicebox_devel_themer'] = array(
         'title' => 'Juicebox Compatibility',
         'value' => 'Theme Developer module is enabled',
         'description' => t('The Juicebox module is not compatible with the Theme Developer module. Your Juicebox galleries may not display correctly until the Theme Developer module has been disabled.'),
+        'severity' => REQUIREMENT_ERROR,
+      );
+    }
+    // Add notice about the fact that all logic from the juicebox_xml_cache
+    // module has been added this module.
+    if (module_exists('juicebox_xml_cache')) {
+      $requirements['juicebox_xml_cache'] = array(
+        'title' => 'Juicebox Compatibility',
+        'value' => 'Juicebox XML cache module obsolete',
+        'description' => t('The Juicebox XML Cache (sandbox) module is now obsolete. That module\'s primary functionality has been added to the main Juicebox module (as of version 7.x-2.1 of Juicebox) and is no longer needed. Please uninstall the Juicebox XML Cache module.'),
         'severity' => REQUIREMENT_ERROR,
       );
     }

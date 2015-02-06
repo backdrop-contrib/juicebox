@@ -105,8 +105,8 @@ abstract class JuiceboxGalleryDecorator implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
-  public function renderXml() {
-    return $this->gallery->renderXml();
+  public function renderXml($script_wrap_id = NULL) {
+    return $this->gallery->renderXml($script_wrap_id);
   }
 
   /**

@@ -359,7 +359,6 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
     // don't break galleries that already use this option, but remove it from
     // the source picklists going forward.
     if (!empty($view->base_table) && $view->base_table == 'file_managed') {
-      // $options['field_options_images']['file_base'] = t('Base file ID');
       $options['field_options_images_type']['file_base'] = 'file_base';
     }
     // Get the label for each field.

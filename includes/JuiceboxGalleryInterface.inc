@@ -161,11 +161,16 @@ interface JuiceboxGalleryInterface {
    * Get the XML for a Juicebox gallery once images and options have been
    * added.
    *
+   * @param string $script_wrap_id
+   *   If a value is passed the XML will be wrapped inside <script> tags with
+   *   this id. If no value is passed, no <script> wrapper will be used and the
+   *   raw XML will be returned. This is useful if the XML will be embedded
+   *   inside normal HTML.
    * @return string
    *   Structured Juicebox XML describing a gallery. Note that no header data
    *   is set or returned here.
    */
-  public function renderXml();
+  public function renderXml($script_wrap_id = NULL);
 
   /**
    * Get the embed code for a Juicebox gallery once images and options have been

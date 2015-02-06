@@ -81,12 +81,12 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
   $form = array();
   // Detect if this is a "pseudo" instance such that the field's context is
   // managed by something other than the core Field API (e.g., a fake ctools
-  // instance used for a panel or a view row). In this case it's not very
-  // likely that things will work, so we put up a big notice.
+  // instance used for a panel or a view row). This case is supported but we
+  // still want to put up a notice about it.
   if (!isset($instance['id'])) {
     $form['instance_warning'] = array(
       '#prefix' => '<div class="messages warning">',
-      '#markup' => t('<strong>WARNING:</strong> You appear to be using the Juicebox field formatter with a field instance that is not directly attached to an entity. This configuration is not officially supported and will likely not work as expected.'),
+      '#markup' => t('<strong>WARNING:</strong> You appear to be using the Juicebox field formatter with a field instance that is not directly attached to an entity. Support for this configuration is currently experimental. Please test your final gallery output thoroughly.'),
       '#suffix' => '</div>',
     );
   }
@@ -201,9 +201,11 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   $field_name = $instance['field_name'];
   $entity_type_info = entity_get_info($entity_type);
   $entity_id = $entity->{$entity_type_info['entity keys']['id']};
-  // Get the display name (view mode) from our custom display variable. This was
-  // set for us in juicebox_field_display_alter().
-  $display_name = isset($display['juicebox_vm']) ? $display['juicebox_vm'] : 'unknown';
+  // Get display data (such as the view mode) from our custom display variable.
+  // This was set for us in juicebox_field_display_alter().
+  $psuedo_instance = empty($display['juicebox_vm']) ? TRUE : FALSE;
+  $add_js = empty($display['juicebox_vm_incompatible']) ? TRUE : FALSE;
+  $display_name = !$psuedo_instance ? $display['juicebox_vm'] : 'unknown';
   // Generate xml path details.
   $xml_id = 'field/' . $entity_type . '/' . $entity_id . '/' . $field_name . '/' . $display_name;
   $xml_args = explode('/', $xml_id);
@@ -211,7 +213,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   // If this is a field on a node, we can calculate the path to edit the field
   // (used for admin contextual links).
   $context = array();
-  if ($entity_type == 'node' && !empty($display['juicebox_vm'])) {
+  if ($entity_type == 'node' && !$psuedo_instance) {
     $vm_settings = field_view_mode_settings($entity_type, $instance['bundle']);
     $display_name_conf = !empty($vm_settings[$display_name]['custom_settings']) ? $display_name : 'default';
     $context['conf_path'] = 'admin/structure/types/manage/' . $instance['bundle'] . '/display/' . $display_name_conf;
@@ -226,7 +228,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
     // Create a render array with the gallery markup. Also include the built
     // gallery for external reference.
     $element[0] = array(
-      'gallery' => $juicebox->buildEmbed($xml_path, empty($display['juicebox_vm_incompatible']), $context),
+      'gallery' => $juicebox->buildEmbed($xml_path, $add_js, $context, $psuedo_instance),
       '#juicebox' => $juicebox
     );
   }
@@ -248,7 +250,6 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
  *   gallery images.
  */
 function juicebox_field_build_gallery(JuiceboxGalleryDrupalInterface $juicebox, $items) {
-  // Initialize the gallery.
   $settings = $juicebox->getSettings();
   foreach ($items as $id => $item) {
     // Calculate the source data that Juicebox requires.

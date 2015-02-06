@@ -113,10 +113,19 @@ interface JuiceboxGalleryDrupalInterface extends JuiceboxGalleryInterface {
    *   - conf_path: A Drupal path within the admin interface where the gallery
    *     can be configured. This may be used within administrative contextual
    *     links for the gallery if provided.
+   * @param boolean $add_xml
+   *   It may be difficult or impossible to rebuild some types of formatters
+   *   during a separate XML request, so this option offers a way around that by
+   *   embedding the XML for the gallery directly into the HTML output. This
+   *   XML can then be fetched from a request to this same page later via a
+   *   sub-request. If TRUE xml-source-path and xml-source-id query strings are
+   *   also added to the XML URL to help the XML building logic locate this XML
+   *   data later. Setting this option may work around certain limitations but
+   *   will likely lead to slower XML generation.
    * @return array
    *   Drupal render array for the embed code that describes a gallery.
    */
-  public function buildEmbed($xml_path = '', $add_js = TRUE, $context = array());
+  public function buildEmbed($xml_path = '', $add_js = TRUE, $context = array(), $add_xml = FALSE);
 
   /**
    * Get the "base" values of common Drupal settings used to describe a gallery.

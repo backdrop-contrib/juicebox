@@ -160,7 +160,7 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
-  public function renderXml() {
+  public function renderXml($embed_wrap_id = NULL) {
     // We use DOMDocument instead of a SimpleXMLElement to build the XML as it's
     // much more flexible (CDATA is supported, etc.).
     $dom = new DOMDocument('1.0', 'UTF-8');
@@ -188,7 +188,12 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
       $juicebox_image_caption = $juicebox_image->appendChild($dom->createElement('caption'));
       $juicebox_image_caption->appendChild($dom->createCDATASection($image['caption']));
     }
-    return $dom->saveXML();
+    $prefix = $suffix = '';
+    if ($embed_wrap_id) {
+      $prefix = '<script id="' . $embed_wrap_id . '" type="text/xml">';
+      $suffix = '</script>';
+    }
+    return $prefix . $dom->saveXML() . $suffix;
   }
 
   /**

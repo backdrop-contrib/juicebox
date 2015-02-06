@@ -16,14 +16,14 @@ function juicebox_admin_settings() {
   $library = juicebox_library_detect(TRUE, TRUE);
   $version = !empty($library['version']) ? $library['version'] : t('Unknown');
   $form['juicebox_admin_intro'] = array(
-    '#markup' => t("This page lists global options for Juicebox administration and gallery management. Note that most Juicebox configuration options are set within each gallery's unique configuration form and not applied on a global scope like these. Please be sure to clear your site's caches via the !performance settings after making any changes here.", array('!performance' => l(t('performance'), 'admin/config/development/performance'))),
+    '#markup' => t("The options below apply to all Juicebox galleries. Note that most Juicebox configuration options are set within each gallery's unique configuration form and not applied on a global scope like these."),
   );
   $form['juicebox_js_scope'] = array(
     '#type' => 'select',
     '#title' => t('Javscript Scope'),
     '#options' => array('header' => t('Header'), 'footer' => t('Footer')),
     '#default_value' => variable_get('juicebox_js_scope', 'header'),
-    '#description' => t('The scope in which to add the Juicebox javascript library and all gallery-specific definitions.'),
+    '#description' => t('The scope in which to add the Juicebox javascript library. Choosing "footer" may offer a front-end performance advantage in some situations.'),
   );
   $form['juicebox_apply_markup_filter'] = array(
     '#type' => 'checkbox',
@@ -112,5 +112,21 @@ function juicebox_admin_settings() {
       );
     }
   }
+  // Add some custom submit processing.
+  $form['#submit'][] = 'juicebox_admin_settings_submit';
   return system_settings_form($form);
+}
+
+
+/**
+ * For submission callback for Juicebox admin settings.
+ *
+ * @see juicebox_admin_settings()
+ */
+function juicebox_admin_settings_submit($form, &$form_state) {
+  // Clear all cached library data as some of our global settings may impact
+  // the library definition itself (e.g., JS scope).
+  cache_clear_all('juicebox', 'cache_libraries');
+  cache_clear_all('juicebox_local_library', 'cache');
+  drupal_set_message(t('The Juicebox library caches have been reset.'));
 }

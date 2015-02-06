@@ -82,7 +82,7 @@ function juicebox_libraries_info() {
       // aggregated by Drupal (set preprocess option = FALSE). This is because
       // some supporting library CSS files must be at a specific location
       // RELATIVE to to the main js file. Aggregation breaks this.
-      'js' => array('juicebox.js' => array('preprocess' => FALSE, 'scope' => variable_get('juicebox_js_scope', 'header'))),
+      'js' => array('juicebox.js' => array('preprocess' => FALSE, 'group' => JS_LIBRARY, 'scope' => variable_get('juicebox_js_scope', 'header'))),
     ),
     'callbacks' => array(
       'info' => array('juicebox_library_info'),
@@ -291,35 +291,59 @@ function juicebox_library_detect($force_local = FALSE, $reset = FALSE) {
  * @see juicebox_menu()
  */
 function juicebox_page_xml() {
-  $args = func_get_args();
-  // The XML loader that we use will depend on the formatter type. This type
-  // value should be visible in the URL. For formatters supported directly by
-  // this module we use the first arg to map to a XML loader class.
-  // @todo: consider using some form of formal plugin manager here.
-  $xml_loader_class = '';
-  $map = array('field' => 'JuiceboxXmlField', 'viewsstyle' => 'JuiceboxXmlViewsStyle');
-  if (!empty($map[$args[0]])) {
-    $xml_loader_class = $map[$args[0]];
-  }
-  // Allow other modules to alter, or provide a definition for, the class that
-  // should be used.
-  drupal_alter('juicebox_xml_class', $xml_loader_class, $args);
-  if (!class_exists($xml_loader_class) || !in_array('JuiceboxXmlInterface', class_implements($xml_loader_class))) {
-    return MENU_NOT_FOUND;
-  }
-  // Try to build the XML using the selected XML loader.
-  try {
-    $jb_xml = new $xml_loader_class($args);
-    if (!$jb_xml->access()) {
-      return MENU_ACCESS_DENIED;
+  $xml = '';
+  // If we have xml-source query parameters this indicates that the XML can
+  // probably not be generated here from scratch. Instead we must depend on a
+  // sub-request to another Drupal path (e.g., the gallery page) and search for
+  // embedded XML there. This is an experimental method for special cases.
+  $query = drupal_get_query_parameters();
+  if (isset($query['xml-source-path']) && isset($query['xml-source-id'])) {
+    // Render the path that contains our XML. Note that we use
+    // drupal_render_page() instead of render() to ensure the full page markup
+    // is returned including blocks (the XML might not be inside the main
+    // content area).
+    $source = drupal_render_page(menu_execute_active_handler($query['xml-source-path'], FALSE));
+    // Search for the XML within the raw sub-request markup. We could parse the
+    // DOM for this with DOMDocument, but a regex lookup is more lightweight.
+    $matches = array();
+    preg_match('/<script[^>]*id=\"' . $query['xml-source-id'] . '\"[^>]*>(.*)<\/script>/simU', $source, $matches);
+    if (!empty($matches[1]) && strpos($matches[1], '<?xml') === 0) {
+      $xml = $matches[1];
     }
-    // Get the XML.
-    $xml = $jb_xml->getXml();
   }
-  catch (Exception $e) {
-    $message = 'Exception building Juicebox XML: !message in %function (line %line of %file).';
-    watchdog_exception('juicebox', $e, $message);
-    return MENU_NOT_FOUND;
+  // If a sub-request XML lookup does not apply then we build the gallery and
+  // its XML from scratch. This is the more common and preferred method.
+  if (empty($xml)) {
+    $args = func_get_args();
+    // The XML loader that we use will depend on the formatter type. This type
+    // value should be visible in the URL. For formatters supported directly by
+    // this module we use the first arg to map to a XML loader class.
+    // @todo: consider using some form of formal plugin manager here.
+    $xml_loader_class = '';
+    $map = array('field' => 'JuiceboxXmlField', 'viewsstyle' => 'JuiceboxXmlViewsStyle');
+    if (!empty($map[$args[0]])) {
+      $xml_loader_class = $map[$args[0]];
+    }
+    // Allow other modules to alter, or provide a definition for, the class that
+    // should be used.
+    drupal_alter('juicebox_xml_class', $xml_loader_class, $args);
+    if (!class_exists($xml_loader_class) || !in_array('JuiceboxXmlInterface', class_implements($xml_loader_class))) {
+      return MENU_NOT_FOUND;
+    }
+    // Try to build the XML using the selected XML loader.
+    try {
+      $jb_xml = new $xml_loader_class($args);
+      if (!$jb_xml->access()) {
+        return MENU_ACCESS_DENIED;
+      }
+      // Get the XML.
+      $xml = $jb_xml->getXml();
+    }
+    catch (Exception $e) {
+      $message = 'Exception building Juicebox XML: !message in %function (line %line of %file).';
+      watchdog_exception('juicebox', $e, $message);
+      return MENU_NOT_FOUND;
+    }
   }
   // Set headers that apply only to XML requests.
   drupal_add_http_header('Content-type', 'application/xml; charset=utf-8');

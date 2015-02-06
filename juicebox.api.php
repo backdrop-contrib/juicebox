@@ -83,7 +83,7 @@ function hook_juicebox_classes_alter(&$classes, $library) {
  * class (implementing JuiceboxXmlInterface) and then "register" it with this
  * hook.
  *
- * @param string $class
+ * @param string $xml_loader_class
  *   The Juicebox XML loader class that should be instantiated given the passed
  *   URL args.
  * @param array $args

@@ -25,6 +25,7 @@ files[] = tests/JuiceboxFileEntityCase.test
 files[] = tests/JuiceboxConfCase.test
 files[] = tests/JuiceboxConfGlobalCase.test
 files[] = tests/JuiceboxViewsCase.test
+files[] = tests/JuiceboxSubRequestCase.test
 
 ; Test Dependencies
 test_dependencies[] = views
