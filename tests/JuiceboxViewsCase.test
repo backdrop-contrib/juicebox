@@ -55,11 +55,22 @@ class JuiceboxViewsCase extends JuiceboxBaseCase {
     $this->assertRaw('<?xml version="1.0" encoding="UTF-8"?>', 'Valid XML detected.');
     $this->assertRaw('imageURL="' . check_plain($test_image_url), 'Test image found in XML.');
     $this->assertRaw('thumbURL="' . check_plain($test_thumb_url), 'Test thumbnail found in XML.');
-    // The node's title and body are setup as the image title and caption. The
+    // The node's title and body are mapped to the image title and caption. Most
     // formatting should be maintained in the caption because it's based on
     // a body field (with default settings to use "filtered html" text format).
+    // Note however that our Juicebox markup filter should have stripped the
+    // block-level p tags that were *added* by default by the text format.
     $this->assertRaw('<title><![CDATA[' . $this->node->title . ']]></title>', 'Image title text found in XML.');
     $this->assertRaw('<caption><![CDATA[Some body content on node ' . $this->node->nid . ' <strong>with formatting</strong>]]></caption>', 'Image caption text found in XML.');
+    // Now test the toggle for the Juicebox markup filter.
+    $edit = array(
+      'juicebox_apply_markup_filter' => FALSE,
+    );
+    $this->drupalPost('admin/config/media/juicebox', $edit, t('Save configuration'));
+    // With the filter off, the p tags in our example caption should come
+    // through.
+    $this->drupalGet($xml_path);
+    $this->assertRaw('<p>Some body content on node ' . $this->node->nid . ' <strong>with formatting</strong></p>', 'Formatted image caption text found in XML.');
   }
 
   /**

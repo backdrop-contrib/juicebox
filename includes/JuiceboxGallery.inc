@@ -252,10 +252,12 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
    *   Valid filtered markup ready for display in a Juicebox gallery.
    */
   protected function filterMarkup($markup) {
-    // Set inline elements that are safe in a Juicebox gallery. References:
-    // http://www.htmlhelp.com/reference/html40/inline.html
-    // https://developer.mozilla.org/en-US/docs/Web/Guide/HTML/HTML5/HTML5_element_list
-    $valid_elements = "<a><abbr><acronym><b><basefont><bdi><bdo><big><br><cite><code><data><del><dfn><em><font><i><img><ins><kbd><label><mark><q><rp><rt><ruby><s><samp><small><span><strike><strong><sub><sup><time><tt><u><var><wbr>";
+    // Set inline html5 elements that are safe in a Juicebox gallery. Ref:
+    // http://www.w3.org/html/wg/drafts/html/master/single-page.html#phrasing-content
+    $valid_elements = "<a><abbr><area><audio><b><bdi><bdo><br><button><canvas><cite><code><data><del><dfn><em><embed><i><iframe><img><input><ins><kbd><keygen><label><link><map><mark><math><meta><meter><noscript><object><output><progress><q><ruby><s><samp><script><select><small><span><strong><sub><sup><svg><template><textarea><time><u><var><video><wbr>";
+    // Add some html4 additions for legacy support.
+    // Ref: http://www.htmlhelp.com/reference/html40/inline.html
+    $valid_elements .= "<acronym><basefont><big><font><rp><rt><strike><tt>";
     $markup = strip_tags($markup, $valid_elements);
     // Also remove newlines to keep the output concise.
     $markup = str_replace(array("\r", "\n"), '', $markup);
