@@ -199,4 +199,16 @@ interface JuiceboxGalleryInterface {
    */
   public function renderJavascript($xml_url, $add_script_tags = FALSE, $jquery_defer = FALSE);
 
+  /**
+   * Get the variables needed to instantiate a new JS Juicebox. These values
+   * can be used as direct constructor inputs for a new juicebox object.
+   *
+   * @param string $xml_url
+   *   The URL to the Juicebox XML for this gallery.
+   * @return array
+   *   An associative array of properties that can be used as direct constructor
+   *   inputs for a new JS Juicebox object.
+   */
+  public function getJavascriptVars($xml_url);
+
 }

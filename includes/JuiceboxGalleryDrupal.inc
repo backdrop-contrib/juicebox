@@ -136,21 +136,20 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
       $output['#theme'] = 'juicebox_debug_markup';
       $output['#attached']['css'] = array(drupal_get_path('module', 'juicebox') . '/css/admin_styles.css');
     }
-    // Otherwise we are just displaying the normal gallery.
+    // Otherwise we display the gallery as normal.
     else {
       $output['#theme'] = 'juicebox_embed_markup';
       if ($add_js) {
         // Add the main library via libraries API.
         $output['#attached']['libraries_load'][] = array('juicebox');
-        // Then handle the gallery-specific js snippet, which is dynamically
-        // calculated for each gallery. Though it's probably possible to do
-        // something with Drupal behaviors and Drupal.settings to make this
-        // work, that really seems like overkill. Instead we just do a simple
-        // inline inclusion. Note that we don't use '#attached' for this as that
-        // can make the aggregation of other scripts less efficient and is not
-        // friendly to AJAX.
-        $defer = (variable_get('juicebox_js_scope', 'header') == 'footer') ? TRUE : FALSE;
-        $output['#suffix'] .= $this->renderJavascript(url($xml['path'], $xml['options']), TRUE, $defer);
+        // Add the JS gallery details as Drupal.settings.
+        $output['#attached']['js'][] = array(
+          'data' => array('juicebox' => array($embed_id => $this->getJavascriptVars(url($xml['path'], $xml['options'])))),
+          'type' => 'setting',
+        );
+        // Add some local JS (implementing Drupal.behaviors) that will process
+        // the Drupal.settings above into a new client-side juicebox object.
+        $output['#attached']['js'][] = drupal_get_path('module', 'juicebox') . '/js/juicebox_load.js';
       }
       if ($add_xml) {
         $output['#suffix'] .= $this->renderXml($embed_xml_id);

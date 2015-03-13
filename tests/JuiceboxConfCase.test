@@ -44,7 +44,7 @@ class JuiceboxConfCase extends JuiceboxBaseCase {
     $node = $this->node;
     // Check control case without custom configuration.
     $this->drupalGet('node/' . $node->nid);
-    $this->assertRaw("gallerywidth:'100%',galleryheight:'100%',backgroundcolor:'#222222'", 'Expected default configuration options set in embed javascript.');
+    $this->assertRaw(trim(json_encode(array('gallerywidth' => '100%', 'galleryheight' => '100%', 'backgroundcolor' => '#222222')), '{}'), 'Expected default configuration options found in Drupal.settings.');
     $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full');
     $this->assertRaw('<juicebox gallerywidth="100%" galleryheight="100%" backgroundcolor="#222222" textcolor="rgba(255,255,255,1)" thumbframecolor="rgba(255,255,255,.5)" showopenbutton="TRUE" showexpandbutton="TRUE" showthumbsbutton="TRUE" usethumbdots="FALSE" usefullscreenexpand="FALSE">', 'Expected default configuration options set in XML.');
     // Alter settings to contain custom values.
@@ -65,7 +65,7 @@ class JuiceboxConfCase extends JuiceboxBaseCase {
     $this->assertText(t('Your settings have been saved.'), 'Gallery configuration changes saved.');
     // Check for correct embed markup.
     $this->drupalGet('node/' . $node->nid);
-    $this->assertRaw("gallerywidth:'50%',galleryheight:'200px',backgroundcolor:'red'", 'Expected custom Lite configuration options set in embed javascript.');
+    $this->assertRaw(trim(json_encode(array('gallerywidth' => '50%', 'galleryheight' => '200px', 'backgroundcolor' => 'red')), '{}'), 'Expected custom Lite configuration options found in Drupal.settings.');
     // Check for correct XML.
     $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full');
     $this->assertRaw('<juicebox gallerywidth="50%" galleryheight="200px" backgroundcolor="red" textcolor="green" thumbframecolor="blue" showopenbutton="FALSE" showexpandbutton="FALSE" showthumbsbutton="FALSE" usethumbdots="TRUE" usefullscreenexpand="TRUE">', 'Expected custom Lite configuration options set in XML.');
@@ -88,7 +88,7 @@ class JuiceboxConfCase extends JuiceboxBaseCase {
     $this->assertText(t('Your settings have been saved.'), 'Gallery configuration changes saved.');
     // Check for correct embed markup.
     $this->drupalGet('node/' . $node->nid);
-    $this->assertRaw("gallerywidth:'50%',galleryheight:'100%',backgroundcolor:'#222222'", 'Expected custom configuration options set in embed javascript.');
+    $this->assertRaw(trim(json_encode(array('gallerywidth' => '50%', 'galleryheight' => '100%', 'backgroundcolor' => '#222222')), '{}'), 'Expected custom configuration options found in Drupal.settings.');
     // Check for correct XML.
     $this->drupalGet('juicebox/xml/field/node/' . $node->nid . '/' . $instance['field_name'] . '/full');
     $this->assertRaw('<juicebox gallerywidth="50%" galleryheight="100%" backgroundcolor="#222222" textcolor="rgba(255,255,255,1)" thumbframecolor="rgba(255,255,255,.5)" showopenbutton="FALSE" showexpandbutton="TRUE" showthumbsbutton="TRUE" usethumbdots="FALSE" usefullscreenexpand="FALSE" mycustomsetting="boomsauce">', 'Expected custom Pro configuration options set in XML.');

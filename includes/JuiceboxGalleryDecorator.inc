@@ -123,4 +123,11 @@ abstract class JuiceboxGalleryDecorator implements JuiceboxGalleryInterface {
     return $this->gallery->renderJavascript($xml_url, $add_script_tags, $jquery_defer);
   }
 
+  /**
+   * {@inheritdoc}
+   */
+  public function getJavascriptVars($xml_url) {
+    return $this->gallery->getJavascriptVars($xml_url);
+  }
+
 }

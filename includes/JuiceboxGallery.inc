@@ -211,19 +211,11 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
    * {@inheritdoc}
    */
   public function renderJavascript($xml_url, $add_script_tags = FALSE, $jquery_defer = FALSE) {
+    // Get variable inputs for the juicebox object and represent them as a
+    // string.
+    $vars_json = json_encode($this->getJavascriptVars($xml_url));
     // Set the Juicebox-specific code.
-    $output = "new juicebox({";
-    $output .= "configUrl:'" . $xml_url . "',";
-    $output .= "containerId:'" . $this->id . "'";
-    // Add options that need to be loaded immediately (before XML is available).
-    $load_before_xml = array('gallerywidth', 'galleryheight', 'backgroundcolor', 'themeurl', 'baseurl', 'showpreloader', 'debugmode');
-    foreach ($load_before_xml as $key => $option) {
-      if (!empty($this->options[$option])) {
-        $output .= ',';
-        $output .= $option . ":'" . $this->options[$option] . "'";
-      }
-    }
-    $output .= "});";
+    $output = "new juicebox(" . $vars_json . ");";
     // Set wrappers.
     $script_wrap_prefix = $script_wrap_suffix = $inner_wrap_prefix = $inner_wrap_suffix = '';
     if ($add_script_tags) {
@@ -235,6 +227,25 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
       $inner_wrap_suffix = '});';
     }
     return "\n" . $script_wrap_prefix . $inner_wrap_prefix . $output . $inner_wrap_suffix . $script_wrap_suffix . "\n";
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getJavascriptVars($xml_url) {
+    $vars = array(
+      'configUrl' => $xml_url,
+      'containerId' => $this->getId(),
+    );
+    // Add options that need to be loaded immediately (before XML is available).
+    $load_before_xml = array('gallerywidth', 'galleryheight', 'backgroundcolor', 'themeurl', 'baseurl', 'showpreloader', 'debugmode');
+    $current_options = $this->getOptions();
+    foreach ($load_before_xml as $key => $option) {
+      if (!empty($current_options[$option])) {
+        $vars[$option] = $current_options[$option];
+      }
+    }
+    return $vars;
   }
 
   /**

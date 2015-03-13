@@ -46,7 +46,7 @@ class JuiceboxViewsCase extends JuiceboxBaseCase {
     $test_thumb_url = image_style_url('juicebox_square_thumbnail', $item['uri']);
     // Check for correct embed markup.
     $this->drupalGet('juicebox-views-test');
-    $this->assertRaw("new juicebox({configUrl:'" . url($xml_path), 'Embed javascript found.');
+    $this->assertRaw(trim(json_encode(array('configUrl' => url($xml_path))), '{}"'), 'Gallery setting found in Drupal.settings.');
     $this->assertRaw('id="viewsstyle--juicebox-views-test--page"', 'Embed code wrapper found.');
     $this->assertRaw('<li class="gallery_config', 'Example contextual link for gallery configuration found.');
     $this->assertRaw(check_plain($test_image_url), 'Test image found in embed code');
@@ -105,7 +105,7 @@ class JuiceboxViewsCase extends JuiceboxBaseCase {
     $test_thumb_url = image_style_url('juicebox_square_thumbnail', $item['uri']);
     // Check for correct embed markup.
     $this->drupalGet('juicebox-views-file-test');
-    $this->assertRaw("new juicebox({configUrl:'" . url($xml_path), 'Embed javascript found.');
+    $this->assertRaw(trim(json_encode(array('configUrl' => url($xml_path))), '{}"'), 'Gallery setting found in Drupal.settings.');
     $this->assertRaw('id="viewsstyle--juicebox-views-file-test--page"', 'Embed code wrapper found.');
     $this->assertRaw(check_plain($test_image_url), 'Test image found in embed code');
     // Check for correct XML.

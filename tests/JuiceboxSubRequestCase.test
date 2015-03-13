@@ -49,14 +49,18 @@ class JuiceboxSubRequestCase extends JuiceboxBaseCase {
     $test_thumb_url = image_style_url('juicebox_square_thumbnail', $item['uri']);
     // Check for correct embed markup.
     $content = $this->drupalGet('juicebox-test-row-formatter');
-    $this->assertRaw("new juicebox({configUrl:'" . url($xml_path), 'Embed javascript found.');
+    $this->assertRaw(trim(json_encode(array('configUrl' => url($xml_path))), '{}"'), 'Gallery setting found in Drupal.settings.');
     $this->assertRaw('id="field--node--' . $node->nid . '--field-image--unknown"', 'Embed code wrapper found.');
     $this->assertRaw(check_plain($test_image_url), 'Test image found in embed code');
     // Extract the xml-source values from the XML.
     $matches = array();
-    preg_match("/xml-source-path=([^?&']+).*xml-source-id=([^?&']+)/", $content, $matches);
-    $this->assertNotNull($matches[1], 'xml-source-path value found in embed javascript.');
-    $this->assertNotNull($matches[2], 'xml-source-id value found in embed javascript.');
+    // In the pattern below we have to use four (yeah, FOUR) backslashes to
+    // match a SINGLE literal backslash. Our source will contain an encoded
+    // (JSON) "&" character as "\u0026", but we don't want the regex to confuse
+    // that with an actaul "&" char in the pattern itself.
+    preg_match('/xml-source-path=([a-z1-9-]+)\\\\u0026xml-source-id=([a-z1-9-]+)/', $content, $matches);
+    $this->assertNotNull($matches[1], 'xml-source-path value found in Drupal.settings.');
+    $this->assertNotNull($matches[2], 'xml-source-id value found in Drupal.settings.');
     // Check for correct XML. This example is dependent on a sub-request XML
     // lookup, so everything below would fail without that feature.
     $this->drupalGet($xml_path, array('query' => array('xml-source-path' => $matches[1], 'xml-source-id' => $matches[2])));
