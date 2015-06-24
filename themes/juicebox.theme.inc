@@ -37,7 +37,7 @@ function theme_juicebox_embed_markup(&$variables) {
     }
     foreach ($variables['gallery_images'] as $image) {
       $img_vars = array();
-      $img_vars['path'] = $image['src_data']['image_url'];
+      $img_vars['path'] = $image['src_data']['imageURL'];
       if (!empty($image['title'])) {
         $img_vars['title'] = $image['title'];
         $image['title'] = '<span class="jb-title">' . $image['title'] . '</span><br/>';

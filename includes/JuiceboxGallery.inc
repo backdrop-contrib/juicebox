@@ -17,6 +17,11 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
    * Base properies to contain structured gallery data.
    */
   protected $id = '';
+  // The settings property is specific to the logic used in this object.
+  protected $settings = array();
+  // The options and images properties are used to store configuration and
+  // image data that will be processed into XML for use by the Juicebox
+  // javascript library.
   protected $options = array();
   protected $images = array();
 
@@ -24,10 +29,28 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
    * Constructor
    *
    * @param string $id
-   *   A unique string id that can represnet this gallery.
+   *   A unique string id that can represent this gallery.
+   * @param array $settings
+   *   Configuration data to be used by this gallery object. These options
+   *   relate to any "output" processing applied to the raw gallery variables
+   *   upon rendering.
+   *   - filter_markup: Optional boolean indicating whether-or-not to filter all
+   *     image title and caption values for syntactic compatibility with
+   *     Juicebox. This designates a gallery-wide default and can still be
+   *     overriden on an image-by-image basis. Defaults to TRUE.
+   *   - process_attributes: Optional boolean to activate legacy attribute name
+   *     support for underscore-separated and dash-separated attributes
+   *     (e.g., convert image_url to imageURL). Defaults to FALSE.
    */
-  public function __construct($id = '') {
+  public function __construct($id = '', $settings = array()) {
+    // Set the ID.
     $this->id = $id;
+    // Ensure some default settings are specified.
+    $settings += array(
+      'filter_markup' => TRUE,
+      'process_attributes' => FALSE,
+    );
+    $this->settings = $settings;
   }
 
   /**
@@ -51,32 +74,26 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
-  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE, $override_id = NULL, $offset = NULL) {
+  public function addImage($src_data = array(), $title = '', $caption = '', $filter_markup = NULL, $override_id = NULL, $offset = NULL) {
     // If we are anticipating an override, but there is nothing to override,
     // don't do anything. Also, override_id and offset are mutually exclusive.
     if (isset($override_id) && (empty($this->images[$override_id]) || isset($offset))) {
       return FALSE;
     }
-    // Make sure we have sufficient image data to work with.
-    if (!isset($src_data['image_url']) || !isset($src_data['thumb_url'])) {
+    // Make sure we have sufficient image data to work with. If legacy attribute
+    // names are supported in the configuration then some names may be coming in
+    // different formats (image_url vs. imageURL). In this case we need a
+    // canonical form for validation.
+    $src_data_canonical = !empty($this->settings['process_attributes']) ? $this->processAttributes($src_data) : $src_data;
+    if (!isset($src_data_canonical['imageURL']) || !isset($src_data_canonical['thumbURL'])) {
       return FALSE;
-    }
-    if (!isset($src_data['link_url'])) {
-      $src_data['link_url'] = $src_data['image_url'];
-    }
-    if (empty($src_data['link_target'])) {
-      $src_data['link_target'] = '_blank';
-    }
-    // Filter markup if needed.
-    if ($filter) {
-      $title = $this->filterMarkup($title);
-      $caption = $this->filterMarkup($caption);
     }
     // Add image to gallery, overriding if necessary.
     $addition = array(
       'src_data' => $src_data,
       'title' => $title,
       'caption' => $caption,
+      'filter_markup' => $filter_markup,
     );
     if (isset($override_id)) {
       $this->images[$override_id] = $addition;
@@ -102,8 +119,26 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
-  public function getImages() {
-    return $this->images;
+  public function getImages($filtered = FALSE) {
+    $images = $this->images;
+    // If we are not returning the raw input data we need to apply any output
+    // processing that may be specified in the object configuration.
+    if ($filtered) {
+      foreach ($images as &$image) {
+        $image['title'] = !empty($this->settings['filter_markup']) ? $this->filterMarkup($image['title']) : $image['title'];
+        $image['caption'] = !empty($this->settings['filter_markup']) ? $this->filterMarkup($image['caption']) : $image['caption'];
+        $image['src_data'] = !empty($this->settings['process_attributes']) ? $this->processAttributes($image['src_data']) : $image['src_data'];
+        // Also derive linkURL and linkTarget values if they are not explicitly
+        // set.
+        if (!isset($image['src_data']['linkURL'])) {
+          $image['src_data']['linkURL'] = $image['src_data']['imageURL'];
+        }
+        if (!isset($image['src_data']['linkTarget'])) {
+          $image['src_data']['linkTarget'] = '_blank';
+        }
+      }
+    }
+    return $images;
   }
 
   /**
@@ -134,8 +169,14 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
-  public function getOptions() {
-    return $this->options;
+  public function getOptions($filtered = FALSE) {
+    $options = $this->options;
+    // If we are not returning the raw input data we need to apply any output
+    // processing that may be specified in the object configuration.
+    if ($filtered) {
+      $options = !empty($this->settings['process_attributes']) ? $this->processAttributes($options) : $options;
+  }
+    return $options;
   }
 
   /**
@@ -166,22 +207,17 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
     $dom = new DOMDocument('1.0', 'UTF-8');
     $dom->formatOutput = TRUE;
     $juicebox = $dom->appendChild($dom->createElement('juicebox'));
-    foreach ($this->options as $option => $value) {
-      $juicebox->setAttribute($option, $value);
+    // Get filtered attributes.
+    $gallery_attributes = $this->getOptions(TRUE);
+    foreach ($gallery_attributes as $attribute => $value) {
+      $juicebox->setAttribute($attribute, $value);
     }
-    foreach ($this->images as $image) {
+    // Get filtered image data.
+    $gallery_images = $this->getImages(TRUE);
+    foreach ($gallery_images as $image) {
       $juicebox_image = $juicebox->appendChild($dom->createElement('image'));
-      // Standard source data should always be available.
-      $juicebox_image->setAttribute('imageURL', $image['src_data']['image_url']);
-      $juicebox_image->setAttribute('thumbURL', $image['src_data']['thumb_url']);
-      $juicebox_image->setAttribute('linkURL', $image['src_data']['link_url']);
-      $juicebox_image->setAttribute('linkTarget', $image['src_data']['link_target']);
-      // Multi-size source data may only be available in certain configurations.
-      if (!empty($image['src_data']['image_url_small'])) {
-        $juicebox_image->setAttribute('smallImageURL', $image['src_data']['image_url_small']);
-      }
-      if (!empty($image['src_data']['image_url_large'])) {
-        $juicebox_image->setAttribute('largeImageURL', $image['src_data']['image_url_large']);
+      foreach ($image['src_data'] as $attribute => $value) {
+        $juicebox_image->setAttribute($attribute, $value);
       }
       $juicebox_image_title = $juicebox_image->appendChild($dom->createElement('title'));
       $juicebox_image_title->appendChild($dom->createCDATASection($image['title']));
@@ -239,7 +275,7 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
     );
     // Add options that need to be loaded immediately (before XML is available).
     $load_before_xml = array('gallerywidth', 'galleryheight', 'backgroundcolor', 'themeurl', 'baseurl', 'showpreloader', 'debugmode');
-    $current_options = $this->getOptions();
+    $current_options = $this->getOptions(TRUE);
     foreach ($load_before_xml as $key => $option) {
       if (!empty($current_options[$option])) {
         $vars[$option] = $current_options[$option];
@@ -249,13 +285,64 @@ class JuiceboxGallery implements JuiceboxGalleryInterface {
   }
 
   /**
+   * Process an attribute list for valid use in a Juicebox gallery.
+   *
+   * For legacy support we can allow a variety of attribute name inputs,
+   * including underscore-separated and dash-separated values. Because the
+   * Juicebox library expects attribute names in camelCase we use this method to
+   * make a best-effort conversion (e.g., convert image_url to imageURL). Note
+   * that this process does NOT do any sanitization and can only correctly
+   * convert certain input names.
+   *
+   * @param array $attributes
+   *   An associative array of name => value pairs for juicebox XML attributes
+   *   to be converted.
+   * @return array
+   *   The converted array of attributes.
+   */
+  protected function processAttributes($attributes) {
+    $filtered = array();
+    foreach ($attributes as $name => $value) {
+      // First make some adjustments for legacy support. We used to use some
+      // specialized keys that are no longer valid, but still want to support
+      // them as input. These values are special and cannot be handled alone by
+      // the word-separator processing logic below.
+      $name_mappings = array('image_url_small' => 'smallImageURL', 'image_url_large' => 'largeImageURL');
+      if (array_key_exists($name, $name_mappings)) {
+        $name = $name_mappings[$name];
+      }
+      // Check that the name is in a format expected by the XML such that any
+      // word-separators (like "-" and "_") are dropped. Also, the Juicebox
+      // library uses camelCase for attributes so we do our best to deliver
+      // that. Note that for image attributes proper camelCase appears to be
+      // REQUIRED, but for gallery attributes all-lowercase values will work in
+      // addition to camelCase.
+      $parts = preg_split('/(_|-)/', $name);
+      $i = 0;
+      foreach ($parts as &$word) {
+        if ($i) { // Don't alter the first word.
+          $word = ucfirst($word);
+          // For some reason the library requires that some attributes
+          // containing a "url" string capitalize the "url" part.
+          $word = $word == 'Url' ? 'URL' : $word;
+        }
+        $i++;
+      }
+      $name = implode('', $parts);
+      $filtered[$name] = $value;
+    }
+    return $filtered;
+  }
+
+  /**
    * Filter markup for valid display in a Juicebox gallery.
    *
    * Some markup that validates fine via external filters will not be
    * syntactically valid once rendered within Juicebox. This is because Juicebox
    * will wrap titles and captions in block-level tags, like <p>, making any
    * block-level elements they contain invalid. This filter accommodates for
-   * this and is meant to be applied AFTER any external filters.
+   * this and is meant to be applied AFTER any external filters. Note that this
+   * process does NOT do any sanitization.
    *
    * @param string $markup
    *   The markup to be filtered after it has been processed externally.

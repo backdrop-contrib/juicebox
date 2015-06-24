@@ -124,8 +124,8 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
     $output = array(
       '#c_links' => $this->buildContextualLinks($xml_path, $context, $add_xml),
       '#gallery_id' => $embed_id,
-      '#gallery_images' => $this->getImages(),
-      '#gallery_options' => $this->getOptions(),
+      '#gallery_images' => $this->getImages(TRUE),
+      '#gallery_options' => $this->getOptions(TRUE),
       '#xml' => $xml,
       '#settings' => $this->settings,
       '#suffix' => '',
@@ -181,7 +181,7 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
       $src_data['thumb_url'] = $thumb_item['juicebox_src_data']['image_url'];
     }
     // Check if the linkURL should be customized based on settings.
-    $src_data['link_url'] = $image_item['juicebox_unstyled_src'];
+    $src_data['link_url'] = $image_item['unstyled_src'];
     if ($image_item['juicebox_compatible'] && !empty($settings['linkurl_source']) && $settings['linkurl_source'] == 'image_styled') {
       $src_data['link_url'] = $src_data['image_url'];
     }
@@ -212,7 +212,7 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
   protected function styleImage(&$item, $style, $check_compatible = TRUE) {
     $item['juicebox_compatible'] = TRUE;
     // Set the normal, unstyled, url for reference.
-    $item['juicebox_unstyled_src'] = file_create_url($item['uri']);
+    $item['unstyled_src'] = file_create_url($item['uri']);
     // Check compatibility if configured and if the library info contains
     // mimetype compatibitly information.
     if ($check_compatible && !empty($this->library['compatible_mimetypes']) && !in_array($item['filemime'], $this->library['compatible_mimetypes'])) {
@@ -244,7 +244,7 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
           $item['juicebox_src_data'][$size] = image_style_url($style_each, $item['uri']);
         }
         else {
-          $item['juicebox_src_data'][$size] = $item['juicebox_unstyled_src'];
+          $item['juicebox_src_data'][$size] = $item['unstyled_src'];
         }
       }
     }

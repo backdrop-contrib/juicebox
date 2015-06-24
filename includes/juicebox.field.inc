@@ -270,7 +270,7 @@ function juicebox_field_build_gallery(JuiceboxGalleryDrupalInterface $juicebox, 
     // Set the image caption.
     $caption = _juicebox_field_get_text($item, $settings['caption_source']);
     // Add this image to the gallery.
-    $juicebox->addImage($src_data, $title, $caption, variable_get('juicebox_apply_markup_filter', TRUE));
+    $juicebox->addImage($src_data, $title, $caption);
   }
   // Run common build tasks.
   $juicebox->runCommonBuild();

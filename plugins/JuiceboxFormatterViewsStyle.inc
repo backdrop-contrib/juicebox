@@ -247,7 +247,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
         $caption = $rendered_fields[$row_index][$settings['caption_field']];
       }
       // Add this image to the gallery.
-      $this->juicebox->addImage($src_data, $title, $caption, variable_get('juicebox_apply_markup_filter', TRUE));
+      $this->juicebox->addImage($src_data, $title, $caption);
     }
     if ($settings['show_title']) {
       $this->juicebox->addOption('gallerytitle', check_plain($view->get_title()));

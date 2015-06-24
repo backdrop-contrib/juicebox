@@ -37,19 +37,25 @@ interface JuiceboxGalleryInterface {
    * Add a new image to the gallery.
    *
    * @param array $src_data
-   *   Associative array containing all the source data for a gallery image,
-   *   including the:
-   *   - image_url: URL to the full image to display.
-   *   - thumb_url: URL to the thumbnail to display for the image.
-   *   - link_url: The Juicebox "link URL" value for the image.
-   *   - link_target: The browser target value to use when following a link URL.
+   *   Associative array containing all attributes needed to define a gallery
+   *   image. camelCase attribute keys are preferred but underscore-separated
+   *   (e.g., image_url) and dash-separated (e.g., image-url) values are also
+   *   accepted as they will be converted to camelCase when the XML is rendered
+   *   (see renderXML()). This includes:
+   *   - imageURL (Required): URL to the full image to display.
+   *   - thumbURL (Required): URL to the thumbnail to display for the image.
+   *   - linkURL: The Juicebox "link URL" value for the image.
+   *   - linkTarget: The browser target value to use when following a link URL.
    * @param string $title
    *   The title markup to display for the image.
    * @param string $caption
    *   The caption markup to display for the image.
-   * @param boolean $filter
+   * @param boolean $filter_markup
    *   Optional. Whether-or-not to filter the $title and $caption values for
-   *   syntactic compatibility with Juicebox.
+   *   syntactic compatibility with Juicebox. This setting applies to this
+   *   specific image. If NULL the gallery-wide setting specified when the XML
+   *   is generated will be used (see the renderXML()). This filter is not
+   *   actually applied until the XML is rendered.
    * @param int $override_id
    *   Optional. The id of an existing image, already added to the gallery, to
    *   override with new data. If NULL the image will simply be added. This id
@@ -63,7 +69,7 @@ interface JuiceboxGalleryInterface {
    * @return boolean
    *   Returns TRUE on successful addition and FALSE on failure.
    */
-  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE, $override_id = NULL, $offset = NULL);
+  public function addImage($src_data = array(), $title = '', $caption = '', $filter_markup = NULL, $override_id = NULL, $offset = NULL);
 
   /**
    * Update an existing image in the gallery. This duplicates the functionality
@@ -97,10 +103,15 @@ interface JuiceboxGalleryInterface {
   /**
    * Getter method for the gallery images.
    *
+   * @param boolean $filtered
+   *   If TRUE any output processing that is specified in the settings will be
+   *   applied to the returned data (matching the processing that would happen
+   *   upon rendering the XML). If FALSE the image data is returned in a raw
+   *   format that matches what was input directly via addImage() or similar. 
    * @return array
    *   Returns an array of images currently in the gallery.
    */
-  public function getImages();
+  public function getImages($filtered = FALSE);
 
   /**
    * Remove an image from the gallery.
@@ -131,10 +142,15 @@ interface JuiceboxGalleryInterface {
   /**
    * Getter method for the gallery options.
    *
+   * @param boolean $filtered
+   *   If TRUE any output processing that is specified in the settings will be
+   *   applied to the returned data (matching the processing that would happen
+   *   upon rendering the XML). If FALSE the image data is returned in a raw
+   *   format that matches what was input directly via addOption().
    * @return array
    *   Returns an array of options set on the gallery.
    */
-  public function getOptions();
+  public function getOptions($filtered = FALSE);
 
   /**
    * Remove an option from the gallery.
@@ -158,7 +174,7 @@ interface JuiceboxGalleryInterface {
   public function getChecksum();
 
   /**
-   * Get the XML for a Juicebox gallery once images and options have been
+   * Render the XML for a Juicebox gallery once images and options have been
    * added.
    *
    * @param string $script_wrap_id

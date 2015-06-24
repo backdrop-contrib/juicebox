@@ -2,7 +2,7 @@
   Drupal.behaviors.juicebox = {
     attach: function (context, settings) {
       if (typeof settings['juicebox'] !== 'undefined') {
-        galleries = settings['juicebox'];
+        var galleries = settings['juicebox'];
         // Loop-through galleries that were added during this request.
         for (var key in galleries) {
           if (galleries.hasOwnProperty(key)) {

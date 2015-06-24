@@ -209,8 +209,14 @@ function juicebox() {
   // Allow the classes to be altered.
   drupal_alter('juicebox_classes', $classes, $library);
   if (class_exists($classes['gallery']) && class_exists($classes['juicebox'])) {
-    // Instantiate the Juicebox gallery objects.
-    $gallery = new $classes['gallery']();
+    // Instantiate the Juicebox gallery objects with the appropriate
+    // object-specific options. Note that we don't set the ID here yet as that
+    // will be added via a setter method later.
+    $object_settings = array(
+      'filter_markup' => variable_get('juicebox_apply_markup_filter', TRUE),
+      'process_attributes' => TRUE,
+    );
+    $gallery = new $classes['gallery'](NULL, $object_settings);
     if (in_array('JuiceboxGalleryInterface', class_implements($gallery))) {
       $juicebox = new $classes['juicebox']($gallery, $library);
       if (in_array('JuiceboxGalleryDrupalInterface', class_implements($juicebox))) {

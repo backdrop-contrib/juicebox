@@ -49,7 +49,7 @@ abstract class JuiceboxGalleryDecorator implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
-  public function addImage($src_data = array(), $title = '', $caption = '', $filter = TRUE, $override_id = NULL, $offset = NULL) {
+  public function addImage($src_data = array(), $title = '', $caption = '', $filter = NULL, $override_id = NULL, $offset = NULL) {
     return $this->gallery->addImage($src_data, $title, $caption, $filter, $override_id, $offset);
   }
 
@@ -63,8 +63,8 @@ abstract class JuiceboxGalleryDecorator implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
-  public function getImages() {
-    return $this->gallery->getImages();
+  public function getImages($filtered = FALSE) {
+    return $this->gallery->getImages($filtered);
   }
 
   /**
@@ -84,8 +84,8 @@ abstract class JuiceboxGalleryDecorator implements JuiceboxGalleryInterface {
   /**
    * {@inheritdoc}
    */
-  public function getOptions() {
-    return $this->gallery->getOptions();
+  public function getOptions($filtered = FALSE) {
+    return $this->gallery->getOptions($filtered);
   }
 
   /**
