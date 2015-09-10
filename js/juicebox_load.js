@@ -1,3 +1,8 @@
+/**
+ * @file
+ * Attaches the behaviors for the Juicebox module.
+ */
+
 (function ($) {
   Drupal.behaviors.juicebox = {
     attach: function (context, settings) {

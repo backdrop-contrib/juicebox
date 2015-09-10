@@ -40,8 +40,9 @@ interface JuiceboxGalleryInterface {
    *   Associative array containing all attributes needed to define a gallery
    *   image. camelCase attribute keys are preferred but underscore-separated
    *   (e.g., image_url) and dash-separated (e.g., image-url) values are also
-   *   accepted as they will be converted to camelCase when the XML is rendered
-   *   (see renderXML()). This includes:
+   *   accepted when 'process_attributes' legacy support is active
+   *   (i.e. when the 'process_attributes' setting was activated when the
+   *   gallery was instantiated). This includes:
    *   - imageURL (Required): URL to the full image to display.
    *   - thumbURL (Required): URL to the thumbnail to display for the image.
    *   - linkURL: The Juicebox "link URL" value for the image.
@@ -107,7 +108,7 @@ interface JuiceboxGalleryInterface {
    *   If TRUE any output processing that is specified in the settings will be
    *   applied to the returned data (matching the processing that would happen
    *   upon rendering the XML). If FALSE the image data is returned in a raw
-   *   format that matches what was input directly via addImage() or similar. 
+   *   format that matches what was input directly via addImage() or similar.
    * @return array
    *   Returns an array of images currently in the gallery.
    */
@@ -128,7 +129,11 @@ interface JuiceboxGalleryInterface {
    * Add a new Juicebox configuration option to the gallery.
    *
    * @param string $option_name
-   *   The option name/key to add.
+   *   The option name/key to add. camelCase names keys are preferred but
+   *   underscore-separated (e.g., my_setting) and dash-separated
+   *   (e.g., my-seting) values are also accepted when 'process_attributes'
+   *   legacy support is active (i.e. when the 'process_attributes' setting was
+   *   activated when the gallery was instantiated).
    * @param string $option_value
    *   The option value to add.
    * @param boolean $override
