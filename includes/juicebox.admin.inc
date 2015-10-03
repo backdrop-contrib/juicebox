@@ -20,7 +20,7 @@ function juicebox_admin_settings() {
   );
   $form['juicebox_js_scope'] = array(
     '#type' => 'select',
-    '#title' => t('Javscript Scope'),
+    '#title' => t('Javascript Scope'),
     '#options' => array('header' => t('Header'), 'footer' => t('Footer')),
     '#default_value' => variable_get('juicebox_js_scope', 'header'),
     '#description' => t('The scope in which to add the Juicebox javascript library. Choosing "footer" may offer a front-end performance advantage in some situations.'),
