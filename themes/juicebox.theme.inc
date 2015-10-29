@@ -15,7 +15,8 @@
  *
  * @ingroup themeable
  */
-function theme_juicebox_embed_markup(&$variables) {
+function theme_juicebox_embed_markup(&$variables)
+{
   $settings = $variables['settings'];
   $output = '';
   // Create the gallery embed markup. This is what the Juicebox javascript will
@@ -63,7 +64,8 @@ function theme_juicebox_embed_markup(&$variables) {
  *
  * @ingroup themeable
  */
-function juicebox_preprocess_juicebox_debug_markup(&$variables) {
+function juicebox_preprocess_juicebox_debug_markup(&$variables)
+{
   // Calculate the XML link that will be displayed. For this display no query
   // strings should be shown and the link should be absolute.
   $xml_url = url($variables['xml']['path'], array('absolute' => TRUE));
@@ -95,7 +97,8 @@ function juicebox_preprocess_juicebox_debug_markup(&$variables) {
  *
  * @ingroup themeable
  */
-function theme_juicebox_debug_markup(&$variables) {
+function theme_juicebox_debug_markup(&$variables)
+{
   $settings = $variables['settings'];
   $output = '';
   // Display a structured list of each debug detail.

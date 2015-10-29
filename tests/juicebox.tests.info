@@ -1,0 +1,44 @@
+[JuiceboxConfCase]
+name = Juicebox gallery configuration tests
+description = Tests gallery-specific configuration logic for Juicebox galleries.
+group = Juicebox
+file = JuiceboxConfCase.test
+
+[JuiceboxConfGlobalCase]
+name = Juicebox global configuration tests
+description = Tests global configuration logic for Juicebox galleries.
+group = Juicebox
+file = JuiceboxConfGlobalCase.test
+
+[JuiceboxFieldFormatterCase]
+name = Juicebox field formatter tests
+description = Tests the Juicebox field formatter.
+group = Juicebox
+file = JuiceboxFieldFormatterCase.test
+
+[JuiceboxFileCase]
+name = Juicebox file handling tests
+description = Tests general file and non-image handling.
+group = Juicebox
+file = JuiceboxFileCase.test
+
+[JuiceboxFileEntityCase]
+name = Juicebox File Entity integration tests
+description = Tests integration with File Enity module.
+group = Juicebox
+file = JuiceboxFileEntityCase.test
+dependencies = array('file_entity')
+
+[JuiceboxSubRequestCase]
+name = Juicebox sub-request tests
+description = Tests the Juicebox XML generation via a sub-request.
+group = Juicebox
+file = JuiceboxSubRequestCase.test
+dependencies = array('views')
+
+[JuiceboxViewsCase]
+name = Juicebox Views integration tests
+description = Tests integration with Views module.
+group = Juicebox
+file = JuiceboxViewsCase.test
+dependencies = array('views')

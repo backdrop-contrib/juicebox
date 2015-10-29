@@ -10,7 +10,8 @@
 /**
  * Interface definition for a Juicebox gallery.
  */
-interface JuiceboxGalleryInterface {
+interface JuiceboxGalleryInterface
+{
 
   /**
    * Setter method for the gallery ID (in case it was not passed in

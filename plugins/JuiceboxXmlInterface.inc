@@ -10,10 +10,11 @@
 /**
  * Interface definition for a Juicebox XML loader.
  */
-interface JuiceboxXmlInterface {
+interface JuiceboxXmlInterface
+{
 
   /**
-   * Check access to the Drupal data that will be used to build the gallery.
+   * Check access to the Backdrop data that will be used to build the gallery.
    *
    * @return boolean
    *   Returns TRUE if access is allowed for the current user and FALSE if not.

@@ -1,0 +1,11 @@
+{
+  "_config_name": "juicebox.settings",
+  "juicebox_js_scope": "header",
+  "juicebox_apply_markup_filter": 1,
+  "juicebox_enable_cors": 0,
+  "juicebox_translate_interface": 0,
+  "juicebox_translate_base_languagelist": "",
+  "juicebox_multisize_small": "juicebox_small",
+  "juicebox_multisize_medium": "juicebox_medium",
+  "juicebox_multisize_large": "juicebox_large"
+}

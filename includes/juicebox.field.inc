@@ -14,7 +14,8 @@
  * Unlike most hook implementations in this file this one is "global" (it's not
  * invoked only for this formatter).
  */
-function juicebox_field_display_alter(&$display, $context) {
+function juicebox_field_display_alter(&$display, $context)
+{
   // If this display is related to a Juicebox formatter we add some additional
   // metadata that the formatter can use. Most notably we add the actual
   // view mode name that this display relates to. Normally formatters don't need
@@ -40,15 +41,15 @@ function juicebox_field_display_alter(&$display, $context) {
  * Add juicebox_formatter formatter. Note that this hook is only fired on cache
  * updates to set defaults.
  */
-function juicebox_field_formatter_info() {
+function juicebox_field_formatter_info()
+{
   // Get the base settings. This function may be called while clearing caches
   // so let's be extra careful about catching any errors gracefully.
   try {
     $juicebox = juicebox();
     $base_settings = $juicebox->confBaseOptions();
     $library = $juicebox->library;
-  }
-  catch (Exception $e) {
+  } catch (Exception $e) {
     $message = 'Exception fetching base configuration options for Juicebox field formatter: !message in %function (line %line of %file).';
     watchdog_exception('juicebox', $e, $message);
     return array();
@@ -75,7 +76,8 @@ function juicebox_field_formatter_info() {
 /**
  * Implements hook_field_formatter_settings_form().
  */
-function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state)
+{
   // We need a Juicbox object to fetch some common configuration details.
   $juicebox = juicebox();
   $form = array();
@@ -136,7 +138,8 @@ function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $
 /**
  * Implements hook_field_formatter_settings_summary().
  */
-function juicebox_field_formatter_settings_summary($field, $instance, $view_mode) {
+function juicebox_field_formatter_settings_summary($field, $instance, $view_mode)
+{
   $display = $instance['display'][$view_mode];
   $settings = $display['settings'];
   // Get available image style presets
@@ -145,16 +148,14 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
   // Image style setting.
   if (!empty($settings['image_style']) && isset($presets[$settings['image_style']])) {
     $style = $presets[$settings['image_style']];
-  }
-  else {
+  } else {
     $style = t('Original Image');
   }
   $settings_display[] = t("Image style: @style", array('@style' => $style));
   // Thumb style setting.
   if (!empty($settings['thumb_style']) && isset($presets[$settings['thumb_style']])) {
     $style = $presets[$settings['thumb_style']];
-  }
-  else {
+  } else {
     $style = t('Original Image');
   }
   $settings_display[] = t("Thumbnail style: @style", array('@style' => $style));
@@ -163,16 +164,14 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
   // Caption source setting.
   if (!empty($text_sources[$settings['caption_source']])) {
     $source = $text_sources[$settings['caption_source']];
-  }
-  else {
+  } else {
     $source = t('None');
   }
   $settings_display[] = t("Caption source: @source", array('@source' => $source));
   // Title source setting.
   if (!empty($text_sources[$settings['title_source']])) {
     $source = $text_sources[$settings['title_source']];
-  }
-  else {
+  } else {
     $source = t('None');
   }
   $settings_display[] = t("Title source: @source", array('@source' => $source));
@@ -186,7 +185,8 @@ function juicebox_field_formatter_settings_summary($field, $instance, $view_mode
 /**
  * Implements hook_field_formatter_view().
  */
-function juicebox_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+function juicebox_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display)
+{
   $element = array();
   // If there are no images, don't do anything else.
   if (empty($items)) {
@@ -196,7 +196,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
   // previously saved version (that is the only version the XML generation
   // methods will have access to). Display a warning because of this.
   if (!empty($entity->in_preview)) {
-    drupal_set_message(t('Juicebox galleries may not display correctly in preview mode. Any edits made to gallery data will only be visible after all changes are saved.'), 'warning', FALSE);
+    backdrop_set_message(t('Juicebox galleries may not display correctly in preview mode. Any edits made to gallery data will only be visible after all changes are saved.'), 'warning', FALSE);
   }
   $field_name = $instance['field_name'];
   $entity_type_info = entity_get_info($entity_type);
@@ -231,8 +231,7 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
       'gallery' => $juicebox->buildEmbed($xml_path, $add_js, $context, $psuedo_instance),
       '#juicebox' => $juicebox
     );
-  }
-  catch (Exception $e) {
+  } catch (Exception $e) {
     $message = 'Exception building Juicebox embed code for field: !message in %function (line %line of %file).';
     watchdog_exception('juicebox', $e, $message);
   }
@@ -249,7 +248,8 @@ function juicebox_field_formatter_view($entity_type, $entity, $field, $instance,
  *   An array for file field items that have been loaded to represent individual
  *   gallery images.
  */
-function juicebox_field_build_gallery(JuiceboxGalleryDrupalInterface $juicebox, $items) {
+function juicebox_field_build_gallery(JuiceboxGalleryBackdropInterface $juicebox, $items)
+{
   $settings = $juicebox->getSettings();
   foreach ($items as $id => $item) {
     // Calculate the source data that Juicebox requires.
@@ -263,8 +263,7 @@ function juicebox_field_build_gallery(JuiceboxGalleryDrupalInterface $juicebox, 
     if (!$src_data['juicebox_compatible'] && $settings['incompatible_file_action'] == 'show_icon_and_link') {
       $anchor = !empty($item['description']) ? $item['description'] : $item['filename'];
       $title = l($anchor, $src_data['link_url']);
-    }
-    else {
+    } else {
       $title = _juicebox_field_get_text($item, $settings['title_source']);
     }
     // Set the image caption.
@@ -282,7 +281,7 @@ function juicebox_field_build_gallery(JuiceboxGalleryDrupalInterface $juicebox, 
  * galleries (addresses File Entity and Media module support).
  *
  * @param array $instance
- *   An associative array containing the Drupal field instance information for
+ *   An associative array containing the Backdrop field instance information for
  *   a Juicebox field.
  * @return array
  *   An associative array representing the key => label pairs for each title
@@ -291,7 +290,8 @@ function juicebox_field_build_gallery(JuiceboxGalleryDrupalInterface $juicebox, 
  *
  * @see _juicebox_field_get_text()
  */
-function _juicebox_field_text_sources($instance) {
+function _juicebox_field_text_sources($instance)
+{
   // Check if this is a "pseudo" instance such that the field is managed by
   // something other than the core Field API (e.g., a fake ctools instance used
   // for a panel or a view row). In this case the instance data is most likely
@@ -353,14 +353,15 @@ function _juicebox_field_text_sources($instance) {
  *
  * @see _juicebox_field_text_sources()
  */
-function _juicebox_field_get_text($item, $source) {
+function _juicebox_field_get_text($item, $source)
+{
   $text = '';
   if (!empty($item[$source])) {
     // If a field option is specified we need to try to get the value from a
     // file entity. Note that the entity can be re-created by casting the
     // field item into an object.
     if (strpos($source, 'field_') === 0) {
-      $field = field_get_items('file', (object) $item, $source);
+      $field = field_get_items('file', (object)$item, $source);
       if (!empty($field[0]['safe_value'])) {
         $text = $field[0]['safe_value'];
       }
@@ -370,8 +371,7 @@ function _juicebox_field_get_text($item, $source) {
     elseif ($source == 'image_field_caption' && isset($item['image_field_caption']['value'])) {
       $format = empty($item['image_field_caption']['format']) ? filter_fallback_format() : $item['image_field_caption']['format'];
       $text = check_markup($item['image_field_caption']['value'], $format);
-    }
-    elseif (is_string($item[$source])) {
+    } elseif (is_string($item[$source])) {
       $text = check_markup($item[$source]);
     }
   }

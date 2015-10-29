@@ -12,7 +12,8 @@
  *
  * @ingroup views_style_plugins
  */
-class JuiceboxFormatterViewsStyle extends views_plugin_style {
+class JuiceboxFormatterViewsStyle extends views_plugin_style
+{
 
   // Special properties specific to this style formatter.
   public $juicebox;
@@ -20,7 +21,8 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
   /**
    * Constructor.
    */
-  function __construct() {
+  function __construct()
+  {
     // Add Juicebox gallery property to the object.
     // @todo: Perhaps some form of dependecy injection should be considered here
     // instead.
@@ -30,7 +32,8 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
   /**
    * Define default plugin options.
    */
-  function option_definition() {
+  function option_definition()
+  {
     $options = parent::option_definition();
     // Get the base settings.
     $base_settings = $this->juicebox->confBaseOptions();
@@ -56,7 +59,8 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
   /**
    * Define plugin options form.
    */
-  function options_form(&$form, &$form_state) {
+  function options_form(&$form, &$form_state)
+  {
     parent::options_form($form, $form_state);
     $settings = $this->options;
     // Get the active field options.
@@ -136,11 +140,12 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
   /**
    * Define validation rules for the plugin display.
    */
-  function validate() {
+  function validate()
+  {
     $errors = parent::validate();
     // Make sure block caching is not enabled. With block caching enabled the
     // Juicebox javascript library may not get included.
-    if (isset($this->display->handler->options['block_caching']) && $this->display->handler->options['block_caching'] != DRUPAL_NO_CACHE) {
+    if (isset($this->display->handler->options['block_caching']) && $this->display->handler->options['block_caching'] != BACKDROP_NO_CACHE) {
       $errors[] = t('The Juicebox style cannot be used with block caching. Please disable the "Block caching" option for this display.');
     }
     // Make sure the pager is not enabled.
@@ -154,11 +159,11 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
     // the Juicebox-specific plugin settings (such as
     // admin/structure/views/add).
     if (empty($this->options['image_field']) || empty($this->options['thumb_field'])) {
-      drupal_set_message(t("To ensure a fully functional Juicebox gallery please remember to add at least one field of type Image, File or File ID to your Juicebox view display, and to configure all Juicebox Gallery format settings. Once you have completed these steps, re-save your view to remove this warning."), 'warning', FALSE);
+      backdrop_set_message(t("To ensure a fully functional Juicebox gallery please remember to add at least one field of type Image, File or File ID to your Juicebox view display, and to configure all Juicebox Gallery format settings. Once you have completed these steps, re-save your view to remove this warning."), 'warning', FALSE);
     }
     // Set warning about depreciated "Base file ID" source option if it's used.
     if ($this->options['image_field'] == 'file_base' || $this->options['thumb_field'] == 'file_base') {
-      drupal_set_message(t('A Juicebox gallery used in your view is configured with an obsolete source setting of "Base file ID". Please add a File ID field to the related display and choose that instead for your image or thumb source within the Juicebox Gallery format settings. Once you have completed these steps, re-save your view to remove this warning.'), 'warning', FALSE);
+      backdrop_set_message(t('A Juicebox gallery used in your view is configured with an obsolete source setting of "Base file ID". Please add a File ID field to the related display and choose that instead for your image or thumb source within the Juicebox Gallery format settings. Once you have completed these steps, re-save your view to remove this warning.'), 'warning', FALSE);
     }
     return $errors;
   }
@@ -168,14 +173,15 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
    *
    * This is where the Juicebox embed code is built for the view.
    */
-  function render() {
+  function render()
+  {
     $element = array();
     $view = $this->view;
     // If we are previewing the view in the admin interface all the necessary
     // <script> elements in our embed markup seem to get stripped. Display
     // an admin message instead in this case.
     if (strpos(current_path(), 'admin/structure/views') === 0) {
-      drupal_set_message(t("Due to javascript requirements Juicebox galleries cannot be viewed as a live preview. Please save your view and visit the full page URL for this display to preview this gallery."), 'warning');
+      backdrop_set_message(t("Due to javascript requirements Juicebox galleries cannot be viewed as a live preview. Please save your view and visit the full page URL for this display to preview this gallery."), 'warning');
       return $element;
     }
     // Generate a unique ID that can be used to identify this gallery and view
@@ -197,8 +203,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
       $this->buildGallery();
       // Render the embed code.
       $element = array('gallery' => $this->juicebox->buildEmbed($xml_path, TRUE, $context));
-    }
-    catch (Exception $e) {
+    } catch (Exception $e) {
       $message = 'Exception building Juicebox embed code for view: !message in %function (line %line of %file).';
       watchdog_exception('juicebox', $e, $message);
     }
@@ -206,13 +211,14 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
   }
 
   /**
-   * Build the gallery based on loaded Drupal views data.
+   * Build the gallery based on loaded Backdrop views data.
    */
-  public function buildGallery() {
+  public function buildGallery()
+  {
     $view = $this->view;
     $settings = $this->options;
     $rendered_fields = $this->render_fields($view->result);
-    // Get all row image data in the format of Drupal file field items.
+    // Get all row image data in the format of Backdrop file field items.
     $image_items = $thumb_items = $this->getItems($settings['image_field']);
     if ($settings['image_field'] != $settings['thumb_field']) {
       $thumb_items = $this->getItems($settings['thumb_field']);
@@ -237,8 +243,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
       if (!$src_data['juicebox_compatible'] && $settings['incompatible_file_action'] == 'show_icon_and_link') {
         $anchor = !empty($image_item['description']) ? $image_item['description'] : $image_item['filename'];
         $title = l($anchor, $src_data['link_url']);
-      }
-      elseif (!empty($settings['title_field']) && !empty($rendered_fields[$row_index][$settings['title_field']])) {
+      } elseif (!empty($settings['title_field']) && !empty($rendered_fields[$row_index][$settings['title_field']])) {
         $title = $rendered_fields[$row_index][$settings['title_field']];
       }
       // Set the image caption.
@@ -259,8 +264,8 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
   /**
    * Utility to get the item arrays that contain image data from view rows.
    *
-   * The items that this method returns are array representations of Drupal file
-   * objects. This type of array is often used by Drupal to represent file
+   * The items that this method returns are array representations of Backdrop file
+   * objects. This type of array is often used by Backdrop to represent file
    * fields, so this a common format to work with.
    *
    * @param string $source_field
@@ -274,14 +279,14 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
    *
    * @see JuiceboxFormatterViewStyle::confGetFieldSources()
    */
-  protected function getItems($source_field) {
+  protected function getItems($source_field)
+  {
     $view = $this->view;
     // Get the field source options and make sure the passed-source is valid.
     $source_options = $this->confGetFieldSources();
     if (empty($source_options['field_options_images_type'][$source_field])) {
       throw new Exception(t('Empty or invalid field source @source detected for Juicebox view-based gallery.', array('@source' => $source_field)));
-    }
-    else {
+    } else {
       $source_type = $source_options['field_options_images_type'][$source_field];
     }
     $fids = array();
@@ -317,7 +322,7 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
       $file_entities = file_load_multiple($fids);
       // Pass 2 - Get field items from the file entities.
       foreach ($fids as $row_index => $fid) {
-        $items[$row_index] = (array) $file_entities[$fid];
+        $items[$row_index] = (array)$file_entities[$fid];
       }
     }
     return $items;
@@ -342,7 +347,8 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
    *
    * @see JuiceboxFormatterViewStyle::getItems()
    */
-  public function confGetFieldSources() {
+  public function confGetFieldSources()
+  {
     $view = $this->view;
     $options = array(
       'field_options_images' => array(),
@@ -369,12 +375,10 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style {
       if (isset($handler->field) && $handler->field == 'fid') {
         $options['field_options_images'][$field] = $name;
         $options['field_options_images_type'][$field] = 'file_id_field';
-      }
-      elseif (isset($handler->field_info['type']) && ($handler->field_info['type'] == 'image' || $handler->field_info['type'] == 'file')) {
+      } elseif (isset($handler->field_info['type']) && ($handler->field_info['type'] == 'image' || $handler->field_info['type'] == 'file')) {
         $options['field_options_images'][$field] = $name;
         $options['field_options_images_type'][$field] = 'file_field';
-      }
-      else {
+      } else {
         $options['field_options'][$field] = $name;
       }
     }

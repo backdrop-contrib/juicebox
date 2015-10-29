@@ -4,15 +4,16 @@
 /**
  * @file
  * Juicebox XML loader that's used to load (and build via loaded methods) the
- * XML associated with a Drupal views style formatter plugin.
+ * XML associated with a Backdrop views style formatter plugin.
  */
 
 
 /**
- * Class to load and build the XML associated with a Drupal views style
+ * Class to load and build the XML associated with a Backdrop views style
  * formatter plugin.
  */
-class JuiceboxXmlViewsStyle implements JuiceboxXmlInterface {
+class JuiceboxXmlViewsStyle implements JuiceboxXmlInterface
+{
 
   // Base properties that reference source data.
   protected $viewName;
@@ -30,7 +31,8 @@ class JuiceboxXmlViewsStyle implements JuiceboxXmlInterface {
    *   XML URL). This information uniquely identifies the gallery and contains
    *   all the descriptive data needed to load it.
    */
-  public function __construct($id_args) {
+  public function __construct($id_args)
+  {
     // We need at least 3 data sources to build a view-based gallery (the type
     // along with 2 identifiers for the view display).
     if (empty($id_args) || count($id_args) < 3) {
@@ -49,7 +51,8 @@ class JuiceboxXmlViewsStyle implements JuiceboxXmlInterface {
   /**
    * {@inheritdoc}
    */
-  public function access() {
+  public function access()
+  {
     // Check access directly through view methods. This should work no matter
     // what state the view is in (executed or not, etc.).
     return $this->view->access($this->viewDisplay);
@@ -58,7 +61,8 @@ class JuiceboxXmlViewsStyle implements JuiceboxXmlInterface {
   /**
    * {@inheritdoc}
    */
-  public function getXml() {
+  public function getXml()
+  {
     // Execute the view and build the gallery. This is easiest to do by simply
     // calling the preview() method (as it handles all needed sub-processes).
     $this->view->preview($this->viewDisplay, $this->viewArgs);
@@ -89,7 +93,8 @@ class JuiceboxXmlViewsStyle implements JuiceboxXmlInterface {
    *   Returns a Juicebox gallery object if a gallery is both found a built.
    *   Return NULL if no gallery can be extracted.
    */
-  protected function getJuiceboxFromData($view) {
+  protected function getJuiceboxFromData($view)
+  {
     // Within this context if the gallery has been initialized we know it has
     // also been built (as both happen together within the formatter's render()
     // method).

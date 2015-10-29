@@ -3,16 +3,17 @@
 
 /**
  * @file
- * Class to extend a JuiceboxGalleryDecorator object with Drupal-specific logic
+ * Class to extend a JuiceboxGalleryDecorator object with Backdrop-specific logic
  * and structures.
  */
 
 
 /**
- * Class to extend a JuiceboxGalleryDecorator object with Drupal-specific logic
+ * Class to extend a JuiceboxGalleryDecorator object with Backdrop-specific logic
  * and structures.
  */
-class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements JuiceboxGalleryDrupalInterface {
+class JuiceboxGalleryBackdrop extends JuiceboxGalleryDecorator implements JuiceboxGalleryBackdropInterface
+{
 
   // Base injected properties.
   public $library = array();
@@ -31,7 +32,8 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
    *   An associative array of Library data as made available by the Libraries
    *   API.
    */
-  public function __construct(JuiceboxGalleryInterface $gallery, $library) {
+  public function __construct(JuiceboxGalleryInterface $gallery, $library)
+  {
     $this->gallery = $gallery;
     $this->library = $library;
   }
@@ -39,7 +41,8 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
   /**
    * {@inheritdoc}
    */
-  public function init($id_args, $settings = array(), $data = NULL) {
+  public function init($id_args, $settings = array(), $data = NULL)
+  {
     // Set path for reference.
     $this->idArgs = $id_args;
     $this->settings = $settings;
@@ -59,7 +62,8 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
   /**
    * {@inheritdoc}
    */
-  public function isInitialized() {
+  public function isInitialized()
+  {
     if ($this->initialized) {
       return TRUE;
     }
@@ -69,39 +73,43 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
   /**
    * {@inheritdoc}
    */
-  public function getIdArgs() {
+  public function getIdArgs()
+  {
     return $this->idArgs;
   }
 
   /**
    * {@inheritdoc}
    */
-  public function getSettings() {
+  public function getSettings()
+  {
     return $this->settings;
   }
 
   /**
    * {@inheritdoc}
    */
-  public function runCommonBuild() {
+  public function runCommonBuild()
+  {
     // Add all gallery options directly from the settings.
     $this->setGalleryOptions();
     // Also attempt to translate interface strings.
-    if (variable_get('juicebox_translate_interface', FALSE)) {
-      $base_string = variable_get('juicebox_translate_base_languagelist', '');
+    if (config_get('juicebox.settings' . 'juicebox_translate_interface')) {
+      $base_string = config_get('juicebox.settings' . 'juicebox_translate_base_languagelist');
       if (!empty($base_string)) {
         $this->addOption('languagelist', check_plain(t($base_string)), FALSE);
       }
     }
     // Allow other modules to alter the built gallery data before it's
     // rendered. After this point the gallery should no longer change.
-    drupal_alter('juicebox_gallery', $this, $this->data);
+    backdrop_alter('juicebox_gallery', $this, $this->data);
   }
 
   /**
    * {@inheritdoc}
    */
-  public function buildEmbed($xml_path = '', $add_js = TRUE, $context = array(), $add_xml = FALSE) {
+  public function buildEmbed($xml_path = '', $add_js = TRUE, $context = array(), $add_xml = FALSE)
+  {
     // Prep the ids that may be referenced.
     $embed_id = $this->getId();
     $embed_xml_id = 'xml--' . $embed_id;
@@ -113,7 +121,7 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
       $embed_query_additions['xml-source-id'] = $embed_xml_id;
     }
     // Pass-through the current query paramaters and a checksum on the XML URL.
-    $current_query = drupal_get_query_parameters();
+    $current_query = backdrop_get_query_parameters();
     $xml_query = array_merge($current_query, array('checksum' => $this->getChecksum()), $embed_query_additions);
     $xml = array(
       'path' => $xml_path,
@@ -134,22 +142,21 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
     // the actual gallery.
     if (array_key_exists('jb-debug', $current_query) && $this->accessDebugDisplay()) {
       $output['#theme'] = 'juicebox_debug_markup';
-      $output['#attached']['css'] = array(drupal_get_path('module', 'juicebox') . '/css/admin_styles.css');
-    }
-    // Otherwise we display the gallery as normal.
+      $output['#attached']['css'] = array(backdrop_get_path('module', 'juicebox') . '/css/admin_styles.css');
+    } // Otherwise we display the gallery as normal.
     else {
       $output['#theme'] = 'juicebox_embed_markup';
       if ($add_js) {
         // Add the main library via libraries API.
         $output['#attached']['libraries_load'][] = array('juicebox');
-        // Add the JS gallery details as Drupal.settings.
+        // Add the JS gallery details as Backdrop.settings.
         $output['#attached']['js'][] = array(
           'data' => array('juicebox' => array($embed_id => $this->getJavascriptVars(url($xml['path'], $xml['options'])))),
           'type' => 'setting',
         );
-        // Add some local JS (implementing Drupal.behaviors) that will process
-        // the Drupal.settings above into a new client-side juicebox object.
-        $output['#attached']['js'][] = drupal_get_path('module', 'juicebox') . '/js/juicebox_load.js';
+        // Add some local JS (implementing Backdrop.behaviors) that will process
+        // the Backdrop.settings above into a new client-side juicebox object.
+        $output['#attached']['js'][] = backdrop_get_path('module', 'juicebox') . '/js/juicebox_load.js';
       }
       if ($add_xml) {
         $output['#suffix'] .= $this->renderXml($embed_xml_id);
@@ -161,7 +168,8 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
   /**
    * {@inheritdoc}
    */
-  public function styleImageSrcData($image_item, $image_style, $thumb_item, $thumb_style) {
+  public function styleImageSrcData($image_item, $image_style, $thumb_item, $thumb_style)
+  {
     $settings = $this->settings;
     // Make sure that we have proper file field items to work with.
     if (!isset($image_item['fid']) || !isset($thumb_item['fid'])) {
@@ -175,8 +183,7 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
     // Style the thumb.
     if (!$image_item['juicebox_compatible'] && $image_item['fid'] == $thumb_item['fid']) {
       $src_data['thumb_url'] = $src_data['image_url'];
-    }
-    else {
+    } else {
       $this->styleImage($thumb_item, $thumb_style, $check_incompatible);
       $src_data['thumb_url'] = $thumb_item['juicebox_src_data']['image_url'];
     }
@@ -204,12 +211,13 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
    *   An associative array of file field item data to append Juicebox styled
    *   image data to.
    * @param string $style
-   *   The Drupal image style to apply to the item.
+   *   The Backdrop image style to apply to the item.
    * @param boolean $check_compatible
    *   Whether-or-not to detect if the item is compatible with Juicebox, and if
    *   so, substitute a mimetype icon for its output.
    */
-  protected function styleImage(&$item, $style, $check_compatible = TRUE) {
+  protected function styleImage(&$item, $style, $check_compatible = TRUE)
+  {
     $item['juicebox_compatible'] = TRUE;
     // Set the normal, unstyled, url for reference.
     $item['unstyled_src'] = file_create_url($item['uri']);
@@ -218,32 +226,29 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
     if ($check_compatible && !empty($this->library['compatible_mimetypes']) && !in_array($item['filemime'], $this->library['compatible_mimetypes'])) {
       // If the item is not compatible, find the substitute mimetype icon.
       $item['juicebox_compatible'] = FALSE;
-      $icon_dir = drupal_get_path('module', 'juicebox') . '/images/mimetypes';
-      $icon_path = file_icon_path((object) $item, $icon_dir);
+      $icon_dir = backdrop_get_path('module', 'juicebox') . '/images/mimetypes';
+      $icon_path = file_icon_path((object)$item, $icon_dir);
       if ($icon_path) {
         $item['juicebox_src_data']['image_url'] = file_create_url($icon_path);
-      }
-      else {
+      } else {
         $item['juicebox_src_data']['image_url'] = file_create_url($icon_dir . '/image-x-generic.png');
       }
-    }
-    // If the item is compatible, style it.
+    } // If the item is compatible, style it.
     else {
       $sizes = array('image_url' => $style);
       // The "juicebox_multisize" style is special, and actually consists of 3
       // individual styles configured globally.
       if ($style == 'juicebox_multisize') {
         $sizes = array(
-          'image_url_small' => variable_get('juicebox_multisize_small', 'juicebox_small'),
-          'image_url' => variable_get('juicebox_multisize_medium', 'juicebox_medium'),
-          'image_url_large' => variable_get('juicebox_multisize_large', 'juicebox_large'),
+          'image_url_small' => config_get('juicebox.settings' . 'juicebox_multisize_small'),
+          'image_url' => config_get('juicebox.settings' . 'juicebox_multisize_medium'),
+          'image_url_large' => config_get('juicebox.settings' . 'juicebox_multisize_large'),
         );
       }
       foreach ($sizes as $size => $style_each) {
         if (!empty($style_each)) {
           $item['juicebox_src_data'][$size] = image_style_url($style_each, $item['uri']);
-        }
-        else {
+        } else {
           $item['juicebox_src_data'][$size] = $item['unstyled_src'];
         }
       }
@@ -258,38 +263,38 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
    *   The path to the Juicebox XML for this gallery.
    * @param array $context
    *   Optional contextual information that may be used in the links:
-   *   - conf_path: A Drupal path within the admin interface where the gallery
+   *   - conf_path: A Backdrop path within the admin interface where the gallery
    *     can be configured.
    * @param boolean $omit_xml_link
    *   Whether-or-not to omit a contextul link to the gallery XML.
    * @return array
-   *   Drupal render array for the contextual links.
+   *   Backdrop render array for the contextual links.
    *
-   * @see JuiceboxGalleryDrupalInterface::buildGallery()
+   * @see JuiceboxGalleryBackdropInterface::buildGallery()
    */
-  protected function buildContextualLinks($xml_path = '', $context = array(), $omit_xml_link = FALSE) {
+  protected function buildContextualLinks($xml_path = '', $context = array(), $omit_xml_link = FALSE)
+  {
     $c_links = array();
     if (module_exists('contextual') && user_access('access contextual links')) {
       $links = array();
       // Add link to the gallery-specific configuration if we have it.
-      if (!empty($context['conf_path']) && drupal_valid_path($context['conf_path'])) {
-        $links['gallery_config'] = array('title' => t('Configure galleries of this type'), 'href' => $context['conf_path'], 'query' => drupal_get_destination());
+      if (!empty($context['conf_path']) && backdrop_valid_path($context['conf_path'])) {
+        $links['gallery_config'] = array('title' => t('Configure galleries of this type'), 'href' => $context['conf_path'], 'query' => backdrop_get_destination());
       }
       // Add a link to the global Juicebox options.
-      if (drupal_valid_path('admin/config/media/juicebox')) {
-        $links['global_config'] = array('title' => t('Configure global Juicebox options'), 'href' => 'admin/config/media/juicebox', 'query' => drupal_get_destination());
+      if (backdrop_valid_path('admin/config/media/juicebox')) {
+        $links['global_config'] = array('title' => t('Configure global Juicebox options'), 'href' => 'admin/config/media/juicebox', 'query' => backdrop_get_destination());
       }
       if (!$omit_xml_link) {
         $links['xml'] = array('title' => t('View gallery XML'), 'href' => $xml_path);
       }
       // Add link to toggle debug view.
       if ($this->accessDebugDisplay()) {
-        $query = drupal_get_query_parameters();
+        $query = backdrop_get_query_parameters();
         if (empty($query['jb-debug'])) {
           $query['jb-debug'] = 1;
           $title = t('Toggle debug info on');
-        }
-        else {
+        } else {
           unset($query['jb-debug']);
           $title = t('Toggle debug info off');
         }
@@ -307,7 +312,7 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
           '#attributes' => array('class' => array('contextual-links')),
           '#attached' => array(
             'library' => array(array('contextual', 'contextual-links')),
-            'css' => array(drupal_get_path('module', 'juicebox') . '/css/admin_styles.css'),
+            'css' => array(backdrop_get_path('module', 'juicebox') . '/css/admin_styles.css'),
           ),
         );
       }
@@ -322,33 +327,35 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
    * The debug info does not contain any sensitive information but we still want
    * to provide a reasonable limitation regarding who can trigger it.
    */
-  protected function accessDebugDisplay() {
+  protected function accessDebugDisplay()
+  {
     return user_access('access administration pages');
   }
 
   /**
-   * Utility to extract Juicebox options from the common Drupal display
+   * Utility to extract Juicebox options from the common Backdrop display
    * settings, and add them to the gallery.
    *
    * Some common Juicebox configuration options are set via a GUI and others
    * are set as manual strings. This method fetches all of these values from
-   * drupal settings data and merges them into the gallery. Note that this only
+   * backdrop settings data and merges them into the gallery. Note that this only
    * accounts for common settings.
    */
-  protected function setGalleryOptions() {
+  protected function setGalleryOptions()
+  {
     $settings = $this->settings;
     // Get the string options set via the GUI.
     foreach (array('jlib_galleryWidth', 'jlib_galleryHeight', 'jlib_backgroundColor', 'jlib_textColor', 'jlib_thumbFrameColor') as $name) {
       if (isset($settings[$name])) {
         $name_real = str_replace('jlib_', '', $name);
-        $this->addOption(drupal_strtolower($name_real), trim(check_plain($settings[$name])));
+        $this->addOption(backdrop_strtolower($name_real), trim(check_plain($settings[$name])));
       }
     }
     // Get the bool options set via the GUI.
     foreach (array('jlib_showOpenButton', 'jlib_showExpandButton', 'jlib_showThumbsButton', 'jlib_useThumbDots', 'jlib_useFullscreenExpand') as $name) {
       if (isset($settings[$name])) {
         $name_real = str_replace('jlib_', '', $name);
-        $this->addOption(drupal_strtolower($name_real), (!empty($settings[$name]) ? 'TRUE' : 'FALSE'));
+        $this->addOption(backdrop_strtolower($name_real), (!empty($settings[$name]) ? 'TRUE' : 'FALSE'));
       }
     }
     // Merge-in the manually assigned options making sure they take priority
@@ -364,8 +371,8 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
           $matches = array();
           preg_match('/^([A-Za-z0-9]+?)="([^"]+?)"$/u', $option, $matches);
           list($full_match, $name, $value) = $matches;
-          $name = drupal_strtolower($name);
-          $this->addOption(drupal_strtolower($name), check_plain($value));
+          $name = backdrop_strtolower($name);
+          $this->addOption(backdrop_strtolower($name), check_plain($value));
         }
       }
     }
@@ -374,7 +381,8 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
   /**
    * {@inheritdoc}
    */
-  public function confBaseOptions() {
+  public function confBaseOptions()
+  {
     return array(
       'jlib_galleryWidth' => '100%',
       'jlib_galleryHeight' => '100%',
@@ -398,7 +406,8 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
   /**
    * {@inheritdoc}
    */
-  public function confBaseForm($form, $settings) {
+  public function confBaseForm($form, $settings)
+  {
     // Get locally installed library details.
     $library = $this->library;
     $disallowed_conf = array();
@@ -407,18 +416,16 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
       // generic warning.
       if (empty($library['version'])) {
         $notification_top = t('<strong>Notice:</strong> Your Juicebox Library version could not be detected. Some options below may not function correctly.');
-      }
-      // If this version does not support some LITE optins, show a message.
+      } // If this version does not support some LITE optins, show a message.
       elseif (!empty($library['disallowed_conf'])) {
         $disallowed_conf = $library['disallowed_conf'];
         $notification_top = t('<strong>Notice:</strong> You are currently using Juicebox library version <strong>@version</strong> which is not compatible with some of the options listed below. These options will appear disabled until you upgrade to the most recent Juicebox library version.', array('@version' => $library['version']));
         $notification_label = t('&nbsp;(not available in @version)', array('@version' => $library['version']));
       }
-    }
-    // If the library itself is not installed, display formal error message.
+    } // If the library itself is not installed, display formal error message.
     else {
       $notification_top = t('The Juicebox Javascript library does not appear to be installed. Please download and install the most recent version of the Juicebox library.');
-      drupal_set_message($notification_top, 'error');
+      backdrop_set_message($notification_top, 'error');
     }
     $form['juicebox_config'] = array(
       '#type' => 'fieldset',
@@ -560,7 +567,8 @@ class JuiceboxGalleryDrupal extends JuiceboxGalleryDecorator implements Juicebox
   /**
    * {@inheritdoc}
    */
-  public function confBaseStylePresets($allow_multisize = TRUE) {
+  public function confBaseStylePresets($allow_multisize = TRUE)
+  {
     // Get available image style presets.
     $presets = image_style_options(FALSE);
     // If multisize is allowed, include it with the normal styles.

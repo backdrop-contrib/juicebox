@@ -12,7 +12,8 @@
  *
  * @see juicebox_menu()
  */
-function juicebox_admin_settings() {
+function juicebox_admin_settings()
+{
   $library = juicebox_library_detect(TRUE, TRUE);
   $version = !empty($library['version']) ? $library['version'] : t('Unknown');
   $form['juicebox_admin_intro'] = array(
@@ -22,38 +23,38 @@ function juicebox_admin_settings() {
     '#type' => 'select',
     '#title' => t('Javascript Scope'),
     '#options' => array('header' => t('Header'), 'footer' => t('Footer')),
-    '#default_value' => variable_get('juicebox_js_scope', 'header'),
+    '#default_value' => config_get('juicebox.settings', 'juicebox_js_scope'),
     '#description' => t('The scope in which to add the Juicebox javascript library. Choosing "footer" may offer a front-end performance advantage in some situations.'),
   );
   $form['juicebox_apply_markup_filter'] = array(
     '#type' => 'checkbox',
     '#title' => t('Filter all title and caption output for compatibility with Juicebox javascript (recommended)'),
-    '#default_value' => variable_get('juicebox_apply_markup_filter', TRUE),
+    '#default_value' => config_get('juicebox.settings', 'juicebox_apply_markup_filter'),
     '#description' => t('This option helps ensure title/caption output is syntactically compatible with the Juicebox javascript library by removing block-level tags.'),
   );
   $form['juicebox_enable_cors'] = array(
     '#type' => 'checkbox',
     '#title' => t('Allow galleries to be embedded remotely (CORS support)'),
-    '#default_value' => variable_get('juicebox_enable_cors', FALSE),
+    '#default_value' => config_get('juicebox.settings', 'juicebox_enable_cors'),
     '#description' => t('Enable cross-origin resource sharing (CORS) for all generated Juicebox XML. This will allow all origins/domains to use any Juicebox XML requested from this site for embedding purposes (adds a <em>Access-Control-Allow-Origin: *</em> header to all Juicebox XML responses).'),
   );
   $form['juicebox_multilingual'] = array(
     '#type' => 'fieldset',
     '#title' => t('Multilingual options'),
-    '#collapsible' => TRUE,
-    '#collapsed' => FALSE,
+    '#collapsible' => 1,
+    '#collapsed' => 0,
   );
   $form['juicebox_multilingual']['juicebox_translate_interface'] = array(
     '#type' => 'checkbox',
     '#title' => t('Translate the Juicebox javascript interface'),
-    '#default_value' => variable_get('juicebox_translate_interface', FALSE),
-    '#description' => t('Send interface strings to the Juicebox javascript after passing them through the Drupal translation system.'),
+    '#default_value' => config_get('juicebox.settings', 'juicebox_translate_interface'),
+    '#description' => t('Send interface strings to the Juicebox javascript after passing them through the Backdrop translation system.'),
   );
   $form['juicebox_multilingual']['juicebox_translate_base_languagelist'] = array(
     '#type' => 'textarea',
     '#title' => t('Base string for interface translation'),
-    '#default_value' => variable_get('juicebox_translate_base_languagelist', $library['base_languagelist']),
-    '#description' => t('The base <strong>English</strong> interface text that Drupal should attempt to translate and pass to the Juicebox javascript for display (using the "languageList" configuration option). This text will be treated as a <strong>single string</strong> by Drupal and must be translated with a tool such as the Locale module. Note that this base string value will rarely change, and any changes made to it will break existing translations.'),
+    '#default_value' => config_get('juicebox.settings', 'juicebox_translate_base_languagelist'),
+    '#description' => t('The base <strong>English</strong> interface text that Backdrop should attempt to translate and pass to the Juicebox javascript for display (using the "languageList" configuration option). This text will be treated as a <strong>single string</strong> by Backdrop and must be translated with a tool such as the Locale module. Note that this base string value will rarely change, and any changes made to it will break existing translations.'),
     '#wysiwyg' => FALSE,
     '#states' => array(
       // Hide the settings when the translate option is disabled.
@@ -89,17 +90,17 @@ function juicebox_admin_settings() {
   $presets = image_style_options(FALSE);
   $form['juicebox_multisize']['juicebox_multisize_small'] = array(
     '#title' => t('Small mode image style'),
-    '#default_value' => variable_get('juicebox_multisize_small', 'juicebox_small'),
+    '#default_value' => config_get('juicebox.settings', 'juicebox_multisize_small'),
     '#description' => t('The style formatter to use in small screen mode (e.g., non-retina mobile devices).'),
   );
   $form['juicebox_multisize']['juicebox_multisize_medium'] = array(
     '#title' => t('Medium mode image style'),
-    '#default_value' => variable_get('juicebox_multisize_medium', 'juicebox_medium'),
+    '#default_value' => config_get('juicebox.settings', 'juicebox_multisize_medium'),
     '#description' => t('The style formatter to use in medium screen mode (e.g., desktops and retina mobile devices).'),
   );
   $form['juicebox_multisize']['juicebox_multisize_large'] = array(
     '#title' => t('Large mode image style'),
-    '#default_value' => variable_get('juicebox_multisize_large', 'juicebox_large'),
+    '#default_value' => config_get('juicebox.settings', 'juicebox_multisize_large'),
     '#description' => t('The style formatter to use in large screen mode (e.g., expanded view and retina laptops).'),
   );
   foreach ($form['juicebox_multisize'] as &$options) {
@@ -112,21 +113,39 @@ function juicebox_admin_settings() {
       );
     }
   }
-  // Add some custom submit processing.
-  $form['#submit'][] = 'juicebox_admin_settings_submit';
-  return system_settings_form($form);
+
+
+// Add a submit button
+  $form['actions']['#type'] = 'actions';
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration'),
+  );
+
+  return $form;
 }
 
-
 /**
- * For submission callback for Juicebox admin settings.
- *
- * @see juicebox_admin_settings()
+ * Submit handler for module_settings_form().
  */
-function juicebox_admin_settings_submit($form, &$form_state) {
+function juicebox_admin_settings_submit($form, &$form_state)
+{
+  $config = config('juicebox.settings');
+  $config->set('juicebox_js_scope', $form_state['values']['juicebox_js_scope']);
+  $config->set('juicebox_apply_markup_filter', $form_state['values']['juicebox_apply_markup_filter']);
+  $config->set('juicebox_enable_cors', $form_state['values']['juicebox_enable_cors']);
+  $config->set('juicebox_translate_interface', $form_state['values']['juicebox_translate_interface']);
+  $config->set('juicebox_translate_base_languagelist', $form_state['values']['juicebox_translate_base_languagelist']);
+  $config->set('juicebox_multisize_small', $form_state['values']['juicebox_multisize_small']);
+  $config->set('juicebox_multisize_medium', $form_state['values']['juicebox_multisize_medium']);
+  $config->set('juicebox_multisize_large', $form_state['values']['juicebox_multisize_large']);
+  $config->save();
+
   // Clear all cached library data as some of our global settings may impact
   // the library definition itself (e.g., JS scope).
   cache_clear_all('juicebox', 'cache_libraries');
   cache_clear_all('juicebox_local_library', 'cache');
-  drupal_set_message(t('The Juicebox library caches have been reset.'));
+  backdrop_set_message(t('The configuration options have been saved. The Juicebox library caches have been reset.'));
 }
+
+

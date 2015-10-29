@@ -3,16 +3,17 @@
 
 /**
  * @file
- * Interface definition for a Juicebox gallery that includes Drupal
+ * Interface definition for a Juicebox gallery that includes Backdrop
  * functionality.
  */
 
 
 /**
- * Interface definition for a Juicebox gallery that includes Drupal
+ * Interface definition for a Juicebox gallery that includes Backdrop
  * functionality.
  */
-interface JuiceboxGalleryDrupalInterface extends JuiceboxGalleryInterface {
+interface JuiceboxGalleryBackdropInterface extends JuiceboxGalleryInterface
+{
 
   /**
    * Initialize in preparation to represent a specific gallery.
@@ -28,7 +29,7 @@ interface JuiceboxGalleryDrupalInterface extends JuiceboxGalleryInterface {
    *   object) as well as formatter settings (that are only used externally by
    *   a formatter plugin).
    * @param mixed $data
-   *   Drupal source data that was used to build the gallery. This is included
+   *   Backdrop source data that was used to build the gallery. This is included
    *   purely for reference.
    */
   public function init($id_args, $settings = array(), $data = NULL);
@@ -70,12 +71,12 @@ interface JuiceboxGalleryDrupalInterface extends JuiceboxGalleryInterface {
    * @param array $image_item
    *   An associative array of file field item data for the main image.
    * @param string $image_style
-   *   The Drupal image style to apply to the main image.
+   *   The Backdrop image style to apply to the main image.
    * @param array $thumb_item
    *   An associative array of file field item data for the thumbnail
    *   image.
    * @param string $thumb_style
-   *   The Drupal image style to apply to the thumbnail image.
+   *   The Backdrop image style to apply to the thumbnail image.
    * @return array
    *   An associative array of image source URLs that's ready to be added
    *   to a Juicebox gallery, including:
@@ -99,8 +100,8 @@ interface JuiceboxGalleryDrupalInterface extends JuiceboxGalleryInterface {
    * Note that this is different from JuiceboxGalleryInterface:renderEmbed() in
    * that it handles ALL considerations for embedding. This includes the
    * addition of the appropriate js and css which would otherwise need to be
-   * done independent of renderEmbed(). It also uses the Drupal theme system as
-   * opposed to just returning direct markup. Within Drupal this method should
+   * done independent of renderEmbed(). It also uses the Backdrop theme system as
+   * opposed to just returning direct markup. Within Backdrop this method should
    * always be used instead of renderEmbed().
    *
    * @param string $xml_path
@@ -110,7 +111,7 @@ interface JuiceboxGalleryDrupalInterface extends JuiceboxGalleryInterface {
    *   javascript.
    * @param array $context
    *   Optional contextual information that may be used in the display:
-   *   - conf_path: A Drupal path within the admin interface where the gallery
+   *   - conf_path: A Backdrop path within the admin interface where the gallery
    *     can be configured. This may be used within administrative contextual
    *     links for the gallery if provided.
    * @param boolean $add_xml
@@ -123,12 +124,12 @@ interface JuiceboxGalleryDrupalInterface extends JuiceboxGalleryInterface {
    *   data later. Setting this option may work around certain limitations but
    *   will likely lead to slower XML generation.
    * @return array
-   *   Drupal render array for the embed code that describes a gallery.
+   *   Backdrop render array for the embed code that describes a gallery.
    */
   public function buildEmbed($xml_path = '', $add_js = TRUE, $context = array(), $add_xml = FALSE);
 
   /**
-   * Get the "base" values of common Drupal settings used to describe a gallery.
+   * Get the "base" values of common Backdrop settings used to describe a gallery.
    * This is used for the management of default configuration values.
    *
    * @return array
@@ -143,7 +144,7 @@ interface JuiceboxGalleryDrupalInterface extends JuiceboxGalleryInterface {
    * These can be merged into the appropriate forms via a call to this method.
    *
    * @param array $form
-   *   The Drupal form array that common elements should be added to.
+   *   The Backdrop form array that common elements should be added to.
    * @param array $settings
    *   An associative array containing all the current settings for a Juicebox
    *   gallery (used to set default values).

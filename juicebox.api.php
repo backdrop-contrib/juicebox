@@ -14,12 +14,13 @@
  * @param object $juicebox
  *   A Juicebox gallery object that contains the gallery which is going to be
  *   rendered. This object can be further manipulated using any methods from
- *   JuiceboxGalleryDrupalInterface (which includes JuiceboxGalleryInterface).
+ *   JuiceboxGalleryBackdropInterface (which includes JuiceboxGalleryInterface).
  * @param mixed $data
- *   The raw Drupal data that was used to build this gallery. Provided for
+ *   The raw Backdrop data that was used to build this gallery. Provided for
  *   context.
  */
-function hook_juicebox_gallery_alter($juicebox, $data) {
+function hook_juicebox_gallery_alter($juicebox, $data)
+{
   // See if this is a gallery sourced from a view.
   $id_args = $juicebox->getIdArgs();
   if ($id_args[0] == 'viewsstyle') {
@@ -54,14 +55,15 @@ function hook_juicebox_gallery_alter($juicebox, $data) {
  *     outputs of a Juicebox gallery.
  *   - juicebox: A Juicebox gallery wrapper (implementing
  *     JuiceboxGalleryWrapperInterface) that will be used to wrap/decorate the
- *     gallery object with Drupal-specific logic and structures.
+ *     gallery object with Backdrop-specific logic and structures.
  * @param array $library
  *   Juicebox javascript library data as provided through Libraries API.
  *   Provided for context.
  *
  * @see juicebox()
  */
-function hook_juicebox_classes_alter(&$classes, $library) {
+function hook_juicebox_classes_alter(&$classes, $library)
+{
   // Provide custom (global) overrides to a Juicebox library.
   $classes['juicebox'] = 'MyJuiceboxGalleryWrapper';
   // Swap out the gallery dependency object because some future Juicebox
@@ -75,10 +77,10 @@ function hook_juicebox_classes_alter(&$classes, $library) {
 /**
  * Allow modules to alter the class used for a Juicebox XML loader.
  *
- * Any Drupal formatter that creates Juicebox embed code must also provide a
+ * Any Backdrop formatter that creates Juicebox embed code must also provide a
  * way for the associated Juicebox XML to be generated. This is typically
  * handled via a seperate request that can be routed and managed any way you
- * like (such as a dedicated Drupal menu item). If you want to use the existing
+ * like (such as a dedicated Backdrop menu item). If you want to use the existing
  * "juicebox/xml/%" menu item for this, you can specifiy a custom XML loader
  * class (implementing JuiceboxXmlInterface) and then "register" it with this
  * hook.
@@ -91,7 +93,8 @@ function hook_juicebox_classes_alter(&$classes, $library) {
  *
  * @see juicebox_page_xml()
  */
-function hook_juicebox_xml_class_alter(&$xml_loader_class, $args) {
+function hook_juicebox_xml_class_alter(&$xml_loader_class, $args)
+{
   if (!empty($args[0]) && $args[0] == 'mywidget') {
     $xml_loader_class = 'JuiceboxXmlMyWidget';
   }

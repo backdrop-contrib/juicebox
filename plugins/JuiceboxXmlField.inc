@@ -4,15 +4,16 @@
 /**
  * @file
  * Juicebox XML loader that's used to load (and build via loaded methods) the
- * XML associated with a Drupal field formatter plugin.
+ * XML associated with a Backdrop field formatter plugin.
  */
 
 
 /**
- * Class to load and build the XML associated with a Drupal field formatter
+ * Class to load and build the XML associated with a Backdrop field formatter
  * plugin.
  */
-class JuiceboxXmlField implements JuiceboxXmlInterface {
+class JuiceboxXmlField implements JuiceboxXmlInterface
+{
 
   // Injected gallery object to build.
   protected $juicebox;
@@ -38,7 +39,8 @@ class JuiceboxXmlField implements JuiceboxXmlInterface {
    *   XML URL). This information uniquely identifies the gallery and contains
    *   all the descriptive data needed to load it.
    */
-  public function __construct($id_args) {
+  public function __construct($id_args)
+  {
     // We need 5 data sources to build a file-based gallery (the type along
     // with 4 identifiers for the field data).
     if (empty($id_args) || count($id_args) < 5) {
@@ -58,7 +60,8 @@ class JuiceboxXmlField implements JuiceboxXmlInterface {
   /**
    * {@inheritdoc}
    */
-  public function access() {
+  public function access()
+  {
     $access = TRUE;
     // Check field-level access.
     if (!isset($this->fieldAccess)) {
@@ -100,7 +103,8 @@ class JuiceboxXmlField implements JuiceboxXmlInterface {
   /**
    * {@inheritdoc}
    */
-  public function getXml() {
+  public function getXml()
+  {
     // Build the field and gallery. This is easiest to do by simply calling
     // field_view_field (as it handles all needed sub-processes).
     $field = field_view_field($this->entityType, $this->entity, $this->fieldName, $this->displayName);
@@ -132,7 +136,8 @@ class JuiceboxXmlField implements JuiceboxXmlInterface {
    *   Returns a Juicebox gallery object if a gallery is both found a built.
    *   Return NULL if no gallery can be extracted.
    */
-  protected function getJuiceboxFromData($field) {
+  protected function getJuiceboxFromData($field)
+  {
     // Within this context if the gallery has been initialized we know it has
     // also been built (as both happen together within
     // juicebox_field_build_gallery()).
@@ -143,16 +148,16 @@ class JuiceboxXmlField implements JuiceboxXmlInterface {
   }
 
   /**
-   * Load the Drupal data that's needed to initialize a field-based Juicebox
+   * Load the Backdrop data that's needed to initialize a field-based Juicebox
    * gallery from scratch.
    */
-  protected function loadFormatterData() {
+  protected function loadFormatterData()
+  {
     // Get the bundle details.
     $info = entity_get_info($this->entityType);
     if (empty($info['entity keys']['bundle'])) {
       $bundle = $this->entityType;
-    }
-    else {
+    } else {
       $bundle = $this->entity->{$info['entity keys']['bundle']};
     }
     // Get the instance and display details.
@@ -167,7 +172,7 @@ class JuiceboxXmlField implements JuiceboxXmlInterface {
       }
     }
     // If we got here there was a problem loading the data.
-    throw new Exception(t('There was problem loading Drupal data for a field-based Juicebox gallery.'));
+    throw new Exception(t('There was problem loading Backdrop data for a field-based Juicebox gallery.'));
   }
 
 }
