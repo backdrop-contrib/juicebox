@@ -176,3 +176,42 @@ class JuiceboxXmlField implements JuiceboxXmlInterface
   }
 
 }
+
+
+
+/**
+ * Added here for Backdrop. (Not available in Backdrop's entity module.)
+ * Determines whether the given user can perform actions on an entity.
+ * For create operations, the pattern is to create an entity and then
+ * check if the user has create access.
+ *
+ * @code
+ * $node = entity_create('node', array('type' => 'page'));
+ * $access = entity_access('create', 'node', $node, $account);
+ * @endcode
+ *
+ * @param $op
+ *   The operation being performed. One of 'view', 'update', 'create' or
+ *   'delete'.
+ * @param $entity_type
+ *   The entity type of the entity to check for.
+ * @param $entity
+ *   Optionally an entity to check access for. If no entity is given, it will be
+ *   determined whether access is allowed for all entities of the given type.
+ * @param $account
+ *   The user to check for. Leave it to NULL to check for the global user.
+ *
+ * @return boolean
+ *   Whether access is allowed or not. If the entity type does not specify any
+ *   access information, NULL is returned.
+ *
+ * @see entity_type_supports()
+ *
+ */
+function entity_access($op, $entity_type, $entity = NULL, $account = NULL) {
+  if (($info = entity_get_info()) && isset($info[$entity_type]['access callback'])) {
+    return $info[$entity_type]['access callback']($op, $entity, $account, $entity_type);
+  }
+}
+
+
