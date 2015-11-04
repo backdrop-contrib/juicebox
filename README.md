@@ -50,9 +50,10 @@ dedicated pages for the field formatter and the views style plugin.
 This project is GPL v2 software. See the LICENSE.txt file 
 in this directory for complete text.
 
-## Current Maintainer for Backdrop
+## Current Maintainers for Backdrop
 
 Graham Oliver (github.com/Graham-72/)
+Ryan Jacobs (github.com/ryan-jacobs)
 
 
 ## Credits
@@ -61,7 +62,7 @@ This is a port of the Drupal project Juicebox, version 7.x-2.1
 
 ### Drupal Author and Maintainer
 
- + Ryan Jacobs (rjacobs)
+ + Ryan Jacobs (rjacobs) (github: ryan-jacobs)
  
 ### Simpleviewer Inc
 
