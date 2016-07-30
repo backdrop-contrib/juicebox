@@ -52,13 +52,26 @@ function juicebox_theme()
   return array(
     // Theme hook to generate embed markup for a Juicebox gallery.
     'juicebox_embed_markup' => array(
-      'variables' => array('gallery_id' => NULL, 'gallery_images' => array(), 'gallery_options' => array(), 'settings' => array(), 'c_links' => array()),
+      'variables' => array(
+        'gallery_id' => NULL,
+        'gallery_images' => array(),
+        'gallery_options' => array(),
+        'settings' => array(),
+        'c_links' => array(),
+      ),
       'path' => backdrop_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
     ),
     // Theme hook to generate info/debug information for a Juicebox gallery.
     'juicebox_debug_markup' => array(
-      'variables' => array('gallery_id' => NULL, 'gallery_images' => array(), 'gallery_options' => array(), 'settings' => array(), 'xml' => array(), 'c_links' => array()),
+      'variables' => array(
+        'gallery_id' => NULL,
+        'gallery_images' => array(),
+        'gallery_options' => array(),
+        'settings' => array(),
+        'xml' => array(),
+        'c_links' => array(),
+      ),
       'path' => backdrop_get_path('module', 'juicebox') . '/themes',
       'file' => 'juicebox.theme.inc',
     ),
@@ -85,7 +98,13 @@ function juicebox_libraries_info()
       // aggregated by Backdrop (set preprocess option = FALSE). This is because
       // some supporting library CSS files must be at a specific location
       // RELATIVE to to the main js file. Aggregation breaks this.
-      'js' => array('juicebox.js' => array('preprocess' => FALSE, 'group' => JS_LIBRARY, 'scope' => config_get('juicebox.settings' . 'juicebox_js_scope'))),
+      'js' => array(
+        'juicebox.js' => array(
+          'preprocess' => FALSE,
+          'group' => JS_LIBRARY,
+          'scope' => config_get('juicebox.settings','juicebox_js_scope'),
+        ),
+      ),
     ),
     'callbacks' => array(
       'info' => array('juicebox_library_info'),
@@ -140,7 +159,11 @@ function juicebox_image_default_styles()
     'effects' => array(
       array(
         'name' => 'image_scale',
-        'data' => array('width' => 800, 'height' => 800, 'upscale' => FALSE),
+        'data' => array(
+          'width' => 800,
+          'height' => 800,
+          'upscale' => FALSE,
+          ),
         'weight' => 0,
       ),
     ),
@@ -150,7 +173,10 @@ function juicebox_image_default_styles()
     'effects' => array(
       array(
         'name' => 'image_scale',
-        'data' => array('width' => 1024, 'height' => 1024, 'upscale' => FALSE),
+        'data' => array(
+          'width' => 1024,
+          'height' => 1024,
+          'upscale' => FALSE),
         'weight' => 0,
       ),
     ),
@@ -221,7 +247,7 @@ function juicebox()
     // object-specific options. Note that we don't set the ID here yet as that
     // will be added via a setter method later.
     $object_settings = array(
-      'filter_markup' => config_get('juicebox.settings' . 'juicebox_apply_markup_filter'),
+      'filter_markup' => config_get('juicebox.settings','juicebox_apply_markup_filter'),
       'process_attributes' => TRUE,
     );
     $gallery = new $classes['gallery'](NULL, $object_settings);
@@ -279,7 +305,7 @@ function juicebox_library_detect($force_local = FALSE, $reset = FALSE)
     } // Otherwise we just use the Libraries API to detect the local lib.
     else {
       // We maintain our own DB cache here because libraries_detect() does not
-      // have one. libaries_load() has one, but we don't want to be actually
+      // have one. libraries_load() has one, but we don't want to be actually
       // loading the library here.
       $library = cache_get('juicebox_local_library', 'cache');
       if ($library && !$reset) {

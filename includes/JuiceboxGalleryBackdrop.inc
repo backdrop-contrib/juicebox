@@ -94,8 +94,8 @@ class JuiceboxGalleryBackdrop extends JuiceboxGalleryDecorator implements Juiceb
     // Add all gallery options directly from the settings.
     $this->setGalleryOptions();
     // Also attempt to translate interface strings.
-    if (config_get('juicebox.settings' . 'juicebox_translate_interface')) {
-      $base_string = config_get('juicebox.settings' . 'juicebox_translate_base_languagelist');
+    if (config_get('juicebox.settings','juicebox_translate_interface')) {
+      $base_string = config_get('juicebox.settings','juicebox_translate_base_languagelist');
       if (!empty($base_string)) {
         $this->addOption('languagelist', check_plain(t($base_string)), FALSE);
       }
@@ -240,9 +240,9 @@ class JuiceboxGalleryBackdrop extends JuiceboxGalleryDecorator implements Juiceb
       // individual styles configured globally.
       if ($style == 'juicebox_multisize') {
         $sizes = array(
-          'image_url_small' => config_get('juicebox.settings' . 'juicebox_multisize_small'),
-          'image_url' => config_get('juicebox.settings' . 'juicebox_multisize_medium'),
-          'image_url_large' => config_get('juicebox.settings' . 'juicebox_multisize_large'),
+          'image_url_small' => config_get('juicebox.settings','juicebox_multisize_small'),
+          'image_url' => config_get('juicebox.settings','juicebox_multisize_medium'),
+          'image_url_large' => config_get('juicebox.settings','juicebox_multisize_large'),
         );
       }
       foreach ($sizes as $size => $style_each) {
