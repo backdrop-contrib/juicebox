@@ -43,7 +43,7 @@ class JuiceboxXmlField implements JuiceboxXmlInterface
   {
     // We need 5 data sources to build a file-based gallery (the type along
     // with 4 identifiers for the field data).
-    if (empty($id_args) || count($id_args) < 5) {
+    if (empty($id_args) || count($id_args) < 4) {
       throw new Exception(t('Cannot initiate field-based Juicebox XML due to insufficient ID args.'));
     }
     // Set data sources as properties.
@@ -213,5 +213,3 @@ function entity_access($op, $entity_type, $entity = NULL, $account = NULL) {
     return $info[$entity_type]['access callback']($op, $entity, $account, $entity_type);
   }
 }
-
-
