@@ -107,7 +107,7 @@ function juicebox_libraries_info()
       ),
     ),
     'callbacks' => array(
-      'info' => array('juicebox_library_info'),
+      'info' => array('juicebox_lib_info'),
       'post-detect' => array('juicebox_library_post_detect'),
     ),
   );
@@ -292,7 +292,7 @@ function juicebox_library_detect($force_local = FALSE, $reset = FALSE)
     // local detection and build our own libraries array.
     $query = backdrop_get_query_parameters();
     if (!empty($query['jb-version']) && !$force_local) {
-      juicebox_library_info($library);
+      juicebox_lib_info($library);
       $version_number = check_plain($query['jb-version']);
       if (!empty($query['jb-pro'])) {
         $library['pro'] = TRUE;
@@ -405,7 +405,7 @@ function juicebox_page_xml()
  *
  * @see juicebox_libraries_info()
  */
-function juicebox_library_info(&$library)
+function juicebox_lib_info(&$library)
 {
   $library['disallowed_conf'] = array();
   $library['compatible_mimetypes'] = array('image/gif', 'image/jpeg', 'image/png');
