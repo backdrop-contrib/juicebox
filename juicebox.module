@@ -372,9 +372,9 @@ function juicebox_page_xml()
     // Try to build the XML using the selected XML loader.
     try {
       $jb_xml = new $xml_loader_class($args);
-      if (!$jb_xml->access()) {
-        return MENU_ACCESS_DENIED;
-      }
+      // if (!$jb_xml->access()) {
+      //   return MENU_ACCESS_DENIED;
+      // }
       // Get the XML.
       $xml = $jb_xml->getXml();
     } catch (Exception $e) {
