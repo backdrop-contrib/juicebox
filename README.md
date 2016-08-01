@@ -10,8 +10,8 @@ independently from this Backdrop project. Both the Lite (free) and Pro
 versions should work with this module, and the one you choose will 
 depend largely on how much formatting flexibly you require.
 
-This is a port to Backrop of the Drupal project. Please see the Drupal 
-project page for a detailed feature overview:
+This is a port to Backrop of the Drupal project, version 7.x-2.1.
+Please see the Drupal project page for a detailed feature overview:
 http://drupal.org/project/juicebox
 
 ## Installation
@@ -29,7 +29,7 @@ http://drupal.org/project/juicebox
 ## Configuration and Use
 
 This module integrates with Backdrop on many levels but conceptually 
-it operates just like any other display formatter. It's designed to let 
+it operates just like any other display formatter. It is designed to let
 you easily turn groups of Backdrop-managed image data into Juicebox 
 galleries without making too many assumptions about how your site is 
 structured or what media management strategy you use.
@@ -52,8 +52,8 @@ in this directory for complete text.
 
 ## Current Maintainers for Backdrop
 
-Graham Oliver (github.com/Graham-72/)
-Ryan Jacobs (github.com/ryan-jacobs)
+ + Graham Oliver (github.com/Graham-72/)
+ + Ryan Jacobs (github.com/ryan-jacobs)
 
 
 ## Credits
