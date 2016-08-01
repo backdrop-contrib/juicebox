@@ -78,14 +78,14 @@ function juicebox_field_formatter_info()
  */
 function juicebox_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state)
 {
-  // We need a Juicbox object to fetch some common configuration details.
+  // We need a Juicebox object to fetch some common configuration details.
   $juicebox = juicebox();
   $form = array();
   // Detect if this is a "pseudo" instance such that the field's context is
   // managed by something other than the core Field API (e.g., a fake ctools
   // instance used for a panel or a view row). This case is supported but we
   // still want to put up a notice about it.
-  if (!isset($instance['id'])) {
+  if (!isset($instance['bundle'])) {
     $form['instance_warning'] = array(
       '#prefix' => '<div class="messages warning">',
       '#markup' => t('<strong>WARNING:</strong> You appear to be using the Juicebox field formatter with a field instance that is not directly attached to an entity. Support for this configuration is currently experimental. Please test your final gallery output thoroughly.'),
@@ -254,7 +254,7 @@ function juicebox_field_build_gallery(JuiceboxGalleryBackdropInterface $juicebox
   foreach ($items as $id => $item) {
     // Calculate the source data that Juicebox requires.
     $src_data = $juicebox->styleImageSrcData($item, $settings['image_style'], $item, $settings['thumb_style']);
-    // Short-circut this iteration if skipping an incompatible file.
+    // Short-circuit this iteration if skipping an incompatible file.
     if (!$src_data['juicebox_compatible'] && $settings['incompatible_file_action'] == 'skip') {
       continue;
     }
