@@ -384,5 +384,4 @@ class JuiceboxFormatterViewsStyle extends views_plugin_style
     }
     return $options;
   }
-
 }
