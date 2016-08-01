@@ -14,6 +14,14 @@ This is a port to Backrop of the Drupal project, version 7.x-2.1.
 Please see the Drupal project page for a detailed feature overview:
 http://drupal.org/project/juicebox
 
+
+## Status
+
+At the moment this port of Juicebox can be installed in Backdrop
+and will produce an image gallery. However, the internal tests
+are producing failures and so more testing and fixing is needed.
+
+
 ## Installation
 
 - Install this module using the official Backdrop CMS instructions at
