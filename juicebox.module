@@ -102,7 +102,7 @@ function juicebox_libraries_info()
         'juicebox.js' => array(
           'preprocess' => FALSE,
           'group' => JS_LIBRARY,
-          'scope' => config_get('juicebox.settings','juicebox_js_scope'),
+          'scope' => config_get('juicebox.settings', 'juicebox_js_scope'),
         ),
       ),
     ),
@@ -163,7 +163,7 @@ function juicebox_image_default_styles()
           'width' => 800,
           'height' => 800,
           'upscale' => FALSE,
-          ),
+        ),
         'weight' => 0,
       ),
     ),
@@ -247,7 +247,7 @@ function juicebox()
     // object-specific options. Note that we don't set the ID here yet as that
     // will be added via a setter method later.
     $object_settings = array(
-      'filter_markup' => config_get('juicebox.settings','juicebox_apply_markup_filter'),
+      'filter_markup' => config_get('juicebox.settings', 'juicebox_apply_markup_filter'),
       'process_attributes' => TRUE,
     );
     $gallery = new $classes['gallery'](NULL, $object_settings);
